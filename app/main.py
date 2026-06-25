@@ -49,15 +49,22 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 _last_poll = {"new": None, "players": None, "error": None, "at": None}
 
 
+_last_profile_refresh: dict = {}  # tag -> timestamp del último refresco de perfil
+
+
 async def _poll_player(tag: str) -> int:
     """Sondea un jugador y guarda sus partidas nuevas. Devuelve cuántas."""
-    # Backfill puntual del perfil (nombre + icono) si aún no lo tenemos.
-    if await asyncio.to_thread(db.player_needs_profile, tag):
+    # Refresca el perfil (nombre + icono + club) si falta el icono o cada hora,
+    # para que el club aparezca también en jugadores añadidos antes de esta función.
+    need = await asyncio.to_thread(db.player_needs_profile, tag)
+    stale = (time.time() - _last_profile_refresh.get(tag, 0)) > 3600
+    if need or stale:
         try:
             prof = await brawl_api.get_player(tag)
             await asyncio.to_thread(db.update_player_profile, tag,
                                     prof.get("name"), (prof.get("icon") or {}).get("id"),
                                     (prof.get("club") or {}).get("name"))
+            _last_profile_refresh[tag] = time.time()
         except Exception as e:  # noqa: BLE001
             print(f"[perfil] no se pudo refrescar {tag}: {e}")
     items = await brawl_api.get_battlelog(tag)
@@ -149,7 +156,7 @@ app.add_middleware(
 # --------------------------- Autenticación ---------------------------
 
 def _public_user(u: dict) -> dict:
-    return {"id": u["id"], "username": u["username"]}
+    return {"id": u["id"], "username": u["username"], "country": u.get("country")}
 
 
 @app.get("/api/auth/config")
@@ -199,6 +206,27 @@ def api_auth_register(request: Request, payload: dict = Body(...)):
         return JSONResponse({"error": "Ese nombre de usuario ya existe."}, status_code=409)
     request.session["user_id"] = uid
     return _public_user(db.get_user_by_id(uid))
+
+
+@app.post("/api/auth/password")
+def api_auth_password(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    current = (payload or {}).get("current") or ""
+    new = (payload or {}).get("new") or ""
+    if not auth.verify_password(current, user["password_hash"]):
+        return JSONResponse({"error": "La contraseña actual no es correcta."}, status_code=403)
+    if len(new) < 6:
+        return JSONResponse({"error": "La nueva contraseña debe tener al menos 6 caracteres."}, status_code=400)
+    db.set_user_password(user["id"], auth.hash_password(new))
+    return {"ok": True}
+
+
+@app.post("/api/auth/country")
+def api_auth_country(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    country = ((payload or {}).get("country") or "").strip().lower()
+    if country and (len(country) != 2 or not country.isalpha()):
+        return JSONResponse({"error": "El país debe ser un código de 2 letras (p. ej. ES)."}, status_code=400)
+    db.set_user_country(user["id"], country or None)
+    return {"ok": True, "country": country or None}
 
 
 def _require_follow(user: dict, player: str) -> str:
@@ -335,6 +363,77 @@ async def api_rotation(player: str = Query(None), user: dict = Depends(auth.requ
         _rotation_cache.update(at=now, data=events)
     analysis = await asyncio.to_thread(db.rotation_analysis, tag, _rotation_cache["data"])
     return {"events": analysis}
+
+
+# --------------------------- Rankings ---------------------------
+
+def _ranking_country(user: dict, scope: str) -> str:
+    """'global' o el código de país del usuario, según el scope pedido."""
+    if scope == "national" and user.get("country"):
+        return user["country"].lower()
+    return "global"
+
+
+@app.get("/api/player-profile")
+async def api_player_profile(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Perfil del jugador: club y colección de brawlers (para el selector de rankings)."""
+    tag = _require_follow(user, player)
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
+    try:
+        prof = await brawl_api.get_player(tag)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": f"No se pudo leer el perfil: {e}"}, status_code=502)
+    brawlers = sorted(
+        [{"id": b.get("id"), "name": b.get("name"), "trophies": b.get("trophies") or 0,
+          "power": b.get("power"), "rank": b.get("rank")} for b in (prof.get("brawlers") or [])],
+        key=lambda b: b["trophies"], reverse=True)
+    club = prof.get("club") or {}
+    return {
+        "tag": tag, "name": prof.get("name"), "trophies": prof.get("trophies"),
+        "club": {"tag": club.get("tag"), "name": club.get("name")} if club.get("tag") else None,
+        "brawlers": brawlers,
+    }
+
+
+@app.get("/api/rankings")
+async def api_rankings(kind: str = Query("players"), scope: str = Query("global"),
+                       brawler_id: int = Query(None), user: dict = Depends(auth.require_user)):
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
+    if kind not in ("players", "clubs", "brawlers"):
+        return JSONResponse({"error": "Tipo de ranking no válido."}, status_code=400)
+    if kind == "brawlers" and not brawler_id:
+        return JSONResponse({"error": "Falta el brawler."}, status_code=400)
+    country = _ranking_country(user, scope)
+    try:
+        items = await brawl_api.get_rankings(kind, country=country, brawler_id=brawler_id)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": f"No se pudo leer el ranking: {e}"}, status_code=502)
+    return {"kind": kind, "scope": "national" if country != "global" else "global",
+            "country": None if country == "global" else country, "items": items}
+
+
+@app.get("/api/club")
+async def api_club(tag: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Datos del club + miembros ordenados por trofeos (ranking interno)."""
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
+    if not tag:
+        return JSONResponse({"error": "Falta el club."}, status_code=400)
+    try:
+        club = await brawl_api.get_club(tag)
+        members = await brawl_api.get_club_members(tag)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": f"No se pudo leer el club: {e}"}, status_code=502)
+    return {
+        "tag": club.get("tag"), "name": club.get("name"), "trophies": club.get("trophies"),
+        "required_trophies": club.get("requiredTrophies"), "type": club.get("type"),
+        "member_count": len(members),
+        "members": [{"tag": m.get("tag"), "name": m.get("name"), "role": m.get("role"),
+                     "trophies": m.get("trophies"), "icon_id": (m.get("icon") or {}).get("id")}
+                    for m in members],
+    }
 
 
 @app.get("/api/assets")

@@ -67,3 +67,26 @@ async def get_events_rotation() -> list[dict]:
     """Eventos en rotación ahora mismo: cada uno con su modo y mapa."""
     data = await _get("/events/rotation")
     return data if isinstance(data, list) else data.get("items", data)
+
+
+async def get_rankings(kind: str, country: str = "global", brawler_id=None, limit: int = 200) -> list[dict]:
+    """Top de jugadores/clubs/brawler. country = 'global' o código de país de 2 letras."""
+    country = (country or "global").lower()
+    if kind == "brawlers":
+        path = f"/rankings/{country}/brawlers/{brawler_id}"
+    elif kind == "clubs":
+        path = f"/rankings/{country}/clubs"
+    else:
+        path = f"/rankings/{country}/players"
+    data = await _get(f"{path}?limit={limit}")
+    items = data.get("items", data) if isinstance(data, dict) else data
+    return items or []
+
+
+async def get_club(tag: str) -> dict:
+    return await _get(f"/clubs/{_tag_path(tag)}")
+
+
+async def get_club_members(tag: str) -> list[dict]:
+    data = await _get(f"/clubs/{_tag_path(tag)}/members")
+    return data.get("items", []) if isinstance(data, dict) else (data or [])

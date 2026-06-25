@@ -93,6 +93,8 @@
   .stat .sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px,1fr)); gap: 18px; }
+  .grid.grid-5 { grid-template-columns: repeat(5, minmax(0,1fr)); gap: 14px; margin-top: 18px; }
+  @media (max-width: 1150px) { .grid.grid-5 { grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); } }
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; }
   .panel h2 { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 9px; }
   .panel h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
@@ -208,10 +210,77 @@
   .rot-br-wr { font-family: var(--display); font-weight: 700; font-size: 13px; margin-top: 3px; }
   .rot-empty { font-size: 12px; color: var(--muted); font-style: italic; }
 
+  /* Botón de cuenta */
+  button.user-pill { font-size: 12px; color: var(--cyan); font-family: var(--display); letter-spacing: .5px; background: transparent; border: 1px solid var(--border); border-radius: 9px; padding: 8px 12px; cursor: pointer; transition: border-color .12s; }
+  button.user-pill:hover { border-color: var(--cyan); }
+
+  /* Ventanas modales (cuenta + contraseña) */
+  .modal-overlay { position: fixed; inset: 0; z-index: 1100; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(5,8,12,.74); backdrop-filter: blur(3px); }
+  .modal-overlay.open { display: flex; }
+  .modal-card { position: relative; width: 100%; max-width: 380px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 18px; padding: 30px 28px; box-shadow: 0 24px 70px rgba(0,0,0,.6); animation: rise .32s ease both; }
+  .modal-card.has-close { padding-top: 56px; }
+  .modal-title { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 6px; }
+  .modal-sub { color: var(--muted); font-size: 12px; margin-bottom: 20px; }
+  .modal-close { position: absolute; top: 16px; left: 16px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color .12s, border-color .12s; }
+  .modal-close:hover { color: var(--loss); border-color: var(--loss); }
+  .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
+  .modal-card select, .modal-card input { width: 100%; box-sizing: border-box; font-family: var(--body); font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 11px 12px; outline: none; margin-bottom: 14px; }
+  .modal-card select:focus, .modal-card input:focus { border-color: var(--cyan); }
+  .modal-btn { width: 100%; margin-top: 6px; }
+  .modal-msg { font-size: 12px; min-height: 16px; margin-top: 8px; }
+  .modal-msg.err { color: var(--loss); }
+  .field-saved { color: var(--win); font-size: 12px; min-height: 14px; margin: -6px 0 12px; }
+
+  /* Estado: actualizando */
+  .pw-loading { display: none; flex-direction: column; align-items: center; gap: 16px; padding: 24px 0 12px; }
+  .spinner { width: 38px; height: 38px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--gold); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .pw-loading-text { font-family: var(--display); font-weight: 600; letter-spacing: .5px; color: var(--text); }
+  .pw-loading-text .dots span { animation: blink 1.2s infinite; }
+  .pw-loading-text .dots span:nth-child(2) { animation-delay: .2s; }
+  .pw-loading-text .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+
+  /* Estado: éxito */
+  .pw-success { display: none; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0 8px; text-align: center; }
+  .pw-success .check { width: 46px; height: 46px; border-radius: 50%; background: rgba(65,224,138,.15); border: 1px solid rgba(65,224,138,.5); color: var(--win); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .pw-success-text { color: var(--win); font-weight: 600; font-size: 15px; }
+  .pw-success-sub { color: var(--muted); font-size: 12px; }
+
+  /* Rankings */
+  .rank-scope { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .rscope { font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 8px 14px; cursor: pointer; transition: color .12s, border-color .12s; }
+  .rscope.active { color: #0a0d13; background: linear-gradient(100deg, var(--gold), #ffb627); border-color: transparent; }
+  .rscope:disabled { opacity: .4; cursor: not-allowed; }
+  .rank-country-hint { font-size: 12px; color: var(--muted); }
+  .rank-pick { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .rank-pick .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .rk-list { display: flex; flex-direction: column; gap: 2px; }
+  .rk-row { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 9px; border: 1px solid transparent; }
+  .rk-row.me { background: rgba(255,200,61,.10); border-color: rgba(255,200,61,.4); }
+  .rk-rank { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--muted); width: 38px; text-align: center; flex-shrink: 0; }
+  .rk-row.me .rk-rank { color: var(--gold); }
+  .rk-icon { width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0; background: var(--panel); }
+  .rk-name { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rk-club { color: var(--muted); font-size: 12px; margin-left: 8px; }
+  .rk-tro { font-family: var(--display); font-weight: 700; color: var(--gold); white-space: nowrap; }
+  .rk-sep { text-align: center; color: var(--muted); padding: 4px; letter-spacing: 3px; }
+  .rk-empty, .rk-loading { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+
+  /* Paneles colapsables */
+  .collapse-head { cursor: pointer; user-select: none; }
+  .collapse-head .caret { margin-left: auto; color: var(--muted); font-size: 11px; transition: transform .18s ease, color .12s; transform: rotate(90deg); }
+  .collapse-head:hover .caret { color: var(--text); }
+  .panel.collapsed .collapse-head { margin-bottom: 0; }
+  .panel.collapsed .collapse-head .caret { transform: rotate(0deg); }
+  .panel.collapsed .collapse-body { display: none; }
+
   /* Informe: gráfica de trofeos */
   .chart-box { margin-top: 6px; }
   .trophy-svg { width: 100%; height: auto; display: block; }
   .chart-cap { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .charts-row { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 24px; }
+  .charts-row .chart-sq { flex: 1 1 320px; min-width: 0; }
 
   /* Informe: mapa de calor brawler x modo */
   .heat-wrap { overflow-x: auto; margin-top: 6px; }
@@ -300,6 +369,98 @@
     </div>
   </div>
 
+  <!-- Ventana de cuenta -->
+  <div id="account-modal" class="modal-overlay" onclick="if(event.target===this)closeAccount()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeAccount()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Cuenta</div>
+      <div class="modal-sub" id="account-username"></div>
+      <div class="field-label">País (para rankings nacionales)</div>
+      <select id="um-country" onchange="changeCountry()">
+        <option value="">Sin país (solo global)</option>
+        <option value="es">España</option>
+        <option value="pt">Portugal</option>
+        <option value="fr">Francia</option>
+        <option value="gb">Reino Unido</option>
+        <option value="ie">Irlanda</option>
+        <option value="de">Alemania</option>
+        <option value="it">Italia</option>
+        <option value="nl">Países Bajos</option>
+        <option value="be">Bélgica</option>
+        <option value="ch">Suiza</option>
+        <option value="at">Austria</option>
+        <option value="pl">Polonia</option>
+        <option value="cz">Chequia</option>
+        <option value="se">Suecia</option>
+        <option value="no">Noruega</option>
+        <option value="dk">Dinamarca</option>
+        <option value="fi">Finlandia</option>
+        <option value="gr">Grecia</option>
+        <option value="ro">Rumanía</option>
+        <option value="hu">Hungría</option>
+        <option value="tr">Turquía</option>
+        <option value="ru">Rusia</option>
+        <option value="ua">Ucrania</option>
+        <option value="us">Estados Unidos</option>
+        <option value="ca">Canadá</option>
+        <option value="mx">México</option>
+        <option value="br">Brasil</option>
+        <option value="ar">Argentina</option>
+        <option value="cl">Chile</option>
+        <option value="co">Colombia</option>
+        <option value="pe">Perú</option>
+        <option value="ve">Venezuela</option>
+        <option value="ec">Ecuador</option>
+        <option value="uy">Uruguay</option>
+        <option value="jp">Japón</option>
+        <option value="kr">Corea del Sur</option>
+        <option value="cn">China</option>
+        <option value="in">India</option>
+        <option value="id">Indonesia</option>
+        <option value="ph">Filipinas</option>
+        <option value="th">Tailandia</option>
+        <option value="vn">Vietnam</option>
+        <option value="au">Australia</option>
+        <option value="nz">Nueva Zelanda</option>
+        <option value="sa">Arabia Saudí</option>
+        <option value="ae">Emiratos Árabes Unidos</option>
+        <option value="eg">Egipto</option>
+        <option value="ma">Marruecos</option>
+        <option value="za">Sudáfrica</option>
+      </select>
+      <div class="field-saved" id="country-saved"></div>
+      <button class="ghost modal-btn" onclick="openPassword()">Resetear contraseña</button>
+    </div>
+  </div>
+
+  <!-- Ventana de cambio de contraseña -->
+  <div id="password-modal" class="modal-overlay" onclick="if(event.target===this&&!pwBusy)closePassword()">
+    <div class="modal-card has-close">
+      <button class="modal-close" id="pw-close" onclick="closePassword()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div id="pw-form">
+        <div class="modal-title">Resetear contraseña</div>
+        <div class="modal-sub">Introduce tu contraseña actual y la nueva.</div>
+        <div class="field-label">Contraseña actual</div>
+        <input type="password" id="pw-cur" autocomplete="current-password" />
+        <div class="field-label">Nueva contraseña</div>
+        <input type="password" id="pw-new" autocomplete="new-password" />
+        <div class="field-label">Confirmar nueva contraseña</div>
+        <input type="password" id="pw-new2" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitPassword()" />
+        <button class="btn modal-btn" onclick="submitPassword()">Guardar</button>
+        <div class="modal-msg err" id="pw-err"></div>
+      </div>
+      <div class="pw-loading" id="pw-loading">
+        <div class="spinner"></div>
+        <div class="pw-loading-text">Actualizando<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+      </div>
+      <div class="pw-success" id="pw-success">
+        <div class="check">✓</div>
+        <div class="pw-success-text">Contraseña actualizada con éxito</div>
+        <div class="pw-success-sub">Esta ventana se cerrará sola en 10 segundos.</div>
+      </div>
+    </div>
+  </div>
+
   <div class="banner" id="banner"></div>
 
   <header>
@@ -309,7 +470,7 @@
     </div>
     <div class="toolbar">
       <div class="status" id="status">—</div>
-      <span class="user-pill" id="user-pill"></span>
+      <button class="user-pill" id="user-pill" onclick="openAccount()"></button>
       <button class="btn" id="refresh">Actualizar ahora</button>
       <button class="ghost" id="logout-btn" title="Cerrar sesión">Salir</button>
     </div>
@@ -360,6 +521,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="stats">Estadísticas</button>
       <button class="tab" data-tab="report">Analíticas</button>
+      <button class="tab" data-tab="rankings">Rankings</button>
       <button class="tab" data-tab="history">Historial de partidas</button>
       <button class="tab" data-tab="coach">Consejos</button>
     </div>
@@ -383,30 +545,28 @@
     <!-- ANALÍTICAS -->
     <div class="tab-content" id="tab-report">
       <h2 class="section-title">Analíticas</h2>
+      <p class="hint" style="margin-bottom:18px">Datos derivados y cruzados de tus partidas. Respeta los filtros de arriba (brawler / modo / mapa), así que sirve para toda la cuenta o acotado a un brawler, modo o mapa concreto.</p>
+      <div class="streak-banner" id="streak-banner" style="display:none"></div>
+      <div class="highlights" id="highlights"></div>
       <div class="rotation-block" id="rotation-block" style="display:none">
         <h2 class="section-title" style="font-size:16px">Qué jugar ahora</h2>
         <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
         <div class="rotation-grid" id="rotation-grid"></div>
       </div>
-      <p class="hint" style="margin-bottom:18px">Datos derivados y cruzados de tus partidas. Respeta los filtros de arriba (brawler / modo / mapa), así que sirve para toda la cuenta o acotado a un brawler, modo o mapa concreto.</p>
-      <div class="streak-banner" id="streak-banner" style="display:none"></div>
-      <div class="highlights" id="highlights"></div>
-      <div class="grid">
-        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Evolución de trofeos</h2>
-          <div class="hint">Balance acumulado de trofeos a lo largo de las partidas registradas.</div>
+      <div class="charts-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
+          <div class="hint">Balance acumulado de trofeos.</div>
           <div class="chart-box" id="trophy-chart"></div></div>
-        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Forma reciente · win rate</h2>
-          <div class="hint">Win rate en ventana móvil (últimas partidas). Por encima de la línea de puntos = ganas más de lo que pierdes.</div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Tendencia reciente · win rate</h2>
+          <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
           <div class="chart-box" id="winrate-chart"></div></div>
-        <div class="panel"><h2><span class="dot"></span>Según diferencia de copas</h2>
-          <div class="hint">Tu win rate frente a rivales más fuertes o más débiles. Perder contra rivales más débiles es la señal de alarma.</div>
-          <div class="rows" id="trophy-diff"></div></div>
-        <div class="panel"><h2><span class="dot"></span>Por franja horaria</h2>
-          <div class="hint">A qué hora del día rindes mejor (en tu hora local).</div>
-          <div class="rows" id="hourly"></div></div>
+      </div>
+      <div class="grid">
         <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
           <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
           <div class="heat-wrap" id="heatmap"></div></div>
+      </div>
+      <div class="grid grid-5">
         <div class="panel"><h2><span class="dot"></span>Mejores aliados</h2>
           <div class="hint">Brawlers aliados con los que más ganas cuando van en tu equipo.</div>
           <div class="rows" id="ri-allies"></div></div>
@@ -416,6 +576,53 @@
         <div class="panel p-over"><h2><span class="dot"></span>Para revisar</h2>
           <div class="hint">Los juegas mucho pero con mal win rate: quizá conviene reducirlos o repasarlos.</div>
           <div class="rows" id="val-over"></div></div>
+        <div class="panel"><h2><span class="dot"></span>Según diferencia de copas</h2>
+          <div class="hint">Tu win rate frente a rivales más fuertes o más débiles.</div>
+          <div class="rows" id="trophy-diff"></div></div>
+        <div class="panel"><h2><span class="dot"></span>Por franja horaria</h2>
+          <div class="hint">A qué hora del día rindes mejor (en tu hora local).</div>
+          <div class="rows" id="hourly"></div></div>
+      </div>
+    </div>
+
+    <!-- RANKINGS -->
+    <div class="tab-content" id="tab-rankings">
+      <h2 class="section-title">Rankings</h2>
+      <div class="rank-scope">
+        <button class="rscope active" data-scope="global">Global</button>
+        <button class="rscope" data-scope="national" id="rscope-national">Mi país</button>
+        <span class="rank-country-hint" id="rank-country-hint"></span>
+      </div>
+      <div class="grid">
+        <div class="panel collapsible" style="grid-column:1/-1">
+          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de jugador<span class="caret">▸</span></h2>
+          <div class="collapse-body">
+            <div class="hint" id="rank-player-hint">Top 200 de jugadores por trofeos. Si estás dentro, te resalto.</div>
+            <div id="rank-player"></div>
+          </div>
+        </div>
+        <div class="panel collapsible" style="grid-column:1/-1">
+          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de un brawler<span class="caret">▸</span></h2>
+          <div class="collapse-body">
+            <div class="rank-pick"><span class="lbl">Brawler</span><select id="rank-brawler-sel"></select></div>
+            <div class="hint" id="rank-brawler-hint"></div>
+            <div id="rank-brawler"></div>
+          </div>
+        </div>
+        <div class="panel collapsible" style="grid-column:1/-1">
+          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de clubs<span class="caret">▸</span></h2>
+          <div class="collapse-body">
+            <div class="hint" id="rank-clubs-hint">Top 200 de clubs. Resalto el tuyo si aparece.</div>
+            <div id="rank-clubs"></div>
+          </div>
+        </div>
+        <div class="panel collapsible" style="grid-column:1/-1">
+          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking interno de tu club<span class="caret">▸</span></h2>
+          <div class="collapse-body">
+            <div class="hint" id="rank-internal-hint"></div>
+            <div id="rank-internal"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -457,6 +664,9 @@
 <script>
 const $ = (id) => document.getElementById(id);
 let currentPlayer = null;
+let currentUser = null;
+let rankScope = "global";
+let myProfile = null;
 let playersById = {};
 let activeTab = "stats";
 let histOffset = 0, histTotal = 0;
@@ -691,6 +901,7 @@ async function refreshAll() {
   if (currentPlayer) {
     await loadFilters(); applyScope(); await loadStats();
     if (activeTab === "report") { await loadReport(); loadRotation(); }
+    if (activeTab === "rankings") loadRankings();
     if (activeTab === "history") await loadHistory(true);
     loadReports();
   }
@@ -740,6 +951,167 @@ function renderRotCard(e) {
     </div>${brsHtml}</div>`;
 }
 
+/* ---------- Ventana de cuenta ---------- */
+function openAccount() {
+  $("account-username").textContent = currentUser && currentUser.username ? "@" + currentUser.username : "";
+  const cs = $("um-country"); if (cs) cs.value = (currentUser && currentUser.country) || "";
+  const saved = $("country-saved"); if (saved) { saved.textContent = ""; saved.style.color = ""; }
+  $("account-modal").classList.add("open");
+}
+function closeAccount() { $("account-modal").classList.remove("open"); }
+let _countrySavedTimer = null;
+async function changeCountry() {
+  const c = $("um-country").value;
+  const saved = $("country-saved"); if (saved) { saved.textContent = ""; saved.style.color = ""; }
+  try {
+    const r = await fetch("/api/auth/country", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ country: c }) });
+    const d = await r.json();
+    if (r.ok) {
+      if (currentUser) currentUser.country = d.country;
+      if (saved) {
+        saved.textContent = d.country ? "✓ País guardado (" + d.country.toUpperCase() + ")" : "✓ Sin país (solo global)";
+        if (_countrySavedTimer) clearTimeout(_countrySavedTimer);
+        _countrySavedTimer = setTimeout(() => { saved.textContent = ""; }, 4000);
+      }
+      updateScopeUI();
+      if (activeTab === "rankings") loadRankings();
+    } else if (saved) { saved.textContent = d.error || "No se pudo guardar."; saved.style.color = "var(--loss)"; }
+  } catch (e) { if (saved) { saved.textContent = "Error de red."; saved.style.color = "var(--loss)"; } }
+}
+
+/* ---------- Ventana de contraseña ---------- */
+let pwBusy = false;            // true mientras se actualiza: bloquea cierres accidentales
+let pwAutoCloseTimer = null;
+function openPassword() {
+  $("pw-cur").value = ""; $("pw-new").value = ""; $("pw-new2").value = "";
+  $("pw-err").textContent = "";
+  showPwState("form");
+  $("password-modal").classList.add("open");
+  setTimeout(() => $("pw-cur").focus(), 60);
+}
+function closePassword() {
+  if (pwBusy) return;
+  if (pwAutoCloseTimer) { clearTimeout(pwAutoCloseTimer); pwAutoCloseTimer = null; }
+  $("password-modal").classList.remove("open");
+}
+function showPwState(state) {
+  $("pw-form").style.display = state === "form" ? "block" : "none";
+  $("pw-loading").style.display = state === "loading" ? "flex" : "none";
+  $("pw-success").style.display = state === "success" ? "flex" : "none";
+}
+async function submitPassword() {
+  const cur = $("pw-cur").value, neu = $("pw-new").value, neu2 = $("pw-new2").value;
+  const err = $("pw-err"); err.textContent = "";
+  if (!cur || !neu || !neu2) { err.textContent = "Rellena todos los campos."; return; }
+  if (neu.length < 6) { err.textContent = "La nueva contraseña debe tener al menos 6 caracteres."; return; }
+  if (neu !== neu2) { err.textContent = "La nueva contraseña y su confirmación no coinciden."; return; }
+  showPwState("loading"); pwBusy = true;
+  const t0 = Date.now();
+  let r = null, d = {}, netErr = false;
+  try {
+    r = await fetch("/api/auth/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ current: cur, new: neu }) });
+    d = await r.json().catch(() => ({}));
+  } catch (e) { netErr = true; }
+  const minWait = Math.max(0, 800 - (Date.now() - t0));   // el spinner se ve al menos 0,8 s
+  setTimeout(() => {
+    pwBusy = false;
+    if (netErr) { showPwState("form"); err.textContent = "Error de red. Inténtalo de nuevo."; return; }
+    if (!r.ok) { showPwState("form"); err.textContent = d.error || d.detail || "No se pudo actualizar la contraseña."; return; }
+    showPwState("success");
+    pwAutoCloseTimer = setTimeout(closePassword, 10000);   // autocierre a los 10 s
+  }, minWait);
+}
+
+/* ---------- Rankings ---------- */
+function rankNorm(t) { return (t || "").toUpperCase(); }
+function toggleCollapse(headEl) { const p = headEl.closest(".panel"); if (p) p.classList.toggle("collapsed"); }
+function applyScopeButtons() { document.querySelectorAll(".rscope").forEach((b) => b.classList.toggle("active", b.dataset.scope === rankScope)); }
+function updateScopeUI() {
+  const hasCountry = !!(currentUser && currentUser.country);
+  $("rscope-national").disabled = !hasCountry;
+  $("rank-country-hint").textContent = hasCountry
+    ? "Tu país: " + currentUser.country.toUpperCase()
+    : "Elige tu país en el menú de usuario (arriba a la derecha) para ver rankings nacionales.";
+  if (!hasCountry && rankScope === "national") { rankScope = "global"; applyScopeButtons(); }
+}
+document.querySelectorAll(".rscope").forEach((b) => b.addEventListener("click", () => {
+  if (b.disabled) return;
+  rankScope = b.dataset.scope; applyScopeButtons();
+  loadPlayerRanking(); loadClubRanking(); loadBrawlerRanking();
+}));
+$("rank-brawler-sel").addEventListener("change", loadBrawlerRanking);
+
+async function loadRankings() {
+  if (!currentPlayer) return;
+  try { myProfile = await getJSON("/api/player-profile?player=" + encodeURIComponent(currentPlayer)); }
+  catch (e) { myProfile = null; }
+  const sel = $("rank-brawler-sel");
+  if (myProfile && myProfile.brawlers && myProfile.brawlers.length) {
+    const prev = sel.value;
+    sel.innerHTML = myProfile.brawlers.map((b) => `<option value="${b.id}">${esc(b.name)} · ${b.trophies}🏆</option>`).join("");
+    if (prev && myProfile.brawlers.some((b) => String(b.id) === prev)) sel.value = prev;
+  } else { sel.innerHTML = `<option value="">—</option>`; }
+  updateScopeUI();
+  loadPlayerRanking(); loadClubRanking(); loadBrawlerRanking(); loadClubInternal();
+}
+async function loadPlayerRanking() {
+  const el = $("rank-player"); el.innerHTML = '<div class="rk-loading">Cargando…</div>';
+  let d; try { d = await getJSON(`/api/rankings?kind=players&scope=${rankScope}`); }
+  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
+  renderRanking(el, $("rank-player-hint"), d, currentPlayer, "players");
+}
+async function loadBrawlerRanking() {
+  const el = $("rank-brawler"), hint = $("rank-brawler-hint"); const bid = $("rank-brawler-sel").value;
+  if (!bid) { el.innerHTML = '<div class="rk-empty">No hay brawler seleccionado.</div>'; hint.textContent = ""; return; }
+  el.innerHTML = '<div class="rk-loading">Cargando…</div>';
+  let d; try { d = await getJSON(`/api/rankings?kind=brawlers&brawler_id=${encodeURIComponent(bid)}&scope=${rankScope}`); }
+  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
+  renderRanking(el, hint, d, currentPlayer, "brawlers");
+}
+async function loadClubRanking() {
+  const el = $("rank-clubs"); el.innerHTML = '<div class="rk-loading">Cargando…</div>';
+  let d; try { d = await getJSON(`/api/rankings?kind=clubs&scope=${rankScope}`); }
+  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
+  const myClubTag = myProfile && myProfile.club ? myProfile.club.tag : null;
+  renderRanking(el, $("rank-clubs-hint"), d, myClubTag, "clubs");
+}
+async function loadClubInternal() {
+  const el = $("rank-internal"), hint = $("rank-internal-hint");
+  const clubTag = myProfile && myProfile.club ? myProfile.club.tag : null;
+  if (!clubTag) { el.innerHTML = '<div class="rk-empty">Este jugador no está en ningún club.</div>'; hint.textContent = ""; return; }
+  el.innerHTML = '<div class="rk-loading">Cargando…</div>';
+  let d; try { d = await getJSON("/api/club?tag=" + encodeURIComponent(clubTag.replace("#", ""))); }
+  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el club.</div>'; return; }
+  const members = (d.members || []).map((m, i) => ({ ...m, rank: i + 1 }));
+  const mePos = members.findIndex((m) => rankNorm(m.tag) === rankNorm(currentPlayer));
+  hint.innerHTML = `${esc(d.name || "Club")} · ${d.member_count} miembros` + (mePos >= 0 ? ` · vas <b>#${mePos + 1}</b>` : "");
+  el.innerHTML = `<div class="rk-list">${members.map((m) => rankRow(m, rankNorm(m.tag) === rankNorm(currentPlayer), "members")).join("")}</div>`;
+}
+function renderRanking(el, hint, d, highlightTag, kind) {
+  const items = (d && d.items) || [];
+  if (!items.length) { el.innerHTML = '<div class="rk-empty">Sin datos.</div>'; if (hint) hint.textContent = ""; return; }
+  const meIdx = highlightTag ? items.findIndex((it) => rankNorm(it.tag) === rankNorm(highlightTag)) : -1;
+  const scopeTxt = d.scope === "national" ? "de tu país (" + (d.country || "").toUpperCase() + ")" : "mundial";
+  if (hint) {
+    if (meIdx >= 0) hint.innerHTML = `Estás en el puesto <b>#${items[meIdx].rank}</b> del top 200 ${scopeTxt}.`;
+    else hint.innerHTML = highlightTag ? `Fuera del top 200 ${scopeTxt}.` : `Top 200 ${scopeTxt}.`;
+  }
+  const TOP = 25;
+  let rows = items.slice(0, TOP).map((it) => rankRow(it, rankNorm(it.tag) === rankNorm(highlightTag), kind)).join("");
+  if (meIdx >= TOP) rows += '<div class="rk-sep">· · ·</div>' + rankRow(items[meIdx], true, kind);
+  el.innerHTML = `<div class="rk-list">${rows}</div>`;
+}
+function prettyRole(r) { return ({ president: "Presidente", vicePresident: "Vicepresidente", senior: "Veterano", member: "Miembro" })[r] || r; }
+function rankRow(item, isMe, kind) {
+  const rank = item.rank != null ? item.rank : "";
+  const iconId = item.icon_id != null ? item.icon_id : (item.icon && item.icon.id);
+  const icon = (kind !== "clubs" && iconId) ? `<img class="rk-icon" src="https://cdn.brawlify.com/profile-icons/regular/${iconId}.png" onerror="this.style.visibility='hidden'">` : "";
+  const club = item.club && item.club.name ? `<span class="rk-club">${esc(item.club.name)}</span>` : "";
+  const role = item.role ? `<span class="rk-club">${esc(prettyRole(item.role))}</span>` : "";
+  const tro = item.trophies != null ? `${Number(item.trophies).toLocaleString("es-ES")}🏆` : "";
+  return `<div class="rk-row ${isMe ? "me" : ""}"><span class="rk-rank">${rank}</span>${icon}<span class="rk-name">${esc(item.name || "")}${club}${role}</span><span class="rk-tro">${tro}</span></div>`;
+}
+
 /* ---------- Pestañas ---------- */
 function switchTab(name) {
   activeTab = name;
@@ -747,6 +1119,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === "tab-" + name));
   if (name === "history") loadHistory(true);
   if (name === "report") { loadReport(); loadRotation(); }
+  if (name === "rankings") loadRankings();
   if (name === "coach") { showCoachListView(); loadReports(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
@@ -759,6 +1132,7 @@ $("player-select").addEventListener("change", async () => {
   updatePlayerHeader();
   await loadFilters(); applyScope(); await loadStats();
   if (activeTab === "report") { await loadReport(); loadRotation(); }
+  if (activeTab === "rankings") loadRankings();
   if (activeTab === "history") await loadHistory(true);
   loadReports();
 });
@@ -862,7 +1236,7 @@ function renderHourly(points) {
 }
 function winrateChart(series) {
   if (!series || series.length < 2) return `<div class="empty">Necesitas algunas partidas más para ver la forma reciente.</div>`;
-  const W = 640, H = 200, pad = 28;
+  const W = 500, H = 240, pad = 26;
   const X = (i) => pad + (W - 2 * pad) * (i / (series.length - 1));
   const Y = (v) => H - pad - (H - 2 * pad) * (v / 100);
   const line = series.map((p, i) => `${X(i).toFixed(1)},${Y(p.winrate).toFixed(1)}`).join(" ");
@@ -913,7 +1287,7 @@ function trophyChart(series) {
   if (!series || series.length < 2) return `<div class="empty">Necesitas algunas partidas más para ver la evolución.</div>`;
   const vals = series.map((p) => p.cumulative);
   const min = Math.min(0, ...vals), max = Math.max(0, ...vals), span = (max - min) || 1;
-  const W = 640, H = 200, pad = 28;
+  const W = 500, H = 240, pad = 26;
   const X = (i) => pad + (W - 2 * pad) * (i / (series.length - 1));
   const Y = (v) => H - pad - (H - 2 * pad) * ((v - min) / span);
   const line = series.map((p, i) => `${X(i).toFixed(1)},${Y(p.cumulative).toFixed(1)}`).join(" ");
@@ -1010,7 +1384,11 @@ async function loadAssets() { try { ASSETS = await getJSON("/api/assets"); } cat
 /* ---------- Autenticación ---------- */
 function showLogin() { $("auth-overlay").style.display = "flex"; }
 function hideLogin() { $("auth-overlay").style.display = "none"; }
-function setUser(user) { $("user-pill").textContent = user && user.username ? "@" + user.username : ""; }
+function setUser(user) {
+  currentUser = user || null;
+  $("user-pill").textContent = user && user.username ? "@" + user.username : "";
+  const cs = $("um-country"); if (cs) cs.value = (user && user.country) || "";
+}
 
 function switchAuth(which) {
   const isLogin = which === "login";

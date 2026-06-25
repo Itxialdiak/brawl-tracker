@@ -65,7 +65,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL, created_at TEXT,
-            reports_remaining INTEGER, quota_period TEXT
+            reports_remaining INTEGER, quota_period TEXT, country TEXT
         );
         CREATE TABLE IF NOT EXISTS user_players (
             user_id INTEGER NOT NULL, player_tag TEXT NOT NULL, added_at TEXT,
@@ -85,6 +85,7 @@ def init_db():
     # Migración de bases antiguas: añade columnas nuevas si faltan.
     _ensure_column(cur, "players", "icon_id", "INTEGER")
     _ensure_column(cur, "players", "club_name", "TEXT")
+    _ensure_column(cur, "users", "country", "TEXT")
     _ensure_column(cur, "battles", "my_trophies", "INTEGER")
     _ensure_column(cur, "opponents", "trophies", "INTEGER")
     _ensure_column(cur, "allies", "trophies", "INTEGER")
@@ -207,6 +208,18 @@ def get_user_by_id(user_id: int) -> dict | None:
     row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def set_user_country(user_id: int, country: str | None) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE users SET country=? WHERE id=?", (country, user_id))
+    conn.commit(); conn.close()
+
+
+def set_user_password(user_id: int, password_hash: str) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, user_id))
+    conn.commit(); conn.close()
 
 
 def follow_player(user_id: int, tag: str) -> None:
