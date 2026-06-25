@@ -1,0 +1,7 @@
+{
+  // Evita que VS Code marque .env o brawl_stats.db como errores de Python.
+  "files.exclude": {
+    "**/__pycache__": true
+  },
+  "python.analysis.typeCheckingMode": "off"
+}

@@ -1,0 +1,17 @@
+{
+  // Pulsa F5 para arrancar el servidor (usa el intérprete de Python que tengas
+  // seleccionado en VS Code; selecciona el del venv en la paleta de comandos:
+  // "Python: Select Interpreter").
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Brawl Tracker (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--reload", "--port", "8000"],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brawl Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #090d13; --bg-elev: #111824;
+    --panel: rgba(255,255,255,0.025); --border: rgba(255,255,255,0.08);
+    --text: #e9eef6; --muted: #76849b;
+    --gold: #ffc83d; --cyan: #36e1ff; --win: #41e08a; --loss: #ff5d6c; --neutral: #9aa6bd;
+    --display: "Chakra Petch", sans-serif; --body: "Outfit", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--body); color: var(--text);
+    background:
+      radial-gradient(1100px 600px at 80% -10%, rgba(54,225,255,0.07), transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, rgba(255,200,61,0.06), transparent 55%), var(--bg);
+    background-attachment: fixed; min-height: 100vh;
+    padding: 28px clamp(16px,4vw,48px) 80px; line-height: 1.5;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 46px 46px; mask-image: radial-gradient(circle at 50% 30%, black, transparent 80%);
+  }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; animation: rise .5s ease both; }
+  .brand h1 { font-family: var(--display); font-weight: 700; font-size: clamp(22px,3.4vw,32px); letter-spacing: 1.5px; text-transform: uppercase; background: linear-gradient(100deg, var(--gold), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand p { color: var(--muted); font-size: 13px; }
+  .brand .proxy { color: var(--gold); font-size: 11px; border: 1px solid rgba(255,200,61,.3); padding: 1px 7px; border-radius: 20px; margin-left: 8px; display: none; }
+  .brand .proxy.show { display: inline-block; }
+  .toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .status { font-size: 12px; color: var(--muted); text-align: right; }
+  .status b { color: var(--text); font-weight: 500; }
+
+  button.btn { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .8px; text-transform: uppercase; cursor: pointer; color: #0a0d13; background: linear-gradient(100deg, var(--gold), #ffb627); border: none; border-radius: 10px; padding: 11px 18px; box-shadow: 0 6px 20px rgba(255,200,61,0.22); transition: transform .12s, box-shadow .12s, opacity .12s; }
+  button.btn:hover { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(255,200,61,0.32); }
+  button.btn:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { font-family: var(--body); font-size: 13px; cursor: pointer; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; transition: color .12s, border-color .12s; }
+  button.ghost:hover { color: var(--loss); border-color: var(--loss); }
+
+  .player-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 22px; animation: rise .5s ease both; }
+  .player-bar .seg { display: flex; gap: 8px; align-items: center; }
+  .player-bar .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .player-bar .spacer { flex: 1; }
+  select, input[type="text"], input[type="number"] { font-family: var(--body); font-size: 14px; color: var(--text); background: var(--bg-elev); border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; outline: none; }
+  select { min-width: 200px; } #add-tag { min-width: 160px; } input[type="number"] { min-width: 80px; }
+  select:focus, input:focus { border-color: var(--cyan); }
+
+  .banner { background: rgba(255,200,61,0.08); border: 1px solid rgba(255,200,61,0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 22px; color: #ffe6a3; font-size: 14px; display: none; }
+  .banner.show { display: block; animation: rise .4s ease both; }
+  .banner code { background: rgba(0,0,0,0.35); padding: 1px 6px; border-radius: 5px; color: var(--gold); }
+
+  .no-players { display: none; text-align: center; padding: 70px 20px; color: var(--muted); border: 1px dashed var(--border); border-radius: 16px; }
+  .no-players .big { font-family: var(--display); font-size: 40px; color: var(--border); display: block; margin-bottom: 12px; }
+  .no-players h3 { color: var(--text); font-family: var(--display); font-weight: 600; margin-bottom: 6px; }
+
+  /* Cabecera de jugador */
+  .player-header { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: rise .5s ease both; }
+  .player-icon { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-elev); object-fit: cover; }
+  .player-header .pname { font-family: var(--display); font-weight: 700; font-size: clamp(20px,2.6vw,26px); letter-spacing: .5px; }
+  .player-header .ptag { color: var(--cyan); font-family: var(--display); font-size: 13px; }
+
+  /* Pestañas */
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 22px; flex-wrap: wrap; }
+  .tab { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 12px 16px; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab-content { display: none; animation: rise .4s ease both; }
+  .tab-content.active { display: block; }
+  .section-title { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 16px; color: var(--text); }
+
+  .filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .scope-note { display: none; font-size: 13px; color: var(--cyan); margin: -6px 0 18px; }
+  .scope-note.show { display: block; }
+
+  .overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .stat::after { content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--gold); }
+  .stat.cyan::after { background: var(--cyan); } .stat.win::after { background: var(--win); } .stat.star::after { background: #ffd75e; } .stat.combat::after { background: var(--loss); }
+  .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .stat .v { font-family: var(--display); font-weight: 700; font-size: 30px; margin-top: 6px; line-height: 1; }
+  .stat .v small { font-size: 16px; color: var(--muted); }
+  .stat .sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px,1fr)); gap: 18px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; }
+  .panel h2 { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 9px; }
+  .panel h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  .panel.p-mode h2 .dot { background: var(--cyan); } .panel.p-map h2 .dot { background: #b388ff; } .panel.p-vs h2 .dot { background: var(--loss); }
+  .panel .hint { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+
+  .rows { display: flex; flex-direction: column; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: center; }
+  .row:last-child { border-bottom: none; }
+  .row .name { font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .row .name .vs { color: var(--muted); }
+  .row-portrait { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; background: var(--bg-elev); border: 1px solid var(--border); flex-shrink: 0; }
+  .mode-icon { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+  .map-link { cursor: pointer; border-bottom: 1px dashed rgba(54,225,255,.5); transition: color .12s; }
+  .map-link:hover { color: var(--cyan); }
+  .row .pct { font-family: var(--display); font-weight: 600; font-size: 15px; text-align: right; }
+  .row .meta { color: var(--muted); font-size: 12px; }
+  .row .bar-wrap { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .row .bar { height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .empty { color: var(--muted); font-size: 14px; padding: 20px 0; text-align: center; }
+  .empty .big { display: block; font-family: var(--display); font-size: 28px; color: var(--border); margin-bottom: 8px; }
+
+  /* Historial */
+  .battle-card { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+  .bc-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .bc-result { font-family: var(--display); font-weight: 700; font-size: 13px; text-transform: uppercase; padding: 3px 10px; border-radius: 8px; }
+  .bc-result.win { color: var(--win); background: rgba(65,224,138,.12); }
+  .bc-result.loss { color: var(--loss); background: rgba(255,93,108,.12); }
+  .bc-result.draw { color: var(--neutral); background: rgba(154,166,189,.12); }
+  .bc-mode { font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+  .bc-mode-icon { width: 22px; height: 22px; object-fit: contain; }
+  .bc-time { color: var(--muted); font-size: 12px; }
+  .bc-trophy { font-family: var(--display); font-size: 13px; margin-left: auto; }
+  .bc-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  @media (max-width: 620px) { .bc-teams { grid-template-columns: 1fr; } }
+  .bc-team { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+  .bc-team.enemy { border-color: rgba(255,93,108,.25); }
+  .bc-side { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 8px; }
+  .bc-team.enemy .bc-side { color: var(--loss); }
+  .bc-brawlers { display: flex; gap: 10px; flex-wrap: wrap; }
+  .bc-brawler { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 54px; text-align: center; }
+  .bc-portrait { width: 46px; height: 46px; border-radius: 9px; object-fit: cover; background: var(--bg-elev); border: 1px solid var(--border); }
+  .bc-brawler.me .bc-portrait { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+  .bc-bname { font-size: 9.5px; line-height: 1.15; color: var(--text); word-break: break-word; text-transform: uppercase; letter-spacing: .3px; }
+  .bc-tr { font-family: var(--display); font-size: 11px; color: var(--gold); }
+  .bc-manual { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px dashed var(--border); padding-top: 12px; }
+  .bc-manual .mlbl { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); width: 100%; margin-bottom: -2px; }
+  .bc-manual input[type="number"] { width: 110px; min-width: 0; }
+  .bc-manual .m-notes { min-width: 160px; flex: 1; }
+  .bc-manual button { font-family: var(--display); font-weight: 600; font-size: 12px; text-transform: uppercase; cursor: pointer; color: var(--cyan); background: transparent; border: 1px solid rgba(54,225,255,.4); border-radius: 8px; padding: 8px 12px; }
+  .bc-manual button:hover { background: rgba(54,225,255,.1); }
+  .m-status { font-size: 12px; color: var(--win); }
+  .load-more { text-align: center; margin-top: 14px; }
+
+  /* Lightbox de mapa */
+  .lightbox { position: fixed; inset: 0; background: rgba(5,8,12,.86); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+  .lightbox.show { display: flex; animation: rise .25s ease both; }
+  .lightbox-inner { max-width: min(92vw, 720px); text-align: center; }
+  .lightbox img { max-width: 100%; max-height: 78vh; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .lightbox .cap { font-family: var(--display); margin-top: 14px; font-size: 17px; letter-spacing: .5px; color: var(--text); }
+  .lightbox .close { position: absolute; top: 16px; right: 24px; font-size: 34px; line-height: 1; color: var(--muted); cursor: pointer; background: none; border: none; }
+  .lightbox .close:hover { color: var(--text); }
+
+  /* Coach */
+  .coach .row-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .advice { white-space: pre-wrap; font-size: 14.5px; line-height: 1.65; color: #dde4ee; margin-top: 16px; }
+  .advice strong { color: var(--gold); font-weight: 600; }
+  .coach-error { color: var(--loss); font-size: 14px; margin-top: 12px; }
+  .coach-hint { color: var(--muted); font-size: 12px; }
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(0,0,0,.25); border-top-color: #0a0d13; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 40px; }
+</style>
+</head>
+<body>
+  <div class="banner" id="banner"></div>
+
+  <header>
+    <div class="brand">
+      <h1>Brawl Tracker</h1>
+      <p>Estadísticas multi-jugador<span class="proxy" id="proxy-pill">vía proxy RoyaleAPI</span></p>
+    </div>
+    <div class="toolbar">
+      <div class="status" id="status">—</div>
+      <button class="btn" id="refresh">Actualizar ahora</button>
+    </div>
+  </header>
+
+  <div class="player-bar">
+    <div class="seg">
+      <span class="lbl">Jugador</span>
+      <select id="player-select"><option>—</option></select>
+      <button class="ghost" id="remove-player" title="Dejar de seguir a este jugador">Quitar</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="seg">
+      <span class="lbl">Añadir</span>
+      <input type="text" id="add-tag" placeholder="#TAG del jugador" />
+      <button class="btn" id="add-player">+ Seguir</button>
+    </div>
+  </div>
+
+  <div class="no-players" id="no-players">
+    <span class="big">+</span>
+    <h3>Aún no sigues a ningún jugador</h3>
+    <div>Añade el primero con el campo "Añadir" de arriba (tu tag, el de un amigo, una cuenta secundaria…).</div>
+  </div>
+
+  <div id="dashboard">
+    <div class="player-header" id="player-header">
+      <img class="player-icon" id="player-icon" alt="" style="display:none" />
+      <div>
+        <div class="pname" id="player-name">—</div>
+        <div class="ptag" id="player-tag">—</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="field"><label for="f-brawler">Brawler</label>
+        <select id="f-brawler"><option value="">Todos</option></select></div>
+      <div class="field"><label for="f-mode">Modo</label>
+        <select id="f-mode"><option value="">Todos</option></select></div>
+      <div class="field"><label for="f-map">Mapa</label>
+        <select id="f-map"><option value="">Todos</option></select></div>
+      <div class="field"><label for="f-min">Mín. partidas</label>
+        <input type="number" id="f-min" min="1" value="1" /></div>
+    </div>
+    <div class="scope-note" id="scope-note"></div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="stats">Estadísticas</button>
+      <button class="tab" data-tab="history">Historial de partidas</button>
+      <button class="tab" data-tab="coach">Consejos</button>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="tab-content active" id="tab-stats">
+      <h2 class="section-title">Estadísticas</h2>
+      <section class="overview" id="overview"></section>
+      <div class="grid">
+        <div class="panel p-brawler" id="panel-brawler"><h2><span class="dot"></span>Win rate por brawler</h2>
+          <div class="hint">Rendimiento con cada brawler (V/D · estrella).</div><div class="rows" id="r-brawler"></div></div>
+        <div class="panel p-mode"><h2><span class="dot"></span>Por modo de juego</h2>
+          <div class="hint">Dónde rinde mejor según el modo.</div><div class="rows" id="r-mode"></div></div>
+        <div class="panel p-map"><h2><span class="dot"></span>Por mapa</h2>
+          <div class="hint">Haz clic en un mapa para ver su imagen.</div><div class="rows" id="r-map"></div></div>
+        <div class="panel p-vs"><h2><span class="dot"></span>Contra cada brawler</h2>
+          <div class="hint">Win rate y copas medias del rival.</div><div class="rows" id="r-vs"></div></div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="tab-content" id="tab-history">
+      <h2 class="section-title">Historial de partidas</h2>
+      <p class="hint" style="margin-bottom:16px">Cada partida con sus equipos, retratos y copas. Puedes anotar a mano asesinatos, muertes, daño y curación (datos opcionales que la API no da). Haz clic en el mapa para ver su imagen.</p>
+      <div id="battle-list"></div>
+      <div class="load-more"><button class="ghost" id="load-more" style="display:none">Cargar más</button></div>
+    </div>
+
+    <!-- CONSEJOS -->
+    <div class="tab-content" id="tab-coach">
+      <h2 class="section-title">Consejos de Claude</h2>
+      <div class="panel coach">
+        <div class="hint">Análisis de tus datos y consejos para mejorar. Usa el jugador y el brawler seleccionados arriba.</div>
+        <div class="row-top">
+          <button class="btn" id="coach-btn">Analizar mis datos</button>
+          <span class="coach-hint" id="coach-hint"></span>
+        </div>
+        <div id="coach-out"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox">
+    <button class="close" id="lb-close" aria-label="Cerrar">&times;</button>
+    <div class="lightbox-inner"><img id="lb-img" src="" alt="" /><div class="cap" id="lb-cap"></div></div>
+  </div>
+
+  <footer>Los datos se acumulan mientras el tracker está en marcha. La API solo guarda las 25 últimas partidas de cada jugador. Imágenes: Brawlify.</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let currentPlayer = null;
+let playersById = {};
+let activeTab = "stats";
+let histOffset = 0, histTotal = 0;
+let ASSETS = { brawlers: {}, modes: {}, maps: {} };
+
+function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function pctColor(w) { if (w == null) return "var(--neutral)"; if (w >= 55) return "var(--win)"; if (w < 45) return "var(--loss)"; return "var(--gold)"; }
+async function getJSON(u) { const r = await fetch(u); return r.json(); }
+function fmtTime(t) { const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(t || ""); return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : (t || ""); }
+function fmtClock(iso) { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
+
+/* ---------- Recursos visuales (Brawlify) ---------- */
+function brawlerPortrait(name) { return name ? ASSETS.brawlers[name.toUpperCase()] || null : null; }
+function modeAsset(mode) { return mode ? ASSETS.modes[mode.toLowerCase()] || null : null; }
+function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
+function imgTag(url, cls) { return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'" />`; }
+
+function qs() {
+  const p = new URLSearchParams();
+  if (currentPlayer) p.set("player", currentPlayer);
+  if ($("f-brawler").value) p.set("brawler", $("f-brawler").value);
+  if ($("f-mode").value) p.set("mode", $("f-mode").value);
+  if ($("f-map").value) p.set("map", $("f-map").value);
+  return p.toString();
+}
+
+/* ---------- Estadísticas ---------- */
+function labelCell(item, kind) {
+  const lbl = esc(item.label);
+  if (kind === "map") {
+    return mapAsset(item.label) ? `<span class="map-link" data-map="${lbl}">${lbl}</span>` : lbl;
+  }
+  if (kind === "mode") {
+    const a = modeAsset(item.label);
+    return `${a && a.icon ? imgTag(a.icon, "mode-icon") : ""}<span>${lbl}</span>`;
+  }
+  const url = brawlerPortrait(item.label);
+  const prefix = kind === "vs" ? `<span class="vs">vs</span>` : "";
+  return `${url ? imgTag(url, "row-portrait") : ""}${prefix}<span>${lbl}</span>`;
+}
+function rowHTML(item, kind) {
+  const isVs = kind === "vs", showStar = kind === "brawler";
+  const w = item.winrate, pct = w == null ? "—" : w + "%", color = pctColor(w);
+  const barW = w == null ? 0 : Math.max(2, w);
+  let extra;
+  if (isVs) {
+    extra = `${item.total} enc.`;
+    if (item.avg_enemy_trophies != null) {
+      extra += ` · rival ~${item.avg_enemy_trophies}🏆`;
+      if (item.trophy_delta != null) { const s = item.trophy_delta >= 0 ? "+" : ""; extra += ` (Δ ${s}${item.trophy_delta})`; }
+    }
+  } else {
+    extra = `${item.total} part.${item.trophy_delta != null ? " · " + (item.trophy_delta >= 0 ? "+" : "") + item.trophy_delta + " 🏆" : ""}`;
+    if (showStar && item.star_rate != null) extra += ` · ⭐ ${item.star_rate}%`;
+  }
+  return `<div class="row"><div class="name">${labelCell(item, kind)}</div>
+    <div class="pct" style="color:${color}">${pct}</div>
+    <div class="bar-wrap"><div class="bar" style="width:${barW}%;background:${color}"></div></div>
+    <div class="meta">${item.wins}V · ${item.losses}D${item.undecided ? " · " + item.undecided + "E" : ""} — ${extra}</div></div>`;
+}
+function render(el, data, kind) {
+  const min = parseInt($("f-min").value) || 1;
+  const f = data.filter((d) => d.total >= min);
+  el.innerHTML = f.length ? f.map((d) => rowHTML(d, kind)).join("")
+    : `<div class="empty"><span class="big">∅</span>Aún no hay datos suficientes.<br>Deja el tracker corriendo mientras se juega.</div>`;
+}
+async function loadOverview() {
+  const o = await getJSON("/api/overview?" + qs());
+  const wr = o.winrate;
+  let cards = `
+    <div class="stat win"><div class="k">Win rate</div><div class="v" style="color:${pctColor(wr)}">${wr == null ? "—" : wr + "<small>%</small>"}</div><div class="sub">${o.wins}V · ${o.losses}D${o.undecided ? " · " + o.undecided + "E" : ""}</div></div>
+    <div class="stat"><div class="k">Partidas registradas</div><div class="v">${o.total}</div><div class="sub">acumuladas hasta ahora</div></div>
+    <div class="stat star"><div class="k">Jugador estrella</div><div class="v">${o.star_rate == null ? "—" : o.star_rate + "<small>%</small>"}</div><div class="sub">${o.star_players} veces MVP (3v3)</div></div>
+    <div class="stat cyan"><div class="k">Balance de trofeos</div><div class="v" style="color:${o.trophy_delta >= 0 ? "var(--win)" : "var(--loss)"}">${o.trophy_delta >= 0 ? "+" : ""}${o.trophy_delta}</div><div class="sub">en el periodo registrado</div></div>`;
+  if (o.annotated > 0) {
+    cards += `<div class="stat combat"><div class="k">Combate (anotado)</div><div class="v" style="font-size:19px">${o.avg_kills ?? "—"} / ${o.avg_deaths ?? "—"}</div><div class="sub">asesinatos / muertes · ${o.annotated}p · daño ${o.avg_damage ?? "—"}</div></div>`;
+  }
+  cards += `<div class="stat"><div class="k">Última partida</div><div class="v" style="font-size:18px">${o.last_battle ? fmtTime(o.last_battle) : "—"}</div><div class="sub">vista por el tracker</div></div>`;
+  $("overview").innerHTML = cards;
+}
+async function loadPanels() {
+  const base = qs();
+  const [b, m, mp, vs] = await Promise.all([
+    getJSON("/api/winrate?by=brawler&" + base), getJSON("/api/winrate?by=mode&" + base),
+    getJSON("/api/winrate?by=map&" + base), getJSON("/api/vs?" + base),
+  ]);
+  render($("r-brawler"), b, "brawler"); render($("r-mode"), m, "mode");
+  render($("r-map"), mp, "map"); render($("r-vs"), vs, "vs");
+}
+async function loadStats() { await Promise.all([loadOverview(), loadPanels()]); }
+
+/* ---------- Historial ---------- */
+function bchip(p, me = false) {
+  const url = brawlerPortrait(p.brawler);
+  const img = url ? imgTag(url, "bc-portrait") : `<div class="bc-portrait"></div>`;
+  const tr = p.trophies != null ? `<span class="bc-tr">${p.trophies}🏆</span>` : `<span class="bc-tr" style="color:var(--muted)">—</span>`;
+  return `<div class="bc-brawler ${me ? "me" : ""}">${img}<span class="bc-bname">${esc(p.brawler)}</span>${tr}</div>`;
+}
+function battleCard(b) {
+  const resClass = b.is_win === 1 ? "win" : b.is_win === 0 ? "loss" : "draw";
+  const resTxt = b.is_win === 1 ? "Victoria" : b.is_win === 0 ? "Derrota" : (b.rank != null ? "Pos. " + b.rank : "Empate");
+  const tro = b.trophy_change != null ? `${b.trophy_change >= 0 ? "+" : ""}${b.trophy_change}🏆` : "";
+  const ma = modeAsset(b.mode);
+  const modeIcon = ma && ma.icon ? imgTag(ma.icon, "bc-mode-icon") : "";
+  const mapHtml = mapAsset(b.map) ? `<span class="map-link" data-map="${esc(b.map)}">${esc(b.map)}</span>` : esc(b.map);
+  const accent = ma && ma.color ? ` style="border-left-color:${ma.color}"` : "";
+  const mine = [bchip({ brawler: b.my_brawler, trophies: b.my_trophies }, true)].concat((b.allies || []).map((a) => bchip(a))).join("");
+  const enemies = (b.opponents || []).map((o) => bchip(o)).join("") || `<div class="bc-brawler"><div class="bc-portrait"></div><span class="bc-bname">—</span></div>`;
+  const mn = b.manual || {};
+  const v = (x) => (x == null ? "" : x);
+  return `<div class="battle-card"${accent}>
+    <div class="bc-head">
+      <span class="bc-result ${resClass}">${resTxt}</span>
+      <span class="bc-mode">${modeIcon}${esc(b.mode)} · ${mapHtml}</span>
+      <span class="bc-time">${fmtTime(b.battle_time)}</span>
+      <span class="bc-trophy">${tro}</span>
+    </div>
+    <div class="bc-teams">
+      <div class="bc-team mine"><span class="bc-side">Tu equipo</span><div class="bc-brawlers">${mine}</div></div>
+      <div class="bc-team enemy"><span class="bc-side">Rivales</span><div class="bc-brawlers">${enemies}</div></div>
+    </div>
+    <div class="bc-manual" data-id="${b.id}">
+      <span class="mlbl">Datos manuales (opcionales, de la pantalla final)</span>
+      <input type="number" class="m-kills" placeholder="Asesinatos" value="${v(mn.kills)}" />
+      <input type="number" class="m-deaths" placeholder="Muertes" value="${v(mn.deaths)}" />
+      <input type="number" class="m-damage" placeholder="Daño" value="${v(mn.damage)}" />
+      <input type="number" class="m-healing" placeholder="Curación" value="${v(mn.healing)}" />
+      <input type="text" class="m-notes" placeholder="Notas" value="${esc(mn.notes)}" />
+      <button onclick="saveManual(this)">Guardar</button>
+      <span class="m-status"></span>
+    </div>
+  </div>`;
+}
+async function loadHistory(reset) {
+  if (reset) { histOffset = 0; $("battle-list").innerHTML = ""; }
+  const data = await getJSON(`/api/battles?${qs()}&limit=25&offset=${histOffset}`);
+  histTotal = data.total;
+  if (reset && data.battles.length === 0) {
+    $("battle-list").innerHTML = `<div class="empty"><span class="big">∅</span>No hay partidas registradas con estos filtros todavía.</div>`;
+  } else {
+    $("battle-list").insertAdjacentHTML("beforeend", data.battles.map(battleCard).join(""));
+  }
+  histOffset += data.battles.length;
+  $("load-more").style.display = histOffset < histTotal ? "" : "none";
+}
+async function saveManual(btn) {
+  const box = btn.closest(".bc-manual"), id = box.dataset.id, st = box.querySelector(".m-status");
+  const body = {
+    kills: box.querySelector(".m-kills").value, deaths: box.querySelector(".m-deaths").value,
+    damage: box.querySelector(".m-damage").value, healing: box.querySelector(".m-healing").value,
+    notes: box.querySelector(".m-notes").value,
+  };
+  btn.disabled = true; st.textContent = "Guardando…";
+  try {
+    const r = await fetch(`/api/battles/${encodeURIComponent(id)}/manual`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    st.textContent = r.ok ? "✓ guardado" : "error";
+    if (r.ok && activeTab === "stats") loadOverview();
+  } catch (e) { st.textContent = "error de red"; }
+  btn.disabled = false;
+  setTimeout(() => { st.textContent = ""; }, 2500);
+}
+window.saveManual = saveManual;
+
+/* ---------- Lightbox de mapa ---------- */
+function showMap(name) {
+  const m = mapAsset(name);
+  if (!m || !m.image) return;
+  $("lb-img").src = m.image; $("lb-cap").textContent = name;
+  $("lightbox").classList.add("show");
+}
+document.addEventListener("click", (e) => {
+  const link = e.target.closest(".map-link");
+  if (link) showMap(link.dataset.map);
+});
+$("lb-close").addEventListener("click", () => $("lightbox").classList.remove("show"));
+$("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") $("lightbox").classList.remove("show"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("lightbox").classList.remove("show"); });
+
+/* ---------- Filtros / jugadores ---------- */
+async function loadFilters() {
+  const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
+  fill($("f-brawler"), f.brawlers); fill($("f-mode"), f.modes); fill($("f-map"), f.maps);
+}
+function fill(sel, values) { const c = sel.value; sel.innerHTML = '<option value="">Todos</option>' + values.map((v) => `<option>${esc(v)}</option>`).join(""); sel.value = values.includes(c) ? c : ""; }
+function applyScope() {
+  const b = $("f-brawler").value;
+  $("panel-brawler").style.display = b ? "none" : "";
+  const n = $("scope-note");
+  if (b) { n.classList.add("show"); n.textContent = `Viendo solo ${b}: el desglose por modo, mapa y rivales es de ese brawler.`; }
+  else { n.classList.remove("show"); n.textContent = ""; }
+}
+function updatePlayerHeader() {
+  const p = playersById[currentPlayer];
+  $("player-name").textContent = p && p.name ? p.name : (currentPlayer || "—");
+  $("player-tag").textContent = currentPlayer || "—";
+  const img = $("player-icon");
+  if (p && p.icon_url) { img.src = p.icon_url; img.style.display = ""; img.onerror = () => { img.style.display = "none"; }; }
+  else { img.style.display = "none"; }
+}
+async function loadPlayers() {
+  const players = await getJSON("/api/players");
+  playersById = {}; players.forEach((p) => (playersById[p.tag] = p));
+  $("player-select").innerHTML = players.map((p) => `<option value="${p.tag}">${p.name ? esc(p.name) + " " : ""}(${p.tag}) · ${p.battles} part.</option>`).join("");
+  const has = players.length > 0;
+  $("dashboard").style.display = has ? "" : "none";
+  $("no-players").style.display = has ? "none" : "";
+  $("remove-player").disabled = !has;
+  if (!has) { currentPlayer = null; return; }
+  if (!currentPlayer || !players.some((p) => p.tag === currentPlayer)) currentPlayer = players[0].tag;
+  $("player-select").value = currentPlayer;
+  updatePlayerHeader();
+}
+async function loadStatus() {
+  const s = await getJSON("/api/status");
+  $("proxy-pill").classList.toggle("show", !!s.via_proxy);
+  $("coach-hint").textContent = s.coach_configured ? "" : "Configura ANTHROPIC_API_KEY en el .env para activarlo.";
+  const lp = s.last_poll || {};
+  let txt = `${(s.players || []).length} jugador(es) · sondeo cada <b>${s.poll_interval}s</b>`;
+  if (lp.at) txt += ` · <b>${fmtClock(lp.at)}</b>`;
+  $("status").innerHTML = txt;
+  if (!s.configured) { $("banner").classList.add("show"); $("banner").innerHTML = "Falta <code>BRAWL_API_TOKEN</code> en el <code>.env</code>. Configúralo y reinicia."; }
+  else if (lp.error) { $("banner").classList.add("show"); $("banner").innerHTML = "Último sondeo con error: <code>" + esc(lp.error) + "</code>"; }
+  else { $("banner").classList.remove("show"); }
+}
+
+async function refreshAll() {
+  await loadStatus();
+  await loadPlayers();
+  if (currentPlayer) { await loadFilters(); applyScope(); await loadStats(); if (activeTab === "history") await loadHistory(true); }
+}
+
+/* ---------- Pestañas ---------- */
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === "tab-" + name));
+  if (name === "history") loadHistory(true);
+}
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+/* ---------- Eventos ---------- */
+$("player-select").addEventListener("change", async () => {
+  currentPlayer = $("player-select").value;
+  $("f-brawler").value = ""; $("f-mode").value = ""; $("f-map").value = ""; $("coach-out").innerHTML = "";
+  updatePlayerHeader();
+  await loadFilters(); applyScope(); await loadStats();
+  if (activeTab === "history") await loadHistory(true);
+});
+async function onFilterChange() {
+  applyScope(); await loadStats();
+  if (activeTab === "history") await loadHistory(true);
+}
+["f-brawler", "f-mode", "f-map"].forEach((id) => $(id).addEventListener("change", onFilterChange));
+$("f-min").addEventListener("input", loadPanels);
+$("load-more").addEventListener("click", () => loadHistory(false));
+
+$("add-player").addEventListener("click", addPlayer);
+$("add-tag").addEventListener("keydown", (e) => { if (e.key === "Enter") addPlayer(); });
+async function addPlayer() {
+  const tag = $("add-tag").value.trim(); if (!tag) return;
+  const btn = $("add-player"); btn.disabled = true; btn.textContent = "Buscando…";
+  try {
+    const r = await fetch("/api/players", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag }) });
+    const data = await r.json();
+    if (data.error) alert(data.error);
+    else { $("add-tag").value = ""; currentPlayer = data.tag; await refreshAll(); }
+  } catch (e) { alert("Error de red al añadir el jugador."); }
+  btn.disabled = false; btn.textContent = "+ Seguir";
+}
+$("remove-player").addEventListener("click", async () => {
+  if (!currentPlayer) return;
+  if (!confirm(`¿Dejar de seguir a ${currentPlayer} y borrar sus datos?`)) return;
+  await fetch("/api/players/" + encodeURIComponent(currentPlayer.replace("#", "")), { method: "DELETE" });
+  currentPlayer = null; await refreshAll();
+});
+$("refresh").addEventListener("click", async () => {
+  const btn = $("refresh"); btn.disabled = true; btn.textContent = "Sondeando…";
+  try {
+    const url = currentPlayer ? "/api/poll?player=" + encodeURIComponent(currentPlayer) : "/api/poll";
+    const r = await fetch(url, { method: "POST" }); const data = await r.json();
+    if (data.error) alert("No se pudo consultar la API:\n" + data.error);
+  } catch (e) { alert("Error de red al sondear."); }
+  await refreshAll(); btn.disabled = false; btn.textContent = "Actualizar ahora";
+});
+$("coach-btn").addEventListener("click", async () => {
+  if (!currentPlayer) return;
+  const btn = $("coach-btn"), out = $("coach-out");
+  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>Analizando…`; out.innerHTML = "";
+  try {
+    const r = await fetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ player: currentPlayer, brawler: $("f-brawler").value || null }) });
+    const data = await r.json();
+    out.innerHTML = data.error ? `<div class="coach-error">${esc(data.error)}</div>` : `<div class="advice">${esc(data.advice).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`;
+  } catch (e) { out.innerHTML = `<div class="coach-error">Error de red al generar el análisis.</div>`; }
+  btn.disabled = false; btn.textContent = "Analizar mis datos";
+});
+
+(async () => { await loadAssets(); refreshAll(); })();
+async function loadAssets() { try { ASSETS = await getJSON("/api/assets"); } catch (e) { /* sin imágenes, se muestran solo nombres */ } }
+setInterval(loadStatus, 30000);
+</script>
+</body>
+</html>
