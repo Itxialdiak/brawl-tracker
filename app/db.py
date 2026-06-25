@@ -57,6 +57,12 @@ def init_db():
             battle_id TEXT PRIMARY KEY, kills INTEGER, deaths INTEGER,
             damage INTEGER, healing INTEGER, notes TEXT, updated_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, player_tag TEXT, name TEXT,
+            filters_json TEXT, scope_label TEXT, status TEXT,
+            content TEXT, error TEXT, created_at TEXT, completed_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_brawler ON battles(my_brawler);
         CREATE INDEX IF NOT EXISTS idx_battles_mode    ON battles(mode);
@@ -474,3 +480,185 @@ def distinct_values(player: str | None = None) -> dict:
     out = {"modes": col_distinct("mode"), "maps": col_distinct("map"), "brawlers": col_distinct("my_brawler")}
     conn.close()
     return out
+
+
+# ---------------------------------------------------------------------------
+# Analítica para el Informe (cálculos derivados)
+# ---------------------------------------------------------------------------
+
+def trophy_series(filters: dict | None = None) -> list[dict]:
+    """Serie acumulada de trofeos en orden cronológico (para la gráfica)."""
+    filters = filters or {}
+    where_sql, params = _build_filters(filters)
+    conn = get_conn()
+    rows = conn.execute(
+        f"""SELECT battle_time, COALESCE(trophy_change,0) AS ch, my_brawler, mode, map
+            FROM battles {where_sql} ORDER BY battle_time ASC""",
+        params,
+    ).fetchall()
+    conn.close()
+    cum, out = 0, []
+    for i, r in enumerate(rows):
+        cum += r["ch"]
+        out.append({"i": i, "time": r["battle_time"], "change": r["ch"], "cumulative": cum})
+    return out
+
+
+def winrate_with_allies(filters: dict | None = None) -> list[dict]:
+    """Win rate según el brawler aliado que te acompaña (datos cruzados de equipo)."""
+    filters = filters or {}
+    where, params = [], []
+    if filters.get("player"):
+        where.append("b.player_tag = ?"); params.append(normalize_tag(filters["player"]))
+    if filters.get("mode"):
+        where.append("b.mode = ?"); params.append(filters["mode"])
+    if filters.get("map"):
+        where.append("b.map = ?"); params.append(filters["map"])
+    if filters.get("brawler"):
+        where.append("b.my_brawler = ?"); params.append(filters["brawler"])
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    conn = get_conn()
+    rows = conn.execute(
+        f"""SELECT a.brawler AS label,
+                   SUM(CASE WHEN b.is_win=1 THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN b.is_win=0 THEN 1 ELSE 0 END) AS losses,
+                   COUNT(*) AS total
+            FROM allies a JOIN battles b ON b.id = a.battle_id
+            {where_sql} GROUP BY a.brawler ORDER BY total DESC""",
+        params,
+    ).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        if r["label"] is None:
+            continue
+        out.append({"label": r["label"], "wins": r["wins"], "losses": r["losses"],
+                    "total": r["total"], "winrate": _winrate(r["wins"], r["losses"])})
+    return out
+
+
+def crosstab(filters: dict | None = None, top_brawlers: int = 8) -> dict:
+    """Tabla cruzada brawler x modo con win rate (para el mapa de calor)."""
+    filters = filters or {}
+    where_sql, params = _build_filters(filters)
+    conn = get_conn()
+    rows = conn.execute(
+        f"""SELECT my_brawler AS brawler, mode,
+                   SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses,
+                   COUNT(*) AS total
+            FROM battles {where_sql} GROUP BY my_brawler, mode""",
+        params,
+    ).fetchall()
+    conn.close()
+    btot, mset, cells = {}, {}, {}
+    for r in rows:
+        if not r["brawler"] or not r["mode"]:
+            continue
+        btot[r["brawler"]] = btot.get(r["brawler"], 0) + r["total"]
+        mset[r["mode"]] = mset.get(r["mode"], 0) + r["total"]
+        cells[f"{r['brawler']}|{r['mode']}"] = {"winrate": _winrate(r["wins"], r["losses"]), "total": r["total"]}
+    brawlers = [b for b, _ in sorted(btot.items(), key=lambda kv: -kv[1])][:top_brawlers]
+    modes = [m for m, _ in sorted(mset.items(), key=lambda kv: -kv[1])]
+    return {"brawlers": brawlers, "modes": modes, "cells": cells}
+
+
+def _pick(rows, key, reverse, min_total=3):
+    elig = [r for r in rows if r.get("winrate") is not None and r["total"] >= min_total]
+    if not elig:
+        return None
+    return sorted(elig, key=lambda r: r[key], reverse=reverse)[0]
+
+
+def report_analytics(filters: dict | None = None) -> dict:
+    """Reúne todos los cálculos del Informe en un solo objeto."""
+    filters = filters or {}
+    ov = overview(filters)
+    by_brawler = winrate_by("brawler", filters)
+    by_mode = winrate_by("mode", filters)
+    by_map = winrate_by("map", filters)
+    vs = winrate_vs(filters)
+    allies = winrate_with_allies(filters)
+
+    most_played = max(by_brawler, key=lambda r: r["total"]) if by_brawler else None
+    highlights = {
+        "most_played": most_played,
+        "best_brawler": _pick(by_brawler, "winrate", True),
+        "worst_brawler": _pick(by_brawler, "winrate", False),
+        "best_mode": _pick(by_mode, "winrate", True, min_total=2),
+        "worst_mode": _pick(by_mode, "winrate", False, min_total=2),
+        "best_map": _pick(by_map, "winrate", True),
+        "worst_map": _pick(by_map, "winrate", False),
+        "hardest_vs": _pick(vs, "winrate", False),
+        "easiest_vs": _pick(vs, "winrate", True),
+        "best_ally": _pick(allies, "winrate", True, min_total=2),
+    }
+    return {
+        "overview": ov, "highlights": highlights,
+        "by_brawler": by_brawler, "by_mode": by_mode, "by_map": by_map,
+        "vs": vs, "allies": allies,
+        "trophy_series": trophy_series(filters), "crosstab": crosstab(filters),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Informes guardados (análisis de Claude persistidos)
+# ---------------------------------------------------------------------------
+
+def create_report(player_tag: str, filters_json: str, scope_label: str) -> int:
+    conn = get_conn(); cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO reports (player_tag, name, filters_json, scope_label, status, created_at)
+           VALUES (?,?,?,?, 'generating', ?)""",
+        (normalize_tag(player_tag), None, filters_json, scope_label,
+         datetime.now(timezone.utc).isoformat()),
+    )
+    rid = cur.lastrowid
+    conn.commit(); conn.close()
+    return rid
+
+
+def set_report_result(report_id: int, name: str, content: str) -> None:
+    conn = get_conn()
+    conn.execute(
+        "UPDATE reports SET name=?, content=?, status='ready', completed_at=? WHERE id=?",
+        (name, content, datetime.now(timezone.utc).isoformat(), report_id),
+    )
+    conn.commit(); conn.close()
+
+
+def set_report_error(report_id: int, error: str) -> None:
+    conn = get_conn()
+    conn.execute(
+        "UPDATE reports SET error=?, status='error', completed_at=? WHERE id=?",
+        (error, datetime.now(timezone.utc).isoformat(), report_id),
+    )
+    conn.commit(); conn.close()
+
+
+def has_generating_report(player_tag: str) -> bool:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM reports WHERE player_tag=? AND status='generating' LIMIT 1",
+        (normalize_tag(player_tag),),
+    ).fetchone()
+    conn.close()
+    return bool(row)
+
+
+def list_reports(player_tag: str) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT id, name, scope_label, status, error, created_at, completed_at
+           FROM reports WHERE player_tag=? ORDER BY created_at ASC""",
+        (normalize_tag(player_tag),),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_report(report_id: int) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None

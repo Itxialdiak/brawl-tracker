@@ -164,6 +164,56 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 40px; }
+
+  /* Informe: destacados */
+  .highlights { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 12px; margin-bottom: 20px; }
+  .hl-card { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 13px 15px; }
+  .hl-visual { width: 44px; height: 44px; border-radius: 9px; background: var(--bg-elev); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; overflow: hidden; }
+  .hl-portrait { width: 100%; height: 100%; object-fit: cover; }
+  .hl-body { min-width: 0; }
+  .hl-label { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .hl-name { font-family: var(--display); font-weight: 600; font-size: 15px; margin: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hl-value { font-size: 12px; color: var(--cyan); }
+
+  /* Informe: gráfica de trofeos */
+  .chart-box { margin-top: 6px; }
+  .trophy-svg { width: 100%; height: auto; display: block; }
+  .chart-cap { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; }
+
+  /* Informe: mapa de calor brawler x modo */
+  .heat-wrap { overflow-x: auto; margin-top: 6px; }
+  table.heat { border-collapse: separate; border-spacing: 4px; width: 100%; }
+  table.heat th { font-weight: 500; font-size: 11px; color: var(--muted); text-align: center; padding: 4px; }
+  table.heat th.heat-brawler { text-align: left; white-space: nowrap; }
+  .heat-brawler { display: flex; align-items: center; gap: 6px; }
+  .heat-port { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; border: 1px solid var(--border); }
+  .heat-mode { width: 20px; height: 20px; object-fit: contain; display: block; margin: 0 auto 2px; }
+  .heat-cell { text-align: center; border-radius: 7px; padding: 6px 4px; min-width: 56px; background: rgba(255,255,255,0.03); }
+  .heat-cell span { font-family: var(--display); font-weight: 600; font-size: 13px; }
+  .heat-cell small { display: block; font-size: 9px; color: var(--muted); }
+  .heat-cell.empty { color: var(--border); }
+
+  /* Consejos: lista de informes guardados */
+  .report-list { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+  .report-item { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 11px; padding: 13px 16px; transition: border-color .12s, background .12s; }
+  .report-item.ready, .report-item.error { cursor: pointer; }
+  .report-item.ready:hover { border-color: var(--gold); background: rgba(255,200,61,0.04); }
+  .report-item.error:hover { border-color: var(--loss); }
+  .report-item.generating { border-style: dashed; }
+  .report-date { font-family: var(--display); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .report-name { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--text); }
+  .report-item.ready:hover .report-name { color: var(--gold); }
+  .report-name.gen { color: var(--muted); }
+  .report-name.err { color: var(--loss); }
+  .dots::after { content: "."; animation: dots 1.4s steps(1,end) infinite; }
+  @keyframes dots { 0% { content: "."; } 33% { content: ".."; } 66% { content: "..."; } 100% { content: "."; } }
+
+  /* Consejos: detalle del informe */
+  #coach-back { margin-bottom: 16px; }
+  .report-detail { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; }
+  .report-detail-head { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 4px; }
+  .report-detail-head h3 { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: .4px; }
+  .report-detail-meta { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -223,6 +273,7 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="stats">Estadísticas</button>
+      <button class="tab" data-tab="report">Informe</button>
       <button class="tab" data-tab="history">Historial de partidas</button>
       <button class="tab" data-tab="coach">Consejos</button>
     </div>
@@ -243,6 +294,24 @@
       </div>
     </div>
 
+    <!-- INFORME -->
+    <div class="tab-content" id="tab-report">
+      <h2 class="section-title">Informe</h2>
+      <p class="hint" style="margin-bottom:18px">Datos derivados y cruzados de tus partidas. Respeta los filtros de arriba (brawler / modo / mapa), así que sirve para toda la cuenta o acotado a un brawler, modo o mapa concreto.</p>
+      <div class="highlights" id="highlights"></div>
+      <div class="grid">
+        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Evolución de trofeos</h2>
+          <div class="hint">Balance acumulado de trofeos a lo largo de las partidas registradas.</div>
+          <div class="chart-box" id="trophy-chart"></div></div>
+        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
+          <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
+          <div class="heat-wrap" id="heatmap"></div></div>
+        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Mejores aliados</h2>
+          <div class="hint">Brawlers aliados con los que más ganas cuando van en tu equipo.</div>
+          <div class="rows" id="ri-allies"></div></div>
+      </div>
+    </div>
+
     <!-- HISTORIAL -->
     <div class="tab-content" id="tab-history">
       <h2 class="section-title">Historial de partidas</h2>
@@ -254,13 +323,19 @@
     <!-- CONSEJOS -->
     <div class="tab-content" id="tab-coach">
       <h2 class="section-title">Consejos de Claude</h2>
-      <div class="panel coach">
-        <div class="hint">Análisis de tus datos y consejos para mejorar. Usa el jugador y el brawler seleccionados arriba.</div>
-        <div class="row-top">
-          <button class="btn" id="coach-btn">Analizar mis datos</button>
-          <span class="coach-hint" id="coach-hint"></span>
+      <div id="coach-list-view">
+        <div class="panel coach">
+          <div class="hint">Genera un informe con el jugador y los filtros (brawler / modo / mapa) seleccionados arriba. Claude lo analiza y le pone nombre según el ámbito. Se guarda y puedes consultarlo cuando quieras; mientras se genera puedes seguir navegando por la app.</div>
+          <div class="row-top">
+            <button class="btn" id="coach-btn">Analizar mis datos</button>
+            <span class="coach-hint" id="coach-hint"></span>
+          </div>
         </div>
-        <div id="coach-out"></div>
+        <div class="report-list" id="report-list"></div>
+      </div>
+      <div id="coach-detail-view" style="display:none">
+        <button class="ghost" id="coach-back">← Volver a la lista</button>
+        <div class="report-detail" id="report-detail"></div>
       </div>
     </div>
   </div>
@@ -503,7 +578,12 @@ async function loadStatus() {
 async function refreshAll() {
   await loadStatus();
   await loadPlayers();
-  if (currentPlayer) { await loadFilters(); applyScope(); await loadStats(); if (activeTab === "history") await loadHistory(true); }
+  if (currentPlayer) {
+    await loadFilters(); applyScope(); await loadStats();
+    if (activeTab === "report") await loadReport();
+    if (activeTab === "history") await loadHistory(true);
+    loadReports();
+  }
 }
 
 /* ---------- Pestañas ---------- */
@@ -512,19 +592,25 @@ function switchTab(name) {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === "tab-" + name));
   if (name === "history") loadHistory(true);
+  if (name === "report") loadReport();
+  if (name === "coach") { showCoachListView(); loadReports(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 
 /* ---------- Eventos ---------- */
 $("player-select").addEventListener("change", async () => {
   currentPlayer = $("player-select").value;
-  $("f-brawler").value = ""; $("f-mode").value = ""; $("f-map").value = ""; $("coach-out").innerHTML = "";
+  $("f-brawler").value = ""; $("f-mode").value = ""; $("f-map").value = "";
+  showCoachListView();
   updatePlayerHeader();
   await loadFilters(); applyScope(); await loadStats();
+  if (activeTab === "report") await loadReport();
   if (activeTab === "history") await loadHistory(true);
+  loadReports();
 });
 async function onFilterChange() {
   applyScope(); await loadStats();
+  if (activeTab === "report") await loadReport();
   if (activeTab === "history") await loadHistory(true);
 }
 ["f-brawler", "f-mode", "f-map"].forEach((id) => $(id).addEventListener("change", onFilterChange));
@@ -559,17 +645,137 @@ $("refresh").addEventListener("click", async () => {
   } catch (e) { alert("Error de red al sondear."); }
   await refreshAll(); btn.disabled = false; btn.textContent = "Actualizar ahora";
 });
-$("coach-btn").addEventListener("click", async () => {
+$("coach-btn").addEventListener("click", generateReport);
+$("coach-back").addEventListener("click", backToReportList);
+
+/* ---------- Informe (cálculos derivados) ---------- */
+function fmtDateTime(iso) { try { return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
+
+async function loadReport() {
   if (!currentPlayer) return;
-  const btn = $("coach-btn"), out = $("coach-out");
-  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>Analizando…`; out.innerHTML = "";
+  const a = await getJSON("/api/report?" + qs());
+  renderHighlights(a.highlights);
+  $("trophy-chart").innerHTML = trophyChart(a.trophy_series);
+  $("heatmap").innerHTML = heatmap(a.crosstab);
+  render($("ri-allies"), a.allies, "brawler");
+}
+function hlCard(icon, label, item, kind, valueFn) {
+  let inner = icon, name = "—", value = "—";
+  if (item) {
+    value = valueFn(item); name = esc(item.label);
+    if (kind === "brawler" && brawlerPortrait(item.label)) inner = imgTag(brawlerPortrait(item.label), "hl-portrait");
+    else if (kind === "mode" && modeAsset(item.label)) inner = imgTag(modeAsset(item.label).icon, "hl-portrait");
+    else if (kind === "map" && mapAsset(item.label)) name = `<span class="map-link" data-map="${esc(item.label)}">${esc(item.label)}</span>`;
+  }
+  return `<div class="hl-card"><div class="hl-visual">${inner}</div><div class="hl-body"><div class="hl-label">${label}</div><div class="hl-name">${name}</div><div class="hl-value">${value}</div></div></div>`;
+}
+function renderHighlights(h) {
+  $("highlights").innerHTML = [
+    hlCard("🎯", "Más jugado", h.most_played, "brawler", (v) => `${v.total} partidas`),
+    hlCard("🏆", "Mejor rendimiento", h.best_brawler, "brawler", (v) => `${v.winrate}% en ${v.total}p`),
+    hlCard("⚠️", "Peor rendimiento", h.worst_brawler, "brawler", (v) => `${v.winrate}% en ${v.total}p`),
+    hlCard("🤝", "Mejor aliado", h.best_ally, "brawler", (v) => `${v.winrate}% (${v.total}p)`),
+    hlCard("😈", "Rival más duro", h.hardest_vs, "brawler", (v) => `${v.winrate}% (${v.total}p)`),
+    hlCard("😎", "Rival más fácil", h.easiest_vs, "brawler", (v) => `${v.winrate}% (${v.total}p)`),
+    hlCard("🧭", "Mejor modo", h.best_mode, "mode", (v) => `${v.winrate}% (${v.total}p)`),
+    hlCard("🗺️", "Mejor mapa", h.best_map, "map", (v) => `${v.winrate}% (${v.total}p)`),
+  ].join("");
+}
+function trophyChart(series) {
+  if (!series || series.length < 2) return `<div class="empty">Necesitas algunas partidas más para ver la evolución.</div>`;
+  const vals = series.map((p) => p.cumulative);
+  const min = Math.min(0, ...vals), max = Math.max(0, ...vals), span = (max - min) || 1;
+  const W = 640, H = 200, pad = 28;
+  const X = (i) => pad + (W - 2 * pad) * (i / (series.length - 1));
+  const Y = (v) => H - pad - (H - 2 * pad) * ((v - min) / span);
+  const line = series.map((p, i) => `${X(i).toFixed(1)},${Y(p.cumulative).toFixed(1)}`).join(" ");
+  const area = `${X(0).toFixed(1)},${Y(min).toFixed(1)} ${line} ${X(series.length - 1).toFixed(1)},${Y(min).toFixed(1)}`;
+  const last = vals[vals.length - 1], color = last >= 0 ? "var(--win)" : "var(--loss)", zeroY = Y(0).toFixed(1);
+  return `<svg viewBox="0 0 ${W} ${H}" class="trophy-svg">
+    <polygon points="${area}" fill="${color}" opacity="0.08" />
+    <line x1="${pad}" y1="${zeroY}" x2="${W - pad}" y2="${zeroY}" stroke="var(--border)" stroke-dasharray="4 4" />
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+  </svg>
+  <div class="chart-cap">Balance acumulado: <b style="color:${color}">${last >= 0 ? "+" : ""}${last} 🏆</b> en ${series.length} partidas</div>`;
+}
+function heatBg(wr) { if (wr >= 55) return "rgba(65,224,138,0.14)"; if (wr < 45) return "rgba(255,93,108,0.14)"; return "rgba(255,200,61,0.12)"; }
+function heatmap(ct) {
+  if (!ct.brawlers.length || !ct.modes.length) return `<div class="empty">Sin datos para la tabla cruzada todavía.</div>`;
+  let h = `<table class="heat"><thead><tr><th></th>`;
+  h += ct.modes.map((m) => { const a = modeAsset(m); return `<th>${a && a.icon ? imgTag(a.icon, "heat-mode") : ""}<span>${esc(m)}</span></th>`; }).join("");
+  h += `</tr></thead><tbody>`;
+  for (const b of ct.brawlers) {
+    const port = brawlerPortrait(b);
+    h += `<tr><th class="heat-brawler">${port ? imgTag(port, "heat-port") : ""}<span>${esc(b)}</span></th>`;
+    for (const m of ct.modes) {
+      const cell = ct.cells[`${b}|${m}`];
+      h += (!cell || cell.winrate == null)
+        ? `<td class="heat-cell empty">·</td>`
+        : `<td class="heat-cell" style="background:${heatBg(cell.winrate)}" title="${cell.total} partidas"><span style="color:${pctColor(cell.winrate)}">${cell.winrate}%</span><small>${cell.total}p</small></td>`;
+    }
+    h += `</tr>`;
+  }
+  return h + `</tbody></table>`;
+}
+
+/* ---------- Consejos: informes guardados + generación en segundo plano ---------- */
+let reportPollTimer = null;
+
+async function loadReports() {
+  if (!currentPlayer) return;
+  let reports;
+  try { reports = await getJSON("/api/reports?player=" + encodeURIComponent(currentPlayer)); } catch (e) { return; }
+  renderReportList(reports);
+  const generating = reports.some((r) => r.status === "generating");
+  setCoachButton(generating);
+  if (generating) startReportPolling(); else stopReportPolling();
+}
+function renderReportList(reports) {
+  const el = $("report-list");
+  if (!el) return;
+  if (!reports.length) { el.innerHTML = `<div class="empty"><span class="big">✎</span>Aún no has generado ningún informe.<br>Pulsa "Analizar mis datos" para crear el primero.</div>`; return; }
+  el.innerHTML = reports.map(reportItem).join("");
+}
+function reportItem(r) {
+  const date = fmtDateTime(r.created_at);
+  if (r.status === "generating")
+    return `<div class="report-item generating"><span class="report-date">${date}</span><span class="report-name gen">Generando informe<span class="dots"></span></span></div>`;
+  if (r.status === "error")
+    return `<div class="report-item error" onclick="openReport(${r.id})"><span class="report-date">${date}</span><span class="report-name err">Error al generar · ver detalle</span></div>`;
+  return `<div class="report-item ready" onclick="openReport(${r.id})"><span class="report-date">${date}</span><span class="report-name">${esc(r.name || r.scope_label || "Informe")}</span></div>`;
+}
+async function openReport(id) {
+  let r;
+  try { r = await getJSON("/api/reports/" + id); } catch (e) { return; }
+  $("coach-list-view").style.display = "none";
+  $("coach-detail-view").style.display = "";
+  const body = r.status === "error"
+    ? `<div class="coach-error">No se pudo generar este informe: ${esc(r.error || "error desconocido")}</div>`
+    : `<div class="advice">${esc(r.content || "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`;
+  $("report-detail").innerHTML = `<div class="report-detail-head"><h3>${esc(r.name || r.scope_label || "Informe")}</h3><div class="report-detail-meta">${esc(r.scope_label || "")} · ${fmtDateTime(r.created_at)}</div></div>${body}`;
+}
+window.openReport = openReport;
+function showCoachListView() { const d = $("coach-detail-view"), l = $("coach-list-view"); if (d) d.style.display = "none"; if (l) l.style.display = ""; }
+function backToReportList() { showCoachListView(); loadReports(); }
+async function generateReport() {
+  if (!currentPlayer) return;
+  const body = { player: currentPlayer, brawler: $("f-brawler").value || null, mode: $("f-mode").value || null, map: $("f-map").value || null };
+  setCoachButton(true);
   try {
-    const r = await fetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ player: currentPlayer, brawler: $("f-brawler").value || null }) });
+    const r = await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json();
-    out.innerHTML = data.error ? `<div class="coach-error">${esc(data.error)}</div>` : `<div class="advice">${esc(data.advice).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`;
-  } catch (e) { out.innerHTML = `<div class="coach-error">Error de red al generar el análisis.</div>`; }
-  btn.disabled = false; btn.textContent = "Analizar mis datos";
-});
+    if (!r.ok) { alert(data.error || "No se pudo iniciar el informe."); setCoachButton(false); return; }
+  } catch (e) { alert("Error de red al iniciar el informe."); setCoachButton(false); return; }
+  await loadReports();
+}
+function setCoachButton(generating) {
+  const btn = $("coach-btn");
+  if (!btn) return;
+  btn.disabled = generating;
+  btn.innerHTML = generating ? `<span class="spinner"></span>Analizando` : "Analizar mis datos";
+}
+function startReportPolling() { if (!reportPollTimer) reportPollTimer = setInterval(loadReports, 3000); }
+function stopReportPolling() { if (reportPollTimer) { clearInterval(reportPollTimer); reportPollTimer = null; } }
 
 (async () => { await loadAssets(); refreshAll(); })();
 async function loadAssets() { try { ASSETS = await getJSON("/api/assets"); } catch (e) { /* sin imágenes, se muestran solo nombres */ } }

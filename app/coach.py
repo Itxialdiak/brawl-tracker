@@ -36,17 +36,32 @@ SYSTEM = (
 )
 
 
-def build_summary(player: str, brawler: str | None = None) -> dict:
+def scope_label_from(filters: dict) -> str:
+    parts = []
+    if filters.get("brawler"): parts.append(filters["brawler"])
+    if filters.get("mode"): parts.append(f"modo {filters['mode']}")
+    if filters.get("map"): parts.append(f"mapa {filters['map']}")
+    return " · ".join(parts) if parts else "Cuenta entera"
+
+
+def build_summary(player: str, brawler=None, mode=None, map=None) -> dict:
     """Reúne las estadísticas relevantes en texto compacto para el prompt."""
-    f = {"player": player, "brawler": brawler} if brawler else {"player": player}
+    f = {"player": player}
+    if brawler: f["brawler"] = brawler
+    if mode: f["mode"] = mode
+    if map: f["map"] = map
     ov = db.overview(f)
     by_mode = db.winrate_by("mode", f)
     by_map = db.winrate_by("map", f)
     vs = db.winrate_vs(f)
-    by_brawler = [] if brawler else db.winrate_by("brawler", {"player": player})
+    by_brawler = [] if brawler else db.winrate_by("brawler", f)
 
     L = []
-    L.append(f"Ámbito: {'el brawler ' + brawler if brawler else 'la cuenta entera'}.")
+    bits = []
+    if brawler: bits.append(f"el brawler {brawler}")
+    if mode: bits.append(f"el modo {mode}")
+    if map: bits.append(f"el mapa {map}")
+    L.append("Ámbito: " + (", ".join(bits) if bits else "la cuenta entera") + ".")
     wr = ov["winrate"]
     L.append(
         f"Global: {ov['total']} partidas, win rate {wr if wr is not None else 's/d'}%, "
@@ -99,14 +114,17 @@ def build_summary(player: str, brawler: str | None = None) -> dict:
     return {"total": ov["total"], "text": "\n".join(L)}
 
 
-async def generate_advice(player: str, brawler: str | None = None) -> str:
+async def generate_report(player: str, filters: dict) -> tuple[str, str]:
+    """Genera (nombre, contenido) de un informe. El nombre lo decide Claude según el ámbito."""
+    label = scope_label_from(filters)
     if not API_KEY:
         raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env. Saca una en https://console.anthropic.com y reinicia.")
 
-    summary = build_summary(player, brawler)
+    summary = build_summary(player, filters.get("brawler"), filters.get("mode"), filters.get("map"))
     if summary["total"] < MIN_BATTLES:
-        return (f"Aún hay muy pocos datos ({summary['total']} partidas) para un análisis útil. "
-                "Deja el tracker corriendo y juega unas cuantas partidas más antes de pedir consejos.")
+        content = (f"Aún hay muy pocos datos ({summary['total']} partidas) en este ámbito ({label}) "
+                   "para un análisis útil. Deja el tracker corriendo y juega más partidas, o amplía los filtros.")
+        return f"Informe · {label}", content
 
     try:
         from anthropic import AsyncAnthropic
@@ -115,13 +133,27 @@ async def generate_advice(player: str, brawler: str | None = None) -> str:
 
     client = AsyncAnthropic(api_key=API_KEY)
     msg = await client.messages.create(
-        model=MODEL,
-        max_tokens=1500,
-        system=SYSTEM,
+        model=MODEL, max_tokens=1600, system=SYSTEM,
         messages=[{
             "role": "user",
-            "content": "Estas son mis estadísticas en Brawl Stars. Dame un análisis y consejos para mejorar:\n\n"
-                       + summary["text"],
+            "content": (
+                f"Ámbito del informe: {label}.\n"
+                "En la PRIMERA línea escribe exactamente 'TÍTULO: ' seguido de un nombre corto y "
+                "descriptivo para este informe según el ámbito (por ejemplo 'Informe general', "
+                "'Análisis de Shelly', 'Rendimiento en Atrapagemas', 'Shelly en Mina Rocosa'). "
+                "Desde la segunda línea en adelante, el análisis y los consejos.\n\n"
+                "Estas son mis estadísticas en Brawl Stars:\n\n" + summary["text"]
+            ),
         }],
     )
-    return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+    text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+    return _split_title(text, label)
+
+
+def _split_title(text: str, fallback: str) -> tuple[str, str]:
+    lines = text.split("\n")
+    if lines and lines[0].strip().upper().startswith("TÍTULO:"):
+        name = lines[0].split(":", 1)[1].strip()
+        body = "\n".join(lines[1:]).strip()
+        return (name or f"Informe · {fallback}"), body
+    return f"Informe · {fallback}", text
