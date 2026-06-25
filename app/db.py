@@ -62,6 +62,16 @@ def init_db():
             filters_json TEXT, scope_label TEXT, status TEXT,
             content TEXT, error TEXT, created_at TEXT, completed_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL, created_at TEXT,
+            reports_remaining INTEGER, quota_period TEXT
+        );
+        CREATE TABLE IF NOT EXISTS user_players (
+            user_id INTEGER NOT NULL, player_tag TEXT NOT NULL, added_at TEXT,
+            PRIMARY KEY (user_id, player_tag)
+        );
+        CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_brawler ON battles(my_brawler);
@@ -74,6 +84,7 @@ def init_db():
     )
     # Migración de bases antiguas: añade columnas nuevas si faltan.
     _ensure_column(cur, "players", "icon_id", "INTEGER")
+    _ensure_column(cur, "players", "club_name", "TEXT")
     _ensure_column(cur, "battles", "my_trophies", "INTEGER")
     _ensure_column(cur, "opponents", "trophies", "INTEGER")
     _ensure_column(cur, "allies", "trophies", "INTEGER")
@@ -90,24 +101,26 @@ def normalize_tag(tag: str) -> str:
     return t if t.startswith("#") else "#" + t
 
 
-def add_player(tag: str, name: str | None = None, icon_id: int | None = None) -> bool:
+def add_player(tag: str, name: str | None = None, icon_id: int | None = None,
+               club_name: str | None = None) -> bool:
     tag = normalize_tag(tag)
     conn = get_conn(); cur = conn.cursor()
     now = datetime.now(timezone.utc).isoformat()
-    cur.execute("INSERT OR IGNORE INTO players (tag, name, added_at, active, icon_id) VALUES (?,?,?,1,?)",
-                (tag, name, now, icon_id))
+    cur.execute("INSERT OR IGNORE INTO players (tag, name, added_at, active, icon_id, club_name) VALUES (?,?,?,1,?,?)",
+                (tag, name, now, icon_id, club_name))
     added = cur.rowcount == 1
-    if not added and (name or icon_id is not None):
-        cur.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id) WHERE tag=?",
-                    (name, icon_id, tag))
+    if not added and (name or icon_id is not None or club_name is not None):
+        cur.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), club_name=COALESCE(?,club_name) WHERE tag=?",
+                    (name, icon_id, club_name, tag))
     conn.commit(); conn.close()
     return added
 
 
-def update_player_profile(tag: str, name: str | None, icon_id: int | None) -> None:
+def update_player_profile(tag: str, name: str | None, icon_id: int | None,
+                          club_name: str | None = None) -> None:
     conn = get_conn()
-    conn.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id) WHERE tag=?",
-                 (name, icon_id, normalize_tag(tag)))
+    conn.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), club_name=COALESCE(?,club_name) WHERE tag=?",
+                 (name, icon_id, club_name, normalize_tag(tag)))
     conn.commit(); conn.close()
 
 
@@ -134,7 +147,7 @@ def list_players() -> list[dict]:
     conn = get_conn()
     rows = conn.execute(
         """
-        SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id,
+        SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name,
                (SELECT COUNT(*) FROM battles b WHERE b.player_tag = p.tag) AS battles
         FROM players p ORDER BY p.added_at
         """
@@ -144,8 +157,12 @@ def list_players() -> list[dict]:
 
 
 def active_player_tags() -> list[str]:
+    """Jugadores a sondear: la unión deduplicada de los que algún usuario sigue."""
     conn = get_conn()
-    rows = conn.execute("SELECT tag FROM players WHERE active=1").fetchall()
+    rows = conn.execute(
+        """SELECT DISTINCT up.player_tag FROM user_players up
+           JOIN players p ON p.tag = up.player_tag WHERE p.active=1"""
+    ).fetchall()
     conn.close()
     return [r[0] for r in rows]
 
@@ -155,6 +172,146 @@ def mark_polled(tag: str) -> None:
     conn.execute("UPDATE players SET last_polled=? WHERE tag=?",
                  (datetime.now(timezone.utc).isoformat(), normalize_tag(tag)))
     conn.commit(); conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Usuarios y relación usuario <-> jugadores
+# ---------------------------------------------------------------------------
+
+def create_user(username: str, password_hash: str) -> int | None:
+    """Crea un usuario. Devuelve su id, o None si el nombre ya existe."""
+    conn = get_conn(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO users (username, password_hash, created_at) VALUES (?,?,?)",
+            (username, password_hash, datetime.now(timezone.utc).isoformat()),
+        )
+        uid = cur.lastrowid
+        conn.commit()
+        return uid
+    except sqlite3.IntegrityError:
+        return None
+    finally:
+        conn.close()
+
+
+def get_user_by_username(username: str) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def follow_player(user_id: int, tag: str) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT OR IGNORE INTO user_players (user_id, player_tag, added_at) VALUES (?,?,?)",
+        (user_id, normalize_tag(tag), datetime.now(timezone.utc).isoformat()),
+    )
+    conn.commit(); conn.close()
+
+
+def unfollow_player(user_id: int, tag: str) -> None:
+    """Desvincula el jugador de este usuario. Si ya no lo sigue nadie, borra
+    el jugador y sus datos (deja de sondearse)."""
+    tag = normalize_tag(tag)
+    conn = get_conn(); cur = conn.cursor()
+    cur.execute("DELETE FROM user_players WHERE user_id=? AND player_tag=?", (user_id, tag))
+    remaining = cur.execute(
+        "SELECT COUNT(*) FROM user_players WHERE player_tag=?", (tag,)).fetchone()[0]
+    conn.commit(); conn.close()
+    if remaining == 0:
+        remove_player(tag)  # nadie lo sigue: limpieza completa
+
+
+def user_follows(user_id: int, tag: str) -> bool:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM user_players WHERE user_id=? AND player_tag=?",
+        (user_id, normalize_tag(tag))).fetchone()
+    conn.close()
+    return bool(row)
+
+
+def list_players_for_user(user_id: int) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name,
+                  (SELECT COUNT(*) FROM battles b WHERE b.player_tag = p.tag) AS battles
+           FROM players p JOIN user_players up ON up.player_tag = p.tag
+           WHERE up.user_id = ? ORDER BY up.added_at""",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def link_orphan_players_to(user_id: int) -> None:
+    """Vincula al usuario los jugadores que no sigue nadie (migración: jugadores
+    añadidos antes de existir las cuentas no quedan huérfanos ni se pierden)."""
+    conn = get_conn()
+    orphans = conn.execute(
+        """SELECT tag FROM players WHERE tag NOT IN (SELECT player_tag FROM user_players)"""
+    ).fetchall()
+    now = datetime.now(timezone.utc).isoformat()
+    for r in orphans:
+        conn.execute(
+            "INSERT OR IGNORE INTO user_players (user_id, player_tag, added_at) VALUES (?,?,?)",
+            (user_id, r[0], now))
+    conn.commit(); conn.close()
+
+
+def reassign_players_for_personal_account(personal_id: int, tester_id: int) -> None:
+    """Migración única al crear la cuenta personal: todos los jugadores existentes
+    (los de las pruebas, que son tuyos) pasan a tu cuenta, y la cuenta `tester`
+    se deja sin jugadores."""
+    conn = get_conn(); cur = conn.cursor()
+    now = datetime.now(timezone.utc).isoformat()
+    tags = [r[0] for r in cur.execute("SELECT tag FROM players").fetchall()]
+    for t in tags:
+        cur.execute(
+            "INSERT OR IGNORE INTO user_players (user_id, player_tag, added_at) VALUES (?,?,?)",
+            (personal_id, t, now))
+    cur.execute("DELETE FROM user_players WHERE user_id=?", (tester_id,))  # tester vacío
+    conn.commit(); conn.close()
+
+
+def consume_report_credit(user_id: int, monthly_limit: int) -> bool:
+    """Cuota mensual de informes. Si cambió el mes, recarga a `monthly_limit`
+    (sin acumular sobrantes). Devuelve True si quedaba crédito y lo descuenta."""
+    period = datetime.now(timezone.utc).strftime("%Y-%m")
+    conn = get_conn(); cur = conn.cursor()
+    row = cur.execute(
+        "SELECT reports_remaining, quota_period FROM users WHERE id=?", (user_id,)).fetchone()
+    if not row:
+        conn.close(); return False
+    remaining, stored_period = row["reports_remaining"], row["quota_period"]
+    if stored_period != period or remaining is None:
+        remaining = monthly_limit  # nuevo mes: se rellena hasta el tope, sin acumular
+    if remaining <= 0:
+        cur.execute("UPDATE users SET reports_remaining=?, quota_period=? WHERE id=?",
+                    (remaining, period, user_id))
+        conn.commit(); conn.close()
+        return False
+    remaining -= 1
+    cur.execute("UPDATE users SET reports_remaining=?, quota_period=? WHERE id=?",
+                (remaining, period, user_id))
+    conn.commit(); conn.close()
+    return True
+
+
+def battle_player_tag(battle_id: str) -> str | None:
+    conn = get_conn()
+    row = conn.execute("SELECT player_tag FROM battles WHERE id=?", (battle_id,)).fetchone()
+    conn.close()
+    return row[0] if row else None
 
 
 # ---------------------------------------------------------------------------
@@ -691,6 +848,79 @@ def report_analytics(filters: dict | None = None) -> dict:
         "winrate_evolution": winrate_evolution(filters),
         "battle_points": battle_points(filters),
     }
+
+
+# ---------------------------------------------------------------------------
+# "Qué jugar ahora": cruza la rotación de eventos con tu historial
+# ---------------------------------------------------------------------------
+
+def rotation_analysis(player: str, events: list[dict], min_games: int = 1,
+                      brawler_limit: int = 3) -> list[dict]:
+    """Para cada evento en rotación (modo + mapa) calcula tu win rate y, de tus
+    brawlers en ese mapa, propone los mejores. La 'eficiencia' usa win rate con
+    suavizado (wins+1)/(games+2) para que 1-2 partidas no inflen el ranking, y se
+    desempata por nº de partidas y por cambio medio de trofeos."""
+    tag = normalize_tag(player)
+    conn = get_conn()
+    out = []
+    for ev in events:
+        mode, map_ = ev.get("mode"), ev.get("map")
+        # Stats del jugador en ese mapa+modo (case-insensitive por seguridad).
+        row = conn.execute(
+            """SELECT COUNT(*) AS games,
+                      SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins,
+                      SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses,
+                      AVG(trophy_change) AS avg_tc,
+                      SUM(CASE WHEN is_star_player=1 THEN 1 ELSE 0 END) AS stars,
+                      SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) AS star_elig
+               FROM battles
+               WHERE player_tag=? AND LOWER(map)=LOWER(?)
+                 AND (? IS NULL OR LOWER(mode)=LOWER(?))""",
+            (tag, map_, mode, mode),
+        ).fetchone()
+        wins, losses = row["wins"] or 0, row["losses"] or 0
+        # Mejores brawlers en ese mapa.
+        brows = conn.execute(
+            """SELECT my_brawler AS brawler, COUNT(*) AS games,
+                      SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins,
+                      SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses,
+                      AVG(trophy_change) AS avg_tc
+               FROM battles
+               WHERE player_tag=? AND LOWER(map)=LOWER(?)
+                 AND (? IS NULL OR LOWER(mode)=LOWER(?)) AND my_brawler IS NOT NULL
+               GROUP BY my_brawler""",
+            (tag, map_, mode, mode),
+        ).fetchall()
+        brawlers = []
+        for b in brows:
+            bw, bl = b["wins"] or 0, b["losses"] or 0
+            decided = bw + bl
+            if b["games"] < min_games:
+                continue
+            score = (bw + 1) / (decided + 2) if decided else 0.0  # suavizado
+            brawlers.append({
+                "brawler": b["brawler"], "games": b["games"],
+                "winrate": _winrate(bw, bl),
+                "avg_trophy": round(b["avg_tc"], 1) if b["avg_tc"] is not None else None,
+                "_score": score,
+            })
+        brawlers.sort(key=lambda x: (x["_score"], x["games"], x["avg_trophy"] or 0), reverse=True)
+        for b in brawlers:
+            b.pop("_score", None)
+        out.append({
+            "mode": mode, "map": map_,
+            "start_time": ev.get("startTime"), "end_time": ev.get("endTime"),
+            "games": row["games"] or 0, "wins": wins, "losses": losses,
+            "winrate": _winrate(wins, losses),
+            "avg_trophy": round(row["avg_tc"], 1) if row["avg_tc"] is not None else None,
+            "star_rate": _star_rate(row["stars"], row["star_elig"]),
+            "best_brawlers": brawlers[:brawler_limit],
+        })
+    conn.close()
+    # Ordena: primero los eventos donde tienes mejor win rate (con datos), luego sin datos.
+    out.sort(key=lambda e: (e["games"] > 0, e["winrate"] if e["winrate"] is not None else -1,
+                            e["games"]), reverse=True)
+    return out
 
 
 # ---------------------------------------------------------------------------

@@ -65,6 +65,8 @@
   .player-icon { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-elev); object-fit: cover; }
   .player-header .pname { font-family: var(--display); font-weight: 700; font-size: clamp(20px,2.6vw,26px); letter-spacing: .5px; }
   .player-header .ptag { color: var(--cyan); font-family: var(--display); font-size: 13px; }
+  .player-header .pclub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .player-header .pclub b { color: var(--gold); font-weight: 600; }
 
   /* Pestañas */
   .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 22px; flex-wrap: wrap; }
@@ -183,6 +185,29 @@
   .panel.p-under h2 .dot { background: var(--win); }
   .panel.p-over h2 .dot { background: var(--loss); }
 
+  /* Analíticas: "Qué jugar ahora" */
+  .rotation-block { margin-bottom: 26px; }
+  .rotation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .rot-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; }
+  .rot-card.good { border-color: rgba(65,224,138,.45); }
+  .rot-card.bad { border-color: rgba(255,93,108,.4); }
+  .rot-head { display: flex; align-items: center; gap: 11px; padding: 14px 16px; background-size: cover; background-position: center; }
+  .rot-mode-ic { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+  .rot-title { flex: 1; min-width: 0; }
+  .rot-map { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .3px; }
+  .rot-mode { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+  .rot-wr { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1; text-align: right; white-space: nowrap; }
+  .rot-wr span { display: block; font-family: var(--body); font-weight: 400; font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .rot-wr.none { font-size: 13px; color: var(--muted); }
+  .rot-brawlers { padding: 12px 16px 14px; border-top: 1px solid var(--border); }
+  .rot-br-label { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 9px; }
+  .rot-br-row { display: flex; gap: 9px; }
+  .rot-br { flex: 1; text-align: center; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px; }
+  .rot-br img { width: 42px; height: 42px; object-fit: cover; border-radius: 8px; }
+  .rot-br-name { font-size: 9.5px; text-transform: uppercase; letter-spacing: .3px; margin-top: 5px; line-height: 1.1; }
+  .rot-br-wr { font-family: var(--display); font-weight: 700; font-size: 13px; margin-top: 3px; }
+  .rot-empty { font-size: 12px; color: var(--muted); font-style: italic; }
+
   /* Informe: gráfica de trofeos */
   .chart-box { margin-top: 6px; }
   .trophy-svg { width: 100%; height: auto; display: block; }
@@ -222,9 +247,59 @@
   .report-detail-head { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 4px; }
   .report-detail-head h3 { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: .4px; }
   .report-detail-meta { font-size: 12px; color: var(--muted); }
+
+  /* ---------- Autenticación ---------- */
+  button.btn:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; transform: none; }
+  .user-pill { font-size: 12px; color: var(--cyan); font-family: var(--display); letter-spacing: .5px; align-self: center; }
+  .auth-overlay { position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px;
+    background: radial-gradient(900px 500px at 50% 0%, rgba(255,200,61,0.07), transparent 55%), var(--bg); }
+  .auth-card { width: 100%; max-width: 380px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 18px; padding: 34px 30px; box-shadow: 0 24px 70px rgba(0,0,0,.55); animation: rise .45s ease both; }
+  .auth-brand { text-align: center; margin-bottom: 24px; }
+  .auth-brand h1 { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: 1.5px; text-transform: uppercase; background: linear-gradient(100deg, var(--gold), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .auth-brand p { color: var(--muted); font-size: 13px; margin-top: 5px; }
+  .auth-tabs { display: flex; gap: 4px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+  .auth-tab { flex: 1; font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 11px; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+  .auth-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .auth-form { display: flex; flex-direction: column; }
+  .auth-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
+  .auth-form input { font-family: var(--body); font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 11px 12px; outline: none; margin-bottom: 16px; }
+  .auth-form input:focus { border-color: var(--cyan); }
+  .auth-submit { width: 100%; margin-top: 4px; }
+  .auth-error { color: var(--loss); font-size: 13px; min-height: 18px; margin-bottom: 8px; }
+  .auth-note { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
 </style>
 </head>
 <body>
+  <div id="auth-overlay" class="auth-overlay">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <h1>Brawl Tracker</h1>
+        <p>Estadísticas de Brawl Stars</p>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="auth-tab-login" onclick="switchAuth('login')">Iniciar sesión</button>
+        <button class="auth-tab" id="auth-tab-register" onclick="switchAuth('register')">Crear cuenta</button>
+      </div>
+      <div id="auth-login" class="auth-form">
+        <label class="auth-label">Usuario</label>
+        <input type="text" id="login-user" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()" />
+        <label class="auth-label">Contraseña</label>
+        <input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" />
+        <div class="auth-error" id="login-error"></div>
+        <button class="btn auth-submit" id="login-btn" onclick="doLogin()">Entrar</button>
+      </div>
+      <div id="auth-register" class="auth-form" style="display:none">
+        <label class="auth-label">Usuario</label>
+        <input type="text" id="reg-user" autocomplete="username" onkeydown="if(event.key==='Enter')doRegister()" />
+        <label class="auth-label">Contraseña</label>
+        <input type="password" id="reg-pass" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()" />
+        <div class="auth-note" id="reg-note"></div>
+        <div class="auth-error" id="reg-error"></div>
+        <button class="btn auth-submit" id="reg-btn" onclick="doRegister()">Crear cuenta</button>
+      </div>
+    </div>
+  </div>
+
   <div class="banner" id="banner"></div>
 
   <header>
@@ -234,7 +309,9 @@
     </div>
     <div class="toolbar">
       <div class="status" id="status">—</div>
+      <span class="user-pill" id="user-pill"></span>
       <button class="btn" id="refresh">Actualizar ahora</button>
+      <button class="ghost" id="logout-btn" title="Cerrar sesión">Salir</button>
     </div>
   </header>
 
@@ -264,6 +341,7 @@
       <div>
         <div class="pname" id="player-name">—</div>
         <div class="ptag" id="player-tag">—</div>
+        <div class="pclub" id="player-club" style="display:none"></div>
       </div>
     </div>
 
@@ -305,6 +383,11 @@
     <!-- ANALÍTICAS -->
     <div class="tab-content" id="tab-report">
       <h2 class="section-title">Analíticas</h2>
+      <div class="rotation-block" id="rotation-block" style="display:none">
+        <h2 class="section-title" style="font-size:16px">Qué jugar ahora</h2>
+        <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
+        <div class="rotation-grid" id="rotation-grid"></div>
+      </div>
       <p class="hint" style="margin-bottom:18px">Datos derivados y cruzados de tus partidas. Respeta los filtros de arriba (brawler / modo / mapa), así que sirve para toda la cuenta o acotado a un brawler, modo o mapa concreto.</p>
       <div class="streak-banner" id="streak-banner" style="display:none"></div>
       <div class="highlights" id="highlights"></div>
@@ -381,7 +464,7 @@ let ASSETS = { brawlers: {}, modes: {}, maps: {} };
 
 function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function pctColor(w) { if (w == null) return "var(--neutral)"; if (w >= 55) return "var(--win)"; if (w < 45) return "var(--loss)"; return "var(--gold)"; }
-async function getJSON(u) { const r = await fetch(u); return r.json(); }
+async function getJSON(u) { const r = await fetch(u); if (r.status === 401) { showLogin(); throw new Error("401"); } return r.json(); }
 function fmtTime(t) { const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(t || ""); return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : (t || ""); }
 function fmtClock(iso) { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
 
@@ -569,6 +652,9 @@ function updatePlayerHeader() {
   const p = playersById[currentPlayer];
   $("player-name").textContent = p && p.name ? p.name : (currentPlayer || "—");
   $("player-tag").textContent = currentPlayer || "—";
+  const club = $("player-club");
+  if (p && p.club_name) { club.innerHTML = `Club · <b>${esc(p.club_name)}</b>`; club.style.display = ""; }
+  else { club.style.display = "none"; }
   const img = $("player-icon");
   if (p && p.icon_url) { img.src = p.icon_url; img.style.display = ""; img.onerror = () => { img.style.display = "none"; }; }
   else { img.style.display = "none"; }
@@ -604,10 +690,54 @@ async function refreshAll() {
   await loadPlayers();
   if (currentPlayer) {
     await loadFilters(); applyScope(); await loadStats();
-    if (activeTab === "report") await loadReport();
+    if (activeTab === "report") { await loadReport(); loadRotation(); }
     if (activeTab === "history") await loadHistory(true);
     loadReports();
   }
+}
+
+/* ---------- "Qué jugar ahora" ---------- */
+function prettyMode(m) { return (m || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (c) => c.toUpperCase()); }
+async function loadRotation() {
+  const block = $("rotation-block"), grid = $("rotation-grid");
+  if (!currentPlayer) { block.style.display = "none"; return; }
+  let data;
+  try { data = await getJSON("/api/rotation?player=" + encodeURIComponent(currentPlayer)); }
+  catch (e) { block.style.display = "none"; return; }
+  const events = (data && data.events) || [];
+  if (!events.length) { block.style.display = "none"; return; }
+  grid.innerHTML = events.map(renderRotCard).join("");
+  block.style.display = "";
+}
+function renderRotCard(e) {
+  const wr = e.winrate;
+  const cls = wr == null ? "" : (wr >= 55 ? "good" : (wr < 45 ? "bad" : ""));
+  const ma = mapAsset(e.map), mapImg = ma && ma.image ? ma.image : null;
+  const md = modeAsset(e.mode), modeIc = md && md.icon ? md.icon : null;
+  const headStyle = mapImg
+    ? ` style="background-image:linear-gradient(90deg, var(--bg-elev) 38%, rgba(17,24,36,.55)), url('${mapImg}')"`
+    : "";
+  const wrHtml = wr == null
+    ? `<div class="rot-wr none">sin datos<span>aún no juegas aquí</span></div>`
+    : `<div class="rot-wr" style="color:${pctColor(wr)}">${wr}%<span>tu WR · ${e.games} part.</span></div>`;
+  const brs = (e.best_brawlers || []).map((b) => {
+    const port = brawlerPortrait(b.brawler);
+    const img = port ? `<img src="${port}" alt="" onerror="this.style.display='none'">` : "";
+    const bwr = b.winrate == null ? "–" : b.winrate + "%";
+    return `<div class="rot-br" title="${esc(b.brawler)} · ${bwr} en ${b.games} part.">
+              ${img}<div class="rot-br-name">${esc(b.brawler)}</div>
+              <div class="rot-br-wr" style="color:${pctColor(b.winrate)}">${bwr}</div>
+            </div>`;
+  }).join("");
+  const brsHtml = brs
+    ? `<div class="rot-brawlers"><div class="rot-br-label">Tus mejores brawlers aquí</div><div class="rot-br-row">${brs}</div></div>`
+    : `<div class="rot-brawlers"><div class="rot-empty">Juega este mapa para ver tus mejores brawlers.</div></div>`;
+  return `<div class="rot-card ${cls}">
+    <div class="rot-head"${headStyle}>
+      ${modeIc ? `<img class="rot-mode-ic" src="${modeIc}" alt="" onerror="this.style.display='none'">` : ""}
+      <div class="rot-title"><div class="rot-map">${esc(e.map)}</div><div class="rot-mode">${esc(prettyMode(e.mode))}</div></div>
+      ${wrHtml}
+    </div>${brsHtml}</div>`;
 }
 
 /* ---------- Pestañas ---------- */
@@ -616,7 +746,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === "tab-" + name));
   if (name === "history") loadHistory(true);
-  if (name === "report") loadReport();
+  if (name === "report") { loadReport(); loadRotation(); }
   if (name === "coach") { showCoachListView(); loadReports(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
@@ -628,7 +758,7 @@ $("player-select").addEventListener("change", async () => {
   showCoachListView();
   updatePlayerHeader();
   await loadFilters(); applyScope(); await loadStats();
-  if (activeTab === "report") await loadReport();
+  if (activeTab === "report") { await loadReport(); loadRotation(); }
   if (activeTab === "history") await loadHistory(true);
   loadReports();
 });
@@ -875,9 +1005,82 @@ function setCoachButton(generating) {
 function startReportPolling() { if (!reportPollTimer) reportPollTimer = setInterval(loadReports, 3000); }
 function stopReportPolling() { if (reportPollTimer) { clearInterval(reportPollTimer); reportPollTimer = null; } }
 
-(async () => { await loadAssets(); refreshAll(); })();
 async function loadAssets() { try { ASSETS = await getJSON("/api/assets"); } catch (e) { /* sin imágenes, se muestran solo nombres */ } }
-setInterval(loadStatus, 30000);
+
+/* ---------- Autenticación ---------- */
+function showLogin() { $("auth-overlay").style.display = "flex"; }
+function hideLogin() { $("auth-overlay").style.display = "none"; }
+function setUser(user) { $("user-pill").textContent = user && user.username ? "@" + user.username : ""; }
+
+function switchAuth(which) {
+  const isLogin = which === "login";
+  $("auth-tab-login").classList.toggle("active", isLogin);
+  $("auth-tab-register").classList.toggle("active", !isLogin);
+  $("auth-login").style.display = isLogin ? "flex" : "none";
+  $("auth-register").style.display = isLogin ? "none" : "flex";
+  $("login-error").textContent = ""; $("reg-error").textContent = "";
+}
+
+async function loadAuthConfig() {
+  try {
+    const cfg = await (await fetch("/api/auth/config")).json();
+    const open = !!cfg.registration_open;
+    $("reg-btn").disabled = !open;                      // botón gris si el registro está cerrado
+    $("reg-note").textContent = open ? "" : "El registro está cerrado durante la beta.";
+  } catch (e) { /* si falla, el botón se queda como esté */ }
+}
+
+async function fetchMe() {
+  try { const r = await fetch("/api/auth/me"); if (!r.ok) return null; return await r.json(); }
+  catch (e) { return null; }
+}
+
+async function doLogin() {
+  const username = $("login-user").value.trim(), password = $("login-pass").value;
+  $("login-error").textContent = "";
+  try {
+    const r = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
+    const data = await r.json();
+    if (!r.ok) { $("login-error").textContent = data.error || data.detail || "No se pudo entrar."; return; }
+    onAuthSuccess(data);
+  } catch (e) { $("login-error").textContent = "Error de red."; }
+}
+
+async function doRegister() {
+  if ($("reg-btn").disabled) return;                   // doble seguro: cerrado en beta
+  const username = $("reg-user").value.trim(), password = $("reg-pass").value;
+  $("reg-error").textContent = "";
+  try {
+    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
+    const data = await r.json();
+    if (!r.ok) { $("reg-error").textContent = data.error || data.detail || "No se pudo crear la cuenta."; return; }
+    onAuthSuccess(data);
+  } catch (e) { $("reg-error").textContent = "Error de red."; }
+}
+
+function onAuthSuccess(user) {
+  $("login-pass").value = ""; $("reg-pass").value = "";
+  hideLogin(); setUser(user); bootApp();
+}
+
+async function doLogout() {
+  try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {}
+  currentPlayer = null; playersById = {}; setUser(null);
+  showLogin(); switchAuth("login");
+}
+$("logout-btn").addEventListener("click", doLogout);
+
+/* ---------- Arranque ---------- */
+async function bootApp() { await loadAssets(); await refreshAll(); }
+
+(async () => {
+  await loadAuthConfig();
+  const me = await fetchMe();
+  if (me && me.username) { hideLogin(); setUser(me); bootApp(); }
+  else { showLogin(); }
+})();
+
+setInterval(() => loadStatus().catch(() => {}), 30000);
 </script>
 </body>
 </html>

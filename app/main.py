@@ -14,18 +14,35 @@ from __future__ import annotations
 
 import os
 import json
+import time
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Query, Body
+from fastapi import FastAPI, Query, Body, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
-from . import db, brawl_api, coach, assets
+from . import db, brawl_api, coach, assets, auth
 
 SEED_TAG = os.environ.get("BRAWL_PLAYER_TAG", "").strip()
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL_SECONDS", "180"))
+
+# Cuenta personal (la tuya), con tu hash ya existente. Se configura en el .env:
+#   PERSONAL_USER=itxialdiak
+#   PERSONAL_PASSWORD_HASH='$2a$14$...'   (entre comillas simples por los $)
+PERSONAL_USER = os.environ.get("PERSONAL_USER", "").strip()
+PERSONAL_PASSWORD_HASH = os.environ.get("PERSONAL_PASSWORD_HASH", "").strip()
+
+# --- Interruptores de la beta -------------------------------------------------
+# Para abrir el registro libre: pon REGISTRATION_OPEN = True (el endpoint se
+# activa y el botón "Crear cuenta" deja de estar gris, todo desde aquí).
+REGISTRATION_OPEN = False
+# Para limitar el gasto de informes por usuario cuando abras la beta:
+REPORT_QUOTA_ENABLED = False
+MONTHLY_REPORT_LIMIT = 12  # informes por usuario y mes (cuando la cuota esté activa)
+# ------------------------------------------------------------------------------
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
@@ -39,7 +56,8 @@ async def _poll_player(tag: str) -> int:
         try:
             prof = await brawl_api.get_player(tag)
             await asyncio.to_thread(db.update_player_profile, tag,
-                                    prof.get("name"), (prof.get("icon") or {}).get("id"))
+                                    prof.get("name"), (prof.get("icon") or {}).get("id"),
+                                    (prof.get("club") or {}).get("name"))
         except Exception as e:  # noqa: BLE001
             print(f"[perfil] no se pudo refrescar {tag}: {e}")
     items = await brawl_api.get_battlelog(tag)
@@ -80,8 +98,34 @@ async def _poller():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+
+    # tester / betatest: cuenta VACÍA, la que se reparte a los testers.
+    if not db.get_user_by_username("tester"):
+        db.create_user("tester", auth.hash_password("betatest"))
+        print("Cuenta beta creada: tester / betatest")
+    tester_id = db.get_user_by_username("tester")["id"]
+
+    # Tu cuenta personal con tu hash existente (desde el .env). No se borra nunca.
+    personal_id = None
+    if PERSONAL_USER and PERSONAL_PASSWORD_HASH:
+        existing = db.get_user_by_username(PERSONAL_USER)
+        if existing:
+            personal_id = existing["id"]
+        else:
+            personal_id = db.create_user(PERSONAL_USER, PERSONAL_PASSWORD_HASH)
+            print(f"Cuenta personal creada: {PERSONAL_USER}")
+            if personal_id:
+                # Migración única: tus jugadores de prueba -> a tu cuenta; tester vacío.
+                db.reassign_players_for_personal_account(personal_id, tester_id)
+
     if SEED_TAG:  # opcional: siembra un jugador inicial desde el .env
         db.add_player(SEED_TAG)
+        if personal_id:
+            db.follow_player(personal_id, SEED_TAG)
+
+    # Cualquier jugador sin dueño -> tu cuenta (o tester si no hay cuenta personal).
+    db.link_orphan_players_to(personal_id or tester_id)
+
     via = "proxy RoyaleAPI" if brawl_api.using_proxy() else "API oficial"
     print(f"Endpoint de la API: {brawl_api.BASE}  ({via})")
     task = None
@@ -96,6 +140,75 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Brawl Stars Tracker", lifespan=lifespan)
+app.add_middleware(
+    SessionMiddleware, secret_key=auth.session_secret(),
+    same_site="lax", https_only=False, max_age=60 * 60 * 24 * 30,
+)
+
+
+# --------------------------- Autenticación ---------------------------
+
+def _public_user(u: dict) -> dict:
+    return {"id": u["id"], "username": u["username"]}
+
+
+@app.get("/api/auth/config")
+def api_auth_config():
+    """Lo lee el frontend para (des)grisar el botón de registro."""
+    return {"registration_open": REGISTRATION_OPEN}
+
+
+@app.get("/api/auth/me")
+def api_auth_me(request: Request):
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "No has iniciado sesión."}, status_code=401)
+    return _public_user(u)
+
+
+@app.post("/api/auth/login")
+def api_auth_login(request: Request, payload: dict = Body(...)):
+    username = ((payload or {}).get("username") or "").strip()
+    password = (payload or {}).get("password") or ""
+    u = db.get_user_by_username(username) if username else None
+    if not u or not auth.verify_password(password, u["password_hash"]):
+        return JSONResponse({"error": "Usuario o contraseña incorrectos."}, status_code=401)
+    request.session["user_id"] = u["id"]
+    return _public_user(u)
+
+
+@app.post("/api/auth/logout")
+def api_auth_logout(request: Request):
+    request.session.clear()
+    return {"ok": True}
+
+
+@app.post("/api/auth/register")
+def api_auth_register(request: Request, payload: dict = Body(...)):
+    # Interruptor: durante la beta REGISTRATION_OPEN = False -> el registro está cerrado.
+    if not REGISTRATION_OPEN:
+        return JSONResponse({"error": "El registro está cerrado durante la beta."}, status_code=403)
+    username = ((payload or {}).get("username") or "").strip()
+    password = (payload or {}).get("password") or ""
+    if not (3 <= len(username) <= 20):
+        return JSONResponse({"error": "El usuario debe tener entre 3 y 20 caracteres."}, status_code=400)
+    if len(password) < 6:
+        return JSONResponse({"error": "La contraseña debe tener al menos 6 caracteres."}, status_code=400)
+    uid = db.create_user(username, auth.hash_password(password))
+    if uid is None:
+        return JSONResponse({"error": "Ese nombre de usuario ya existe."}, status_code=409)
+    request.session["user_id"] = uid
+    return _public_user(db.get_user_by_id(uid))
+
+
+def _require_follow(user: dict, player: str) -> str:
+    """Valida que el usuario sigue a ese jugador; devuelve el tag normalizado."""
+    if not player:
+        raise HTTPException(status_code=400, detail="Falta el jugador.")
+    tag = db.normalize_tag(player)
+    if not db.user_follows(user["id"], tag):
+        raise HTTPException(status_code=403, detail="No sigues a ese jugador.")
+    return tag
 
 
 # --------------------------- Jugadores ---------------------------
@@ -110,12 +223,12 @@ def _with_icon(p: dict) -> dict:
 
 
 @app.get("/api/players")
-def api_players():
-    return [_with_icon(p) for p in db.list_players()]
+def api_players(user: dict = Depends(auth.require_user)):
+    return [_with_icon(p) for p in db.list_players_for_user(user["id"])]
 
 
 @app.post("/api/players")
-async def api_add_player(payload: dict = Body(...)):
+async def api_add_player(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     raw = (payload or {}).get("tag", "")
     if not raw or not raw.strip():
         return JSONResponse({"error": "Falta el tag."}, status_code=400)
@@ -132,7 +245,9 @@ async def api_add_player(payload: dict = Body(...)):
         return JSONResponse({"error": f"No se pudo validar el tag: {msg}"}, status_code=502)
     name = profile.get("name")
     icon_id = (profile.get("icon") or {}).get("id")
-    is_new = await asyncio.to_thread(db.add_player, tag, name, icon_id)
+    club_name = (profile.get("club") or {}).get("name")
+    is_new = await asyncio.to_thread(db.add_player, tag, name, icon_id, club_name)
+    await asyncio.to_thread(db.follow_player, user["id"], tag)  # lo asocia a este usuario
     # Sondeo inmediato para que aparezcan datos al momento.
     try:
         await _poll_player(tag)
@@ -142,8 +257,9 @@ async def api_add_player(payload: dict = Body(...)):
 
 
 @app.delete("/api/players/{tag}")
-def api_remove_player(tag: str):
-    db.remove_player(tag)
+def api_remove_player(tag: str, user: dict = Depends(auth.require_user)):
+    # Solo lo desvincula de este usuario; si no lo sigue nadie más, db lo limpia.
+    db.unfollow_player(user["id"], tag)
     return {"removed": db.normalize_tag(tag)}
 
 
@@ -155,13 +271,17 @@ def _filters(player, mode, map_, brawler, vs):
 
 @app.get("/api/overview")
 def api_overview(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
-                 brawler: str = Query(None), vs: str = Query(None)):
+                 brawler: str = Query(None), vs: str = Query(None),
+                 user: dict = Depends(auth.require_user)):
+    _require_follow(user, player)
     return db.overview(_filters(player, mode, map, brawler, vs))
 
 
 @app.get("/api/winrate")
 def api_winrate(by: str = Query("brawler"), player: str = Query(None), mode: str = Query(None),
-                map: str = Query(None), brawler: str = Query(None), vs: str = Query(None)):
+                map: str = Query(None), brawler: str = Query(None), vs: str = Query(None),
+                user: dict = Depends(auth.require_user)):
+    _require_follow(user, player)
     try:
         return db.winrate_by(by, _filters(player, mode, map, brawler, vs))
     except ValueError as e:
@@ -170,24 +290,55 @@ def api_winrate(by: str = Query("brawler"), player: str = Query(None), mode: str
 
 @app.get("/api/vs")
 def api_vs(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
-           brawler: str = Query(None)):
+           brawler: str = Query(None), user: dict = Depends(auth.require_user)):
+    _require_follow(user, player)
     return db.winrate_vs(_filters(player, mode, map, brawler, None))
 
 
 @app.get("/api/report")
 def api_report(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
-               brawler: str = Query(None)):
+               brawler: str = Query(None), user: dict = Depends(auth.require_user)):
     """Cálculos derivados para el Informe (destacados, datos cruzados, serie de trofeos)."""
+    _require_follow(user, player)
     return db.report_analytics(_filters(player, mode, map, brawler, None))
 
 
 @app.get("/api/filters")
-def api_filters(player: str = Query(None)):
+def api_filters(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    _require_follow(user, player)
     return db.distinct_values(player)
 
 
+_rotation_cache = {"at": 0.0, "data": None}
+
+
+@app.get("/api/rotation")
+async def api_rotation(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    """'Qué jugar ahora': rotación actual cruzada con tu win rate por mapa y tus mejores brawlers."""
+    tag = _require_follow(user, player)
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
+    now = time.time()
+    if _rotation_cache["data"] is None or now - _rotation_cache["at"] > 600:  # 10 min
+        try:
+            raw = await brawl_api.get_events_rotation()
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse({"error": f"No se pudo leer la rotación: {e}"}, status_code=502)
+        events = []
+        for it in (raw or []):
+            evt = it.get("event") or {}
+            map_ = evt.get("map") or it.get("map")
+            if not map_:
+                continue
+            events.append({"mode": evt.get("mode") or it.get("mode"), "map": map_,
+                           "startTime": it.get("startTime"), "endTime": it.get("endTime")})
+        _rotation_cache.update(at=now, data=events)
+    analysis = await asyncio.to_thread(db.rotation_analysis, tag, _rotation_cache["data"])
+    return {"events": analysis}
+
+
 @app.get("/api/assets")
-async def api_assets():
+async def api_assets(user: dict = Depends(auth.require_user)):
     """Retratos de brawlers, iconos de modo (con color) e imágenes de mapas (Brawlify)."""
     return await assets.get_assets()
 
@@ -195,13 +346,19 @@ async def api_assets():
 @app.get("/api/battles")
 def api_battles(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
                 brawler: str = Query(None), vs: str = Query(None),
-                limit: int = Query(25), offset: int = Query(0)):
+                limit: int = Query(25), offset: int = Query(0),
+                user: dict = Depends(auth.require_user)):
+    _require_follow(user, player)
     limit = max(1, min(limit, 100))
     return db.list_battles(_filters(player, mode, map, brawler, vs), limit=limit, offset=offset)
 
 
 @app.put("/api/battles/{battle_id}/manual")
-def api_set_manual(battle_id: str, payload: dict = Body(...)):
+def api_set_manual(battle_id: str, payload: dict = Body(...),
+                   user: dict = Depends(auth.require_user)):
+    owner = db.battle_player_tag(battle_id)
+    if owner and not db.user_follows(user["id"], owner):
+        raise HTTPException(status_code=403, detail="No sigues a ese jugador.")
     def num(v):
         try:
             return int(v) if v not in (None, "") else None
@@ -217,10 +374,10 @@ def api_set_manual(battle_id: str, payload: dict = Body(...)):
 
 
 @app.get("/api/status")
-def api_status():
+def api_status(user: dict = Depends(auth.require_user)):
     return {
         "configured": bool(brawl_api.TOKEN),
-        "players": db.active_player_tags(),
+        "players": [p["tag"] for p in db.list_players_for_user(user["id"])],
         "poll_interval": POLL_INTERVAL,
         "api_base": brawl_api.BASE,
         "via_proxy": brawl_api.using_proxy(),
@@ -230,14 +387,23 @@ def api_status():
 
 
 @app.post("/api/poll")
-async def api_poll(player: str = Query(None)):
+async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_user)):
     if not brawl_api.TOKEN:
         return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
+    tag = _require_follow(user, player) if player else None
     try:
-        if player:
-            new = await _poll_player(player)
+        if tag:
+            new = await _poll_player(tag)
             return {"new": new, "players": 1, "at": datetime.now(timezone.utc).isoformat()}
-        return await _poll_all()
+        # Sin jugador: sondea solo los jugadores de este usuario.
+        tags = [p["tag"] for p in await asyncio.to_thread(db.list_players_for_user, user["id"])]
+        total = 0
+        for t in tags:
+            try:
+                total += await _poll_player(t)
+            except Exception as e:  # noqa: BLE001
+                print(f"[poll usuario {user['id']}] {t}: {e}")
+        return {"new": total, "players": len(tags), "at": datetime.now(timezone.utc).isoformat()}
     except Exception as e:  # noqa: BLE001
         _last_poll["error"] = str(e)
         return JSONResponse({"error": str(e)}, status_code=502)
@@ -267,14 +433,21 @@ async def _run_report(report_id: int, player: str, filters: dict):
 
 
 @app.post("/api/reports")
-async def api_create_report(payload: dict = Body(...)):
+async def api_create_report(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     player = (payload or {}).get("player")
     if not player:
         return JSONResponse({"error": "Falta el jugador."}, status_code=400)
+    _require_follow(user, player)
     if not coach.configured():
         return JSONResponse({"error": "Falta ANTHROPIC_API_KEY en el .env para generar informes."}, status_code=400)
     if await asyncio.to_thread(db.has_generating_report, player):
         return JSONResponse({"error": "Ya hay un informe generándose para este jugador. Espera a que termine."}, status_code=409)
+    # Cuota mensual de informes: activa solo si REPORT_QUOTA_ENABLED (apagada en beta).
+    if REPORT_QUOTA_ENABLED:
+        if not await asyncio.to_thread(db.consume_report_credit, user["id"], MONTHLY_REPORT_LIMIT):
+            return JSONResponse(
+                {"error": f"Has agotado tus {MONTHLY_REPORT_LIMIT} informes de este mes. Se renuevan el mes que viene."},
+                status_code=429)
     filters = {
         "player": player,
         "brawler": (payload or {}).get("brawler") or None,
@@ -290,16 +463,19 @@ async def api_create_report(payload: dict = Body(...)):
 
 
 @app.get("/api/reports")
-async def api_list_reports(player: str = Query(...)):
+async def api_list_reports(player: str = Query(...), user: dict = Depends(auth.require_user)):
+    _require_follow(user, player)
     rows = await asyncio.to_thread(db.list_reports, player)
     return [_public_report(r, with_content=False) for r in rows]
 
 
 @app.get("/api/reports/{report_id}")
-async def api_get_report(report_id: int):
+async def api_get_report(report_id: int, user: dict = Depends(auth.require_user)):
     rep = await asyncio.to_thread(db.get_report, report_id)
     if not rep:
         return JSONResponse({"error": "No existe ese informe."}, status_code=404)
+    if not db.user_follows(user["id"], rep["player_tag"]):
+        raise HTTPException(status_code=403, detail="No sigues a ese jugador.")
     return _public_report(rep, with_content=True)
 
 

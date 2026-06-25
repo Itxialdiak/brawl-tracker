@@ -3,7 +3,7 @@ Cliente de la API oficial de Brawl Stars (a través del proxy de RoyaleAPI).
 
 Cómo funciona el proxy:
 - En la KEY das de alta la IP del proxy (45.79.218.79), no la tuya.
-- Pones BRAWL_API_BASE=https://proxy.royaleapi.dev/v1 en el .env.
+- Pones BRAWL_API_BASE=https://bsproxy.royaleapi.dev/v1 en el .env.
 - El proxy reenvía tu petición (con tu token) a Supercell desde su IP fija,
   así tu IP pública puede ser dinámica sin romper nada.
 
@@ -23,7 +23,7 @@ TOKEN = os.environ.get("BRAWL_API_TOKEN", "")
 
 
 def using_proxy() -> bool:
-    return "proxy.royaleapi.dev" in BASE
+    return "royaleapi.dev" in BASE
 
 
 def _headers():
@@ -61,3 +61,9 @@ async def get_battlelog(tag: str) -> list[dict]:
 async def get_player(tag: str) -> dict:
     """Perfil del jugador (trofeos, brawlers, niveles…). Útil más adelante."""
     return await _get(f"/players/{_tag_path(tag)}")
+
+
+async def get_events_rotation() -> list[dict]:
+    """Eventos en rotación ahora mismo: cada uno con su modo y mapa."""
+    data = await _get("/events/rotation")
+    return data if isinstance(data, list) else data.get("items", data)
