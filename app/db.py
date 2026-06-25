@@ -570,6 +570,94 @@ def _pick(rows, key, reverse, min_total=3):
     return sorted(elig, key=lambda r: r[key], reverse=reverse)[0]
 
 
+def _iso(t: str) -> str:
+    """Convierte el formato compacto de la API (20240101T120000.000Z) a ISO 8601."""
+    if not t or len(t) < 15 or t[8] != "T":
+        return t
+    return f"{t[0:4]}-{t[4:6]}-{t[6:8]}T{t[9:11]}:{t[11:13]}:{t[13:15]}Z"
+
+
+def current_streak(filters: dict | None = None) -> dict:
+    """Racha actual de victorias o derrotas seguidas (partidas decididas más recientes)."""
+    filters = filters or {}
+    where_sql, params = _build_filters(filters)
+    conn = get_conn()
+    rows = conn.execute(f"SELECT is_win FROM battles {where_sql} ORDER BY battle_time DESC", params).fetchall()
+    conn.close()
+    stype, count = None, 0
+    for r in rows:
+        w = r["is_win"]
+        if w is None:
+            if count == 0:
+                continue   # ignoramos empates al principio
+            break           # un empate corta la racha
+        if count == 0:
+            stype, count = w, 1
+        elif w == stype:
+            count += 1
+        else:
+            break
+    return {"type": "win" if stype == 1 else ("loss" if stype == 0 else None), "count": count}
+
+
+def trophy_diff_performance(filters: dict | None = None) -> list[dict]:
+    """Win rate según la diferencia de copas con el rival (tus copas - media del rival)."""
+    filters = filters or {}
+    where_sql, params = _build_filters(filters)
+    conn = get_conn()
+    rows = conn.execute(
+        f"""SELECT b.is_win, b.my_trophies, AVG(o.trophies) AS enemy_avg
+            FROM battles b LEFT JOIN opponents o ON o.battle_id = b.id
+            {where_sql} GROUP BY b.id""",
+        params,
+    ).fetchall()
+    conn.close()
+    buckets = [
+        {"label": "Rival mucho más fuerte (+150🏆)", "lo": None, "hi": -150, "w": 0, "t": 0},
+        {"label": "Rival algo más fuerte", "lo": -150, "hi": -50, "w": 0, "t": 0},
+        {"label": "Nivel parejo (±50🏆)", "lo": -50, "hi": 50, "w": 0, "t": 0},
+        {"label": "Rival algo más débil", "lo": 50, "hi": 150, "w": 0, "t": 0},
+        {"label": "Rival mucho más débil (-150🏆)", "lo": 150, "hi": None, "w": 0, "t": 0},
+    ]
+    for r in rows:
+        if r["is_win"] is None or r["my_trophies"] is None or r["enemy_avg"] is None:
+            continue
+        diff = r["my_trophies"] - r["enemy_avg"]
+        for b in buckets:
+            if (b["lo"] is None or diff >= b["lo"]) and (b["hi"] is None or diff < b["hi"]):
+                b["t"] += 1
+                if r["is_win"] == 1:
+                    b["w"] += 1
+                break
+    return [{"label": b["label"], "wins": b["w"], "losses": b["t"] - b["w"],
+             "total": b["t"], "winrate": _winrate(b["w"], b["t"] - b["w"])} for b in buckets]
+
+
+def winrate_evolution(filters: dict | None = None, window: int = 10) -> list[dict]:
+    """Win rate en ventana móvil a lo largo de las partidas (forma reciente)."""
+    filters = filters or {}
+    where_sql, params = _build_filters(filters)
+    conn = get_conn()
+    rows = conn.execute(f"SELECT is_win FROM battles {where_sql} ORDER BY battle_time ASC", params).fetchall()
+    conn.close()
+    decisive = [r["is_win"] for r in rows if r["is_win"] is not None]
+    out = []
+    for i in range(len(decisive)):
+        win = decisive[max(0, i - window + 1):i + 1]
+        out.append({"i": i, "winrate": round(100 * sum(win) / len(win), 1)})
+    return out
+
+
+def battle_points(filters: dict | None = None) -> list[dict]:
+    """Partidas en formato ligero (hora ISO + resultado) para la franja horaria local."""
+    filters = filters or {}
+    where_sql, params = _build_filters(filters)
+    conn = get_conn()
+    rows = conn.execute(f"SELECT battle_time, is_win FROM battles {where_sql} ORDER BY battle_time ASC", params).fetchall()
+    conn.close()
+    return [{"time": _iso(r["battle_time"]), "is_win": r["is_win"]} for r in rows]
+
+
 def report_analytics(filters: dict | None = None) -> dict:
     """Reúne todos los cálculos del Informe en un solo objeto."""
     filters = filters or {}
@@ -598,6 +686,10 @@ def report_analytics(filters: dict | None = None) -> dict:
         "by_brawler": by_brawler, "by_mode": by_mode, "by_map": by_map,
         "vs": vs, "allies": allies,
         "trophy_series": trophy_series(filters), "crosstab": crosstab(filters),
+        "streak": current_streak(filters),
+        "trophy_diff": trophy_diff_performance(filters),
+        "winrate_evolution": winrate_evolution(filters),
+        "battle_points": battle_points(filters),
     }
 
 

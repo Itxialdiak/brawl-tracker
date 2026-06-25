@@ -175,6 +175,14 @@
   .hl-name { font-family: var(--display); font-weight: 600; font-size: 15px; margin: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hl-value { font-size: 12px; color: var(--cyan); }
 
+  /* Analíticas: racha actual */
+  .streak-banner { display: flex; align-items: center; gap: 10px; border-radius: 13px; padding: 14px 18px; margin-bottom: 18px; font-family: var(--display); font-size: 17px; letter-spacing: .3px; border: 1px solid var(--border); }
+  .streak-banner b { font-size: 22px; }
+  .streak-banner.win { background: rgba(65,224,138,0.10); border-color: rgba(65,224,138,0.35); color: var(--win); }
+  .streak-banner.loss { background: rgba(255,93,108,0.10); border-color: rgba(255,93,108,0.35); color: var(--loss); }
+  .panel.p-under h2 .dot { background: var(--win); }
+  .panel.p-over h2 .dot { background: var(--loss); }
+
   /* Informe: gráfica de trofeos */
   .chart-box { margin-top: 6px; }
   .trophy-svg { width: 100%; height: auto; display: block; }
@@ -273,7 +281,7 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="stats">Estadísticas</button>
-      <button class="tab" data-tab="report">Informe</button>
+      <button class="tab" data-tab="report">Analíticas</button>
       <button class="tab" data-tab="history">Historial de partidas</button>
       <button class="tab" data-tab="coach">Consejos</button>
     </div>
@@ -294,21 +302,37 @@
       </div>
     </div>
 
-    <!-- INFORME -->
+    <!-- ANALÍTICAS -->
     <div class="tab-content" id="tab-report">
-      <h2 class="section-title">Informe</h2>
+      <h2 class="section-title">Analíticas</h2>
       <p class="hint" style="margin-bottom:18px">Datos derivados y cruzados de tus partidas. Respeta los filtros de arriba (brawler / modo / mapa), así que sirve para toda la cuenta o acotado a un brawler, modo o mapa concreto.</p>
+      <div class="streak-banner" id="streak-banner" style="display:none"></div>
       <div class="highlights" id="highlights"></div>
       <div class="grid">
         <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Evolución de trofeos</h2>
           <div class="hint">Balance acumulado de trofeos a lo largo de las partidas registradas.</div>
           <div class="chart-box" id="trophy-chart"></div></div>
+        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Forma reciente · win rate</h2>
+          <div class="hint">Win rate en ventana móvil (últimas partidas). Por encima de la línea de puntos = ganas más de lo que pierdes.</div>
+          <div class="chart-box" id="winrate-chart"></div></div>
+        <div class="panel"><h2><span class="dot"></span>Según diferencia de copas</h2>
+          <div class="hint">Tu win rate frente a rivales más fuertes o más débiles. Perder contra rivales más débiles es la señal de alarma.</div>
+          <div class="rows" id="trophy-diff"></div></div>
+        <div class="panel"><h2><span class="dot"></span>Por franja horaria</h2>
+          <div class="hint">A qué hora del día rindes mejor (en tu hora local).</div>
+          <div class="rows" id="hourly"></div></div>
         <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
           <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
           <div class="heat-wrap" id="heatmap"></div></div>
-        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Mejores aliados</h2>
+        <div class="panel"><h2><span class="dot"></span>Mejores aliados</h2>
           <div class="hint">Brawlers aliados con los que más ganas cuando van en tu equipo.</div>
           <div class="rows" id="ri-allies"></div></div>
+        <div class="panel p-under"><h2><span class="dot"></span>Infravalorados</h2>
+          <div class="hint">Buen win rate pero los juegas poco: deberías pickearlos más.</div>
+          <div class="rows" id="val-under"></div></div>
+        <div class="panel p-over"><h2><span class="dot"></span>Para revisar</h2>
+          <div class="hint">Los juegas mucho pero con mal win rate: quizá conviene reducirlos o repasarlos.</div>
+          <div class="rows" id="val-over"></div></div>
       </div>
     </div>
 
@@ -654,10 +678,84 @@ function fmtDateTime(iso) { try { return new Date(iso).toLocaleString("es-ES", {
 async function loadReport() {
   if (!currentPlayer) return;
   const a = await getJSON("/api/report?" + qs());
+  renderStreak(a.streak);
   renderHighlights(a.highlights);
   $("trophy-chart").innerHTML = trophyChart(a.trophy_series);
+  $("winrate-chart").innerHTML = winrateChart(a.winrate_evolution);
+  $("trophy-diff").innerHTML = renderBuckets(a.trophy_diff, true);
+  $("hourly").innerHTML = renderHourly(a.battle_points);
   $("heatmap").innerHTML = heatmap(a.crosstab);
   render($("ri-allies"), a.allies, "brawler");
+  renderValuation(a.by_brawler);
+}
+function renderStreak(s) {
+  const el = $("streak-banner");
+  if (!el) return;
+  if (!s || !s.count) { el.style.display = "none"; return; }
+  el.style.display = "";
+  const win = s.type === "win";
+  el.className = "streak-banner " + (win ? "win" : "loss");
+  const noun = win ? (s.count === 1 ? "victoria seguida" : "victorias seguidas")
+                   : (s.count === 1 ? "derrota seguida" : "derrotas seguidas");
+  el.innerHTML = `${win ? "🔥" : "❄️"} Racha actual: <b>${s.count}</b> ${noun}`;
+}
+function analyticsBar(label, winrate, total, note) {
+  const color = pctColor(winrate);
+  const pct = winrate == null ? "—" : winrate + "%";
+  const barW = winrate == null ? 0 : Math.max(2, winrate);
+  return `<div class="row"><div class="name">${label}</div>
+    <div class="pct" style="color:${color}">${pct}</div>
+    <div class="bar-wrap"><div class="bar" style="width:${barW}%;background:${color}"></div></div>
+    <div class="meta">${total} ${total === 1 ? "partida" : "partidas"}${note ? " · " + note : ""}</div></div>`;
+}
+function renderBuckets(buckets, hideEmpty) {
+  const rows = hideEmpty ? (buckets || []).filter((b) => b.total > 0) : (buckets || []);
+  if (!rows.length) return `<div class="empty">Sin datos suficientes todavía.</div>`;
+  return rows.map((b) => analyticsBar(esc(b.label), b.winrate, b.total)).join("");
+}
+function renderHourly(points) {
+  const fr = [
+    { label: "Madrugada (00–06)", lo: 0, hi: 6, w: 0, t: 0 },
+    { label: "Mañana (06–12)", lo: 6, hi: 12, w: 0, t: 0 },
+    { label: "Tarde (12–18)", lo: 12, hi: 18, w: 0, t: 0 },
+    { label: "Noche (18–24)", lo: 18, hi: 24, w: 0, t: 0 },
+  ];
+  for (const p of points || []) {
+    if (p.is_win == null) continue;
+    const h = new Date(p.time).getHours();
+    if (isNaN(h)) continue;
+    const b = fr.find((x) => h >= x.lo && h < x.hi);
+    if (b) { b.t++; if (p.is_win === 1) b.w++; }
+  }
+  if (!fr.some((b) => b.t > 0)) return `<div class="empty">Sin datos suficientes todavía.</div>`;
+  return fr.map((b) => analyticsBar(b.label, b.t ? Math.round((b.w / b.t) * 100) : null, b.t)).join("");
+}
+function winrateChart(series) {
+  if (!series || series.length < 2) return `<div class="empty">Necesitas algunas partidas más para ver la forma reciente.</div>`;
+  const W = 640, H = 200, pad = 28;
+  const X = (i) => pad + (W - 2 * pad) * (i / (series.length - 1));
+  const Y = (v) => H - pad - (H - 2 * pad) * (v / 100);
+  const line = series.map((p, i) => `${X(i).toFixed(1)},${Y(p.winrate).toFixed(1)}`).join(" ");
+  const last = series[series.length - 1].winrate, color = pctColor(last), y50 = Y(50).toFixed(1);
+  return `<svg viewBox="0 0 ${W} ${H}" class="trophy-svg">
+    <line x1="${pad}" y1="${y50}" x2="${W - pad}" y2="${y50}" stroke="var(--border)" stroke-dasharray="4 4" />
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+  </svg>
+  <div class="chart-cap">Win rate en ventana móvil. Ahora mismo: <b style="color:${color}">${last}%</b></div>`;
+}
+function renderValuation(byBrawler) {
+  const under = $("val-under"), over = $("val-over");
+  if (!under || !over) return;
+  const elig = (byBrawler || []).filter((b) => b.winrate != null && b.total >= 2);
+  if (!elig.length) {
+    const msg = `<div class="empty">Sin datos suficientes todavía.</div>`;
+    under.innerHTML = msg; over.innerHTML = msg; return;
+  }
+  const avg = elig.reduce((s, b) => s + b.total, 0) / elig.length;
+  const u = elig.filter((b) => b.winrate >= 55 && b.total < avg).sort((a, b) => b.winrate - a.winrate).slice(0, 5);
+  const o = elig.filter((b) => b.winrate < 45 && b.total >= avg).sort((a, b) => a.winrate - b.winrate).slice(0, 5);
+  under.innerHTML = u.length ? u.map((b) => rowHTML(b, "brawler")).join("") : `<div class="empty">Nada destacable: no tienes brawlers con buen win rate y pocas partidas.</div>`;
+  over.innerHTML = o.length ? o.map((b) => rowHTML(b, "brawler")).join("") : `<div class="empty">Nada que revisar: no abusas de ningún brawler flojo.</div>`;
 }
 function hlCard(icon, label, item, kind, valueFn) {
   let inner = icon, name = "—", value = "—";
