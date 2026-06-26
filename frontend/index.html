@@ -619,19 +619,22 @@
     .toolbar { justify-content: flex-end; gap: 10px; min-width: 0; }
 
     /* Barra de estado/actualizar */
-    .bytics-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+    .bytics-bar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
     .bytics-bar .btn { width: 100%; }
     .status { text-align: left; }
 
     /* Controles de formulario a ancho completo */
     select, input[type="text"], input[type="number"] { min-width: 0; width: 100%; }
 
-    /* Barra de jugador: apilar segmentos */
-    .player-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 13px 14px; }
-    .player-bar .seg { flex: 1 1 100%; flex-wrap: wrap; gap: 8px; }
+    /* Barra de jugador: apilar segmentos; los controles rellenan el hueco sobrante (no 100%) */
+    .player-bar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; padding: 13px 14px; }
+    .player-bar .seg { flex: 1 1 100%; flex-wrap: nowrap; gap: 8px; align-items: center; min-width: 0; }
+    .player-bar .seg .lbl { flex: 0 0 auto; }
     .player-bar .spacer { display: none; }
-    .player-bar .seg select, .player-bar .seg #add-tag { flex: 1 1 auto; }
-    #add-player, #remove-player { flex: 0 0 auto; width: auto; }
+    .player-bar .seg select, .player-bar #add-tag { flex: 1 1 0; min-width: 0; width: auto; }
+    .player-bar .seg button { flex: 0 0 auto; }
+    #add-player { padding: 9px 15px; }      /* compacto: en móvil solo "+" */
+    .add-word { display: none; }
 
     /* Filtros: dos por fila */
     .filters { gap: 11px; margin-bottom: 18px; }
@@ -981,7 +984,7 @@
     <div class="seg">
       <span class="lbl">Añadir</span>
       <input type="text" id="add-tag" placeholder="#TAG del jugador" />
-      <button class="btn" id="add-player">+ Seguir</button>
+      <button class="btn" id="add-player">+<span class="add-word"> Añadir</span></button>
     </div>
   </div>
 
@@ -2451,14 +2454,15 @@ $("add-player").addEventListener("click", addPlayer);
 $("add-tag").addEventListener("keydown", (e) => { if (e.key === "Enter") addPlayer(); });
 async function addPlayer() {
   const tag = $("add-tag").value.trim(); if (!tag) return;
-  const btn = $("add-player"); btn.disabled = true; btn.textContent = "Buscando…";
+  const btn = $("add-player"); const word = btn.querySelector(".add-word");
+  btn.disabled = true; if (word) word.textContent = " Buscando…";
   try {
     const r = await fetch("/api/players", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag }) });
     const data = await r.json();
     if (data.error) alert(data.error);
     else { $("add-tag").value = ""; currentPlayer = data.tag; await refreshAll(); }
   } catch (e) { alert("Error de red al añadir el jugador."); }
-  btn.disabled = false; btn.textContent = "+ Seguir";
+  btn.disabled = false; if (word) word.textContent = " Añadir";
 }
 $("remove-player").addEventListener("click", async () => {
   if (!currentPlayer) return;
