@@ -207,7 +207,8 @@
   .we-divider { font-family: var(--display); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold);
     border-top: 1px solid var(--border); margin: 20px 0 12px; padding-top: 12px; }
   .modal-card.modal-wide { max-width: 720px; width: 94vw; }
-  .modal-card.modal-xwide { max-width: 1080px; width: 96vw; max-height: calc(100vh - 28px); overflow-y: auto; }
+  .modal-card.modal-xwide { max-width: 1140px; width: 96vw; max-height: calc(100vh - 28px); overflow-y: auto; }
+  .modal-card.modal-xxwide { max-width: 1320px; width: 96vw; max-height: calc(100vh - 24px); overflow-y: auto; }
   .modal-card.modal-xwide .modal-close { position: sticky; float: right; top: 4px; z-index: 5; }
 
   /* ===================== PANEL DE ADMINISTRACIÓN ===================== */
@@ -660,16 +661,57 @@
   .mini-no { background: transparent; color: var(--loss); border-color: rgba(255,77,115,.4); }
   .evd-empty-table { text-align: center; padding: 28px 20px; color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; font-size: 13.5px; line-height: 1.5; }
 
+  /* Fase 1: clasificación y enfrentamientos */
+  .stand-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .stand-table th { text-align: center; font-family: var(--display); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .stand-table td { text-align: center; padding: 8px; border-bottom: 1px solid rgba(150,130,255,.08); white-space: nowrap; }
+  .stand-table th:nth-child(2), .stand-table td:nth-child(2) { text-align: left; }
+  .stand-name { font-weight: 600; }
+  .stand-pts { font-family: var(--display); font-weight: 700; color: var(--gold); }
+  .evd-mbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .evd-round { margin-bottom: 14px; }
+  .evd-round-h { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 7px; }
+  .evd-match { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; margin-bottom: 6px; }
+  .evd-match.played { border-color: rgba(54,225,255,.22); }
+  .m-line { display: flex; align-items: center; gap: 10px; }
+  .m-side { flex: 1 1 0; min-width: 0; font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-side.b { text-align: right; }
+  .m-side.win { color: var(--win); }
+  .m-mid { flex: 0 0 auto; font-family: var(--display); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px; }
+  .m-score { color: var(--muted); } .m-score.win { color: var(--win); }
+  .m-vs { color: var(--muted); font-size: 12px; }
+  .m-edit { flex: 0 0 auto; background: transparent; border: 1px solid var(--border); color: var(--cyan); border-radius: 7px; padding: 4px 9px; cursor: pointer; font-size: 13px; }
+  .m-edit:hover { border-color: var(--cyan); }
+  .m-meta { text-align: center; font-size: 11px; color: var(--muted); margin-top: 5px; }
+
   .lg-empty { text-align: center; padding: 36px 20px; color: var(--muted); border: 1px dashed var(--border); border-radius: 14px; font-size: 14px; }
   .lg-board { margin-top: 34px; }
 
   /* Filtros con checkboxes */
-  .board-filters { display: flex; flex-wrap: wrap; gap: 12px 26px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; }
-  .filter-group { display: flex; flex-direction: column; gap: 8px; }
-  .filter-label { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--gold); }
-  .filter-group .chk, .lang-chks .chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; user-select: none; }
-  .lang-chks { display: grid; grid-template-columns: repeat(2, auto); gap: 6px 18px; }
+  .board-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .filter-dd { position: relative; }
+  .filter-dd-trigger { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--text);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; cursor: pointer; transition: border-color .12s; }
+  .filter-dd-trigger:hover, .filter-dd-trigger.active { border-color: rgba(150,130,255,.5); }
+  .filter-dd-name { letter-spacing: .3px; }
+  .filter-dd-count { font-family: var(--body); font-weight: 600; font-size: 11.5px; color: var(--cyan); }
+  .filter-dd-caret { color: var(--muted); font-size: 10px; transition: transform .15s; }
+  .filter-dd-trigger.active .filter-dd-caret { transform: rotate(180deg); }
+  .filter-dd-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 190px; max-width: 90vw;
+    background: var(--bg-elev); border: 1px solid rgba(150,130,255,.32); border-radius: 12px; padding: 12px; box-shadow: 0 16px 42px rgba(0,0,0,.55); }
+  .filter-dd-panel.open { display: block; }
+  .filter-dd-wide { min-width: 320px; }
+  .filter-dd-actions { display: flex; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .filter-dd-actions button { flex: 1; font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: .3px; text-transform: uppercase; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; cursor: pointer; transition: color .12s, border-color .12s; white-space: nowrap; }
+  .filter-dd-actions button:hover { color: var(--cyan); border-color: rgba(54,225,255,.45); }
+  .filter-dd-list { display: flex; flex-direction: column; gap: 9px; max-height: 264px; overflow-y: auto; }
+  .filter-dd-list.lang-chks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px 16px; }
+  .filter-dd-list .chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; user-select: none; }
   .chk input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cyan); cursor: pointer; flex: 0 0 auto; }
+  .filter-clear { font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .3px; text-transform: uppercase; color: var(--muted);
+    background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 9px 15px; cursor: pointer; transition: color .12s, border-color .12s; margin-left: auto; }
+  .filter-clear:hover { color: var(--loss); border-color: rgba(255,77,115,.4); }
 
   /* Toggle de segmentos (crear) */
   .seg-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -817,8 +859,9 @@
     .lg-mine-tabs::-webkit-scrollbar { display: none; }
     .lgtab { flex: 0 0 auto; white-space: nowrap; }
     .event-grid { grid-template-columns: 1fr; }
-    .board-filters { flex-direction: column; gap: 14px; }
-    .lang-chks { grid-template-columns: repeat(2, 1fr); }
+    .board-filters { gap: 8px; }
+    .filter-dd-wide { min-width: 280px; }
+    .filter-dd-panel { max-width: calc(100vw - 32px); }
     .ee-grid, .ee-grid-3 { grid-template-columns: 1fr; }
     .ed-grid { grid-template-columns: 1fr; }
     .modal-x { top: 10px; right: 10px; }
@@ -1356,23 +1399,52 @@
 
     <!-- Tablón de eventos -->
     <div class="lg-board">
-      <h2 class="section-title" style="margin-bottom:14px">Tablón de eventos</h2>
+      <h2 class="section-title" style="margin-bottom:12px">Tablón de eventos</h2>
       <div class="board-filters">
-        <div class="filter-group">
-          <span class="filter-label">Tipo</span>
-          <label class="chk"><input type="checkbox" value="league" data-fil="types" checked onchange="loadBoard()"><span>Ligas</span></label>
-          <label class="chk"><input type="checkbox" value="tournament" data-fil="types" checked onchange="loadBoard()"><span>Torneos</span></label>
+        <div class="filter-dd" data-group="types">
+          <button class="filter-dd-trigger" type="button" onclick="toggleFilterDD(event,'types')">
+            <span class="filter-dd-name">Tipo</span><span class="filter-dd-count" id="ddc-types"></span><span class="filter-dd-caret">▾</span>
+          </button>
+          <div class="filter-dd-panel" id="ddp-types">
+            <div class="filter-dd-actions">
+              <button type="button" onclick="setGroupFilters('types',true)">Marcar todo</button>
+              <button type="button" onclick="setGroupFilters('types',false)">Quitar todo</button>
+            </div>
+            <div class="filter-dd-list">
+              <label class="chk"><input type="checkbox" value="league" data-fil="types" checked onchange="loadBoard()"><span>Ligas</span></label>
+              <label class="chk"><input type="checkbox" value="tournament" data-fil="types" checked onchange="loadBoard()"><span>Torneos</span></label>
+            </div>
+          </div>
         </div>
-        <div class="filter-group">
-          <span class="filter-label">Aceptación</span>
-          <label class="chk"><input type="checkbox" value="public" data-fil="acceptance" checked onchange="loadBoard()"><span>Sin aceptación</span></label>
-          <label class="chk"><input type="checkbox" value="acceptance" data-fil="acceptance" checked onchange="loadBoard()"><span>Con aceptación</span></label>
-          <label class="chk"><input type="checkbox" value="private" data-fil="acceptance" onchange="loadBoard()"><span>Privados</span></label>
+        <div class="filter-dd" data-group="acceptance">
+          <button class="filter-dd-trigger" type="button" onclick="toggleFilterDD(event,'acceptance')">
+            <span class="filter-dd-name">Aceptación</span><span class="filter-dd-count" id="ddc-acceptance"></span><span class="filter-dd-caret">▾</span>
+          </button>
+          <div class="filter-dd-panel" id="ddp-acceptance">
+            <div class="filter-dd-actions">
+              <button type="button" onclick="setGroupFilters('acceptance',true)">Marcar todo</button>
+              <button type="button" onclick="setGroupFilters('acceptance',false)">Quitar todo</button>
+            </div>
+            <div class="filter-dd-list">
+              <label class="chk"><input type="checkbox" value="public" data-fil="acceptance" checked onchange="loadBoard()"><span>Sin aceptación</span></label>
+              <label class="chk"><input type="checkbox" value="acceptance" data-fil="acceptance" checked onchange="loadBoard()"><span>Con aceptación</span></label>
+              <label class="chk"><input type="checkbox" value="private" data-fil="acceptance" checked onchange="loadBoard()"><span>Privados</span></label>
+            </div>
+          </div>
         </div>
-        <div class="filter-group">
-          <span class="filter-label">Idioma</span>
-          <div class="lang-chks" id="lang-filter-chks"></div>
+        <div class="filter-dd" data-group="langs">
+          <button class="filter-dd-trigger" type="button" onclick="toggleFilterDD(event,'langs')">
+            <span class="filter-dd-name">Idioma</span><span class="filter-dd-count" id="ddc-langs"></span><span class="filter-dd-caret">▾</span>
+          </button>
+          <div class="filter-dd-panel filter-dd-wide" id="ddp-langs">
+            <div class="filter-dd-actions">
+              <button type="button" onclick="setGroupFilters('langs',true)">Marcar todo</button>
+              <button type="button" onclick="setGroupFilters('langs',false)">Quitar todo</button>
+            </div>
+            <div class="filter-dd-list lang-chks" id="lang-filter-chks"></div>
+          </div>
         </div>
+        <button class="filter-clear" type="button" onclick="clearFilters()">Limpiar</button>
       </div>
       <div class="event-grid" id="board-events-grid"></div>
       <div class="lg-empty" id="board-events-empty" style="display:none">No hay eventos públicos que coincidan con los filtros.</div>
@@ -1413,7 +1485,7 @@
 
   <!-- Modal: ficha del evento -->
   <div class="modal-overlay" id="event-detail-modal">
-    <div class="modal-card modal-xwide">
+    <div class="modal-card modal-xxwide">
       <button class="modal-x" type="button" onclick="closeEvModal('event-detail-modal')">✕</button>
       <div id="event-detail-body"><!-- render por JS --></div>
     </div>
@@ -1453,8 +1525,8 @@
           </select></div>
         <div class="ee-field"><label class="ec-lbl">Nº de vueltas (ligas)</label><input type="number" id="ee-rounds" min="1" max="20" placeholder="1" /></div>
       </div>
-      <div class="ee-field"><label class="ec-lbl">Normas del formato <span class="ec-mini">(puedes editarlas o crear tu propio modelo)</span></label>
-        <textarea id="ee-rules" class="ee-textarea" rows="3" placeholder="Describe cómo funciona el formato…"></textarea></div>
+      <div class="ee-field"><label class="ec-lbl">Normas del formato <span class="ec-mini">(opcional — si lo dejas en blanco se usan las normas estándar del modelo elegido)</span></label>
+        <textarea id="ee-rules" class="ee-textarea" rows="3" placeholder="Déjalo en blanco para las normas estándar del modelo, o describe las tuyas…"></textarea></div>
       <div class="ee-grid ee-grid-3">
         <div class="ee-field"><label class="ec-lbl">Puntos victoria</label><input type="number" id="ee-pwin" value="3" /></div>
         <div class="ee-field"><label class="ec-lbl">Puntos empate</label><input type="number" id="ee-pdraw" value="1" /></div>
@@ -1498,6 +1570,7 @@
         <div class="ee-sep">Privado</div>
         <div class="ee-field"><label class="ec-lbl">Contraseña <span class="ec-mini">(déjala vacía para no cambiarla)</span></label><input type="text" id="ee-pw" placeholder="Contraseña para apuntarse" /></div>
         <label class="chk ee-chk"><input type="checkbox" id="ee-confirm" checked><span>Requiere confirmación del organizador (si lo desactivas, cualquiera con la contraseña entra directo)</span></label>
+        <label class="chk ee-chk"><input type="checkbox" id="ee-hidden"><span>Ocultar del tablón — no aparece en el listado público; solo se entra con el enlace que compartas</span></label>
       </div>
 
       <div class="modal-actions ee-actions">
@@ -1545,6 +1618,40 @@
       <div class="modal-actions">
         <button class="ghost" type="button" onclick="closeEvModal('event-invite-modal')">Cancelar</button>
         <button class="btn" type="button" onclick="submitInvite()">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: enfrentamiento / resultado (organizador) -->
+  <div class="modal-overlay" id="event-match-modal">
+    <div class="modal-card">
+      <h3 class="modal-title" id="em-title">Nuevo enfrentamiento</h3>
+      <div class="ee-grid">
+        <div class="ee-field"><label class="ec-lbl">Jornada</label><input type="number" id="em-round" min="1" value="1" /></div>
+        <div class="ee-field"><label class="ec-lbl" id="em-a-lbl">Jugador A</label><select id="em-a"></select></div>
+        <div class="ee-field"><label class="ec-lbl" id="em-b-lbl">Jugador B</label><select id="em-b"></select></div>
+        <div class="ee-field"><label class="ec-lbl">Modo</label><input type="text" id="em-mode" placeholder="Modo" /></div>
+        <div class="ee-field"><label class="ec-lbl">Mapa</label><input type="text" id="em-map" placeholder="Mapa" /></div>
+      </div>
+      <label class="ec-lbl">Resultado</label>
+      <div id="em-res-bo1" class="seg-toggle" style="display:none">
+        <button type="button" data-r="" class="active">Sin jugar</button>
+        <button type="button" data-r="a">Gana A</button>
+        <button type="button" data-r="draw">Empate</button>
+        <button type="button" data-r="b">Gana B</button>
+      </div>
+      <div id="em-res-multi" style="display:none">
+        <label class="chk ee-chk"><input type="checkbox" id="em-played" onchange="emPlayedChange()"><span>Marcar como jugado</span></label>
+        <div class="ee-row" id="em-score-wrap" style="display:none">
+          <input type="number" id="em-sa" min="0" placeholder="Marcador A" />
+          <input type="number" id="em-sb" min="0" placeholder="Marcador B" />
+        </div>
+      </div>
+      <div class="modal-actions ee-actions">
+        <button class="danger-ghost" type="button" id="em-delete" style="display:none" onclick="deleteMatch()">Eliminar</button>
+        <div style="flex:1"></div>
+        <button class="ghost" type="button" onclick="closeEvModal('event-match-modal')">Cancelar</button>
+        <button class="btn" type="button" onclick="submitMatch()">Guardar</button>
       </div>
     </div>
   </div>
@@ -2238,6 +2345,23 @@ let pendingImportToken = null;
 function checkImportParam() {
   const token = new URLSearchParams(location.search).get("ligilla");
   if (token) openImport(token);
+}
+function checkEventParam() {
+  const id = new URLSearchParams(location.search).get("event");
+  if (id && /^\d+$/.test(id)) { showSection("leagues"); openEvent(parseInt(id, 10)); }
+}
+function copyEventLink(id) {
+  const url = location.origin + "/?event=" + id;
+  const done = () => wikiToast("Enlace copiado", "ok");
+  const fail = () => wikiToast(url, "");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done, fail);
+  } else {
+    const ta = document.createElement("textarea"); ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { fail(); }
+    document.body.removeChild(ta);
+  }
 }
 async function openImport(token) {
   pendingImportToken = token;
@@ -3098,7 +3222,7 @@ async function doRegister() {
 
 function onAuthSuccess(user) {
   $("login-pass").value = ""; $("reg-pass").value = "";
-  hideLogin(); setUser(user); bootApp(); checkImportParam();
+  hideLogin(); setUser(user); bootApp(); checkImportParam(); checkEventParam();
 }
 
 async function doLogout() {
@@ -3139,7 +3263,7 @@ const VIS_HINTS = {
   private: "Solo con contraseña; puedes exigir además tu confirmación.",
 };
 
-let evMyEvents = [], evMineFilter = "all", currentEvent = null, evLeaguesInit = false, evPosterUrl = null;
+let evMyEvents = [], evMineFilter = "all", currentEvent = null, evLeaguesInit = false, evPosterUrl = null, editingMatch = null;
 
 function openEvModal(id) { $(id).classList.add("open"); }
 function closeEvModal(id) { $(id).classList.remove("open"); }
@@ -3152,9 +3276,13 @@ function initLeaguesUI() {
   const opts = EV_LANGS.map((l) => `<option value="${l.c}">${esc(l.n)}</option>`).join("");
   $("ec-lang").innerHTML = opts; $("ee-lang").innerHTML = opts; $("ec-lang").value = "es";
   $("lang-filter-chks").innerHTML = EV_LANGS.map((l) =>
-    `<label class="chk"><input type="checkbox" value="${l.c}" data-fil="langs" onchange="loadBoard()"><span>${esc(l.n)}</span></label>`).join("");
+    `<label class="chk"><input type="checkbox" value="${l.c}" data-fil="langs" checked onchange="loadBoard()"><span>${esc(l.n)}</span></label>`).join("");
   initSegToggle("ec-kind"); initSegToggle("ec-mode");
   initSegToggle("ec-vis", (v) => { $("ec-vis-hint").textContent = VIS_HINTS[v] || ""; });
+  initSegToggle("em-res-bo1");
+  // Cierra cualquier dropdown de filtro al pulsar fuera (dentro no se cierra).
+  document.addEventListener("click", (e) => { if (!e.target.closest(".filter-dd")) closeAllFilterDD(); });
+  updateFilterCounts();
 }
 function initSegToggle(id, onChange) {
   $(id).querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
@@ -3207,19 +3335,49 @@ function filterValues(name) {
   return Array.from(document.querySelectorAll(`input[data-fil="${name}"]:checked`)).map((c) => c.value);
 }
 async function loadBoard() {
-  const qs = new URLSearchParams();
+  updateFilterCounts();
   const types = filterValues("types"), acc = filterValues("acceptance"), langs = filterValues("langs");
-  if (types.length) qs.set("types", types.join(","));
-  if (acc.length) qs.set("acceptance", acc.join(","));
-  if (langs.length) qs.set("langs", langs.join(","));
   const grid = $("board-events-grid"), empty = $("board-events-empty");
+  // Si se ha desmarcado por completo alguna categoría, ningún evento puede coincidir.
+  if (!types.length || !acc.length || !langs.length) {
+    grid.innerHTML = ""; empty.textContent = "Marca al menos una opción en cada filtro (tipo, aceptación e idioma) para ver eventos.";
+    empty.style.display = "block"; return;
+  }
+  const qs = new URLSearchParams();
+  qs.set("types", types.join(",")); qs.set("acceptance", acc.join(",")); qs.set("langs", langs.join(","));
   try {
     const d = await getJSON("/api/events/board?" + qs.toString());
     const list = d.events || [];
-    if (!list.length) { grid.innerHTML = ""; empty.style.display = "block"; return; }
+    if (!list.length) { grid.innerHTML = ""; empty.textContent = "No hay eventos que coincidan con los filtros."; empty.style.display = "block"; return; }
     empty.style.display = "none";
     grid.innerHTML = list.map((e) => eventCardHTML(e, false)).join("");
   } catch (e) { grid.innerHTML = ""; empty.style.display = "block"; }
+}
+function setGroupFilters(group, state) {
+  document.querySelectorAll(`input[data-fil="${group}"]`).forEach((c) => { c.checked = state; });
+  updateFilterCounts(); loadBoard();
+}
+function clearFilters() {
+  document.querySelectorAll("input[data-fil]").forEach((c) => { c.checked = true; });
+  closeAllFilterDD(); updateFilterCounts(); loadBoard();
+}
+function toggleFilterDD(ev, group) {
+  ev.stopPropagation();
+  const panel = $("ddp-" + group), wasOpen = panel.classList.contains("open");
+  closeAllFilterDD();
+  if (!wasOpen) { panel.classList.add("open"); panel.closest(".filter-dd").querySelector(".filter-dd-trigger").classList.add("active"); }
+}
+function closeAllFilterDD() {
+  document.querySelectorAll(".filter-dd-panel.open").forEach((p) => p.classList.remove("open"));
+  document.querySelectorAll(".filter-dd-trigger.active").forEach((t) => t.classList.remove("active"));
+}
+function updateFilterCounts() {
+  ["types", "acceptance", "langs"].forEach((g) => {
+    const el = $("ddc-" + g); if (!el) return;
+    const all = document.querySelectorAll(`input[data-fil="${g}"]`).length;
+    const sel = document.querySelectorAll(`input[data-fil="${g}"]:checked`).length;
+    el.textContent = !all ? "" : (sel === all ? "Todos" : (sel === 0 ? "Ninguno" : String(sel)));
+  });
 }
 
 /* ----- Tarjeta ----- */
@@ -3321,20 +3479,159 @@ function renderEventDetail(d) {
       actions.push(`<button class="btn" onclick="openJoin()">${d.visibility === "acceptance" ? "Solicitar plaza" : "Apuntarse"}</button>`);
     }
   }
+  actions.push(`<button class="ghost" onclick="copyEventLink(${d.id})" title="Copiar enlace para compartir">🔗 Copiar enlace</button>`);
 
   $("event-detail-body").innerHTML = `
     ${d.poster_url ? `<div class="evd-poster" style="background-image:url('${esc(d.poster_url)}')"></div>` : ""}
     <h2 class="evd-title">${esc(d.name)}</h2>
     <div class="evd-badges">${badges}</div>
     <div class="evd-actions">${actions.join("")}</div>
+    ${d.hidden ? `<p class="evd-muted" style="margin:-8px 0 16px">🔒 Evento oculto del tablón: solo se accede con este enlace.</p>` : ""}
     <div class="evd-stats">${stats.join("")}</div>
     ${d.description ? `<div class="evd-section"><h4>Descripción</h4><p class="evd-desc">${esc(d.description)}</p></div>` : ""}
     ${mapsBlock}
     ${reqHTML}
     <div class="evd-section"><h4>Participantes (${parts.length}/${d.max_participants || 12})</h4><div class="evd-parts">${partsHTML}</div></div>
-    <div class="evd-section"><h4>Enfrentamientos y resultados</h4>
-      <div class="evd-empty-table">El evento aún no ha comenzado. Aquí aparecerán los enfrentamientos, los resultados y la clasificación a medida que avance.</div>
-    </div>`;
+    ${renderResultsBlock(d)}`;
+}
+
+/* ----- Fase 1: clasificación y enfrentamientos ----- */
+function renderResultsBlock(d) {
+  const teamsMode = d.mode === "teams";
+  const matches = d.matches || [], standings = d.standings || [];
+  let standHTML = "";
+  if (standings.length) {
+    standHTML = `<div class="evd-section"><h4>Clasificación</h4>
+      <div class="table-scroll"><table class="stand-table">
+        <thead><tr><th>#</th><th>${teamsMode ? "Equipo" : "Jugador"}</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Dif</th><th>Pts</th></tr></thead>
+        <tbody>${standings.map((s, i) => `<tr>
+          <td>${i + 1}</td><td class="stand-name">${esc(s.name)}</td>
+          <td>${s.pj}</td><td>${s.g}</td><td>${s.e}</td><td>${s.p}</td>
+          <td>${s.dif > 0 ? "+" + s.dif : s.dif}</td><td class="stand-pts">${s.pts}</td>
+        </tr>`).join("")}</tbody></table></div></div>`;
+  }
+  const ownerBar = d.is_owner ? `<div class="evd-mbar">
+      <button class="btn" onclick="openMatchModal()">+ Añadir enfrentamiento</button>
+      <button class="ghost" onclick="generateMatches()">⚙ Generar cruces (todos contra todos)</button>
+    </div>` : "";
+  let matchesHTML;
+  if (!matches.length) {
+    matchesHTML = `<div class="evd-empty-table">Aún no hay enfrentamientos.${d.is_owner ? " Añádelos a mano o genera todos los cruces con los participantes." : " El organizador aún no los ha publicado."}</div>`;
+  } else {
+    const byRound = {};
+    matches.forEach((m) => { (byRound[m.round] = byRound[m.round] || []).push(m); });
+    matchesHTML = Object.keys(byRound).sort((a, b) => a - b).map((r) =>
+      `<div class="evd-round"><div class="evd-round-h">Jornada ${r}</div>${byRound[r].map((m) => matchRowHTML(m, d)).join("")}</div>`).join("");
+  }
+  return `${standHTML}<div class="evd-section"><h4>Enfrentamientos</h4>${ownerBar}${matchesHTML}</div>`;
+}
+function matchRowHTML(m, d) {
+  const teamsMode = d.mode === "teams";
+  const aName = teamsMode ? (m.a_team_name || "Equipo") : (m.a_name || m.a_tag || "?");
+  const bName = teamsMode ? (m.b_team_name || "Equipo") : (m.b_name || m.b_tag || "?");
+  const played = m.status === "played";
+  const mid = played
+    ? `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b}</span>`
+    : `<span class="m-vs">vs</span>`;
+  const meta = [m.mode, m.map].filter(Boolean).join(" · ");
+  const edit = d.is_owner ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Editar / resultado">✎</button>` : "";
+  return `<div class="evd-match${played ? " played" : ""}">
+    <div class="m-line">
+      <span class="m-side ${m.winner === "a" ? "win" : ""}">${esc(aName)}</span>
+      <span class="m-mid">${mid}</span>
+      <span class="m-side b ${m.winner === "b" ? "win" : ""}">${esc(bName)}</span>
+      ${edit}
+    </div>${meta ? `<div class="m-meta">${esc(meta)}</div>` : ""}</div>`;
+}
+function openMatchModal(mid) {
+  const d = currentEvent, teamsMode = d.mode === "teams";
+  editingMatch = mid ? (d.matches || []).find((m) => m.id === mid) : null;
+  const opts = teamsMode
+    ? (d.teams || []).map((t) => `<option value="${t.id}">${esc(t.name || ("Equipo " + t.id))}</option>`).join("")
+    : (d.participants_list || []).map((p) => `<option value="${esc(p.player_tag)}">${esc(p.player_name || p.player_tag)} (${esc(p.player_tag)})</option>`).join("");
+  if (!opts) { wikiToast("Primero añade participantes al evento", "err"); return; }
+  $("em-a").innerHTML = opts; $("em-b").innerHTML = opts;
+  $("em-a-lbl").textContent = teamsMode ? "Equipo A" : "Jugador A";
+  $("em-b-lbl").textContent = teamsMode ? "Equipo B" : "Jugador B";
+  const isBo1 = (d.match_type || "bo1") === "bo1";
+  $("em-res-bo1").style.display = isBo1 ? "flex" : "none";
+  $("em-res-multi").style.display = isBo1 ? "none" : "block";
+  const s = d.settings || {}, fixed = s.map_policy === "fixed";
+  if (editingMatch) {
+    const m = editingMatch;
+    $("em-title").textContent = "Editar enfrentamiento";
+    $("em-round").value = m.round || 1;
+    $("em-a").value = teamsMode ? m.a_team : m.a_tag;
+    $("em-b").value = teamsMode ? m.b_team : m.b_tag;
+    $("em-mode").value = m.mode || ""; $("em-map").value = m.map || "";
+    setEmResult(isBo1, m);
+    $("em-delete").style.display = "inline-block";
+  } else {
+    $("em-title").textContent = "Nuevo enfrentamiento";
+    const rounds = (d.matches || []).map((m) => m.round || 1);
+    $("em-round").value = rounds.length ? Math.max.apply(null, rounds) : 1;
+    $("em-mode").value = fixed ? (s.fixed_mode || "") : "";
+    $("em-map").value = fixed ? (s.fixed_map || "") : "";
+    setEmResult(isBo1, null);
+    $("em-delete").style.display = "none";
+  }
+  openEvModal("event-match-modal");
+}
+function setEmResult(isBo1, m) {
+  if (isBo1) {
+    const w = m && m.status === "played" ? (m.winner || "") : "";
+    $("em-res-bo1").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.r === w));
+  } else {
+    const played = !!(m && m.status === "played");
+    $("em-played").checked = played;
+    $("em-sa").value = m && m.score_a != null ? m.score_a : "";
+    $("em-sb").value = m && m.score_b != null ? m.score_b : "";
+    $("em-score-wrap").style.display = played ? "flex" : "none";
+  }
+}
+function emPlayedChange() { $("em-score-wrap").style.display = $("em-played").checked ? "flex" : "none"; }
+function emResultBo1() { const a = $("em-res-bo1").querySelector("button.active"); return a ? a.dataset.r : ""; }
+async function submitMatch() {
+  const d = currentEvent, teamsMode = d.mode === "teams", isBo1 = (d.match_type || "bo1") === "bo1";
+  const a = $("em-a").value, b = $("em-b").value;
+  if (!a || !b || a === b) { wikiToast("Elige dos " + (teamsMode ? "equipos" : "jugadores") + " distintos", "err"); return; }
+  const base = { round: parseInt($("em-round").value, 10) || 1, mode: $("em-mode").value.trim(), map: $("em-map").value.trim() };
+  if (teamsMode) { base.a_team = parseInt(a, 10); base.b_team = parseInt(b, 10); } else { base.a_tag = a; base.b_tag = b; }
+  let result;
+  if (isBo1) {
+    const w = emResultBo1();
+    result = w ? { winner: w } : { clear_result: true };
+  } else if ($("em-played").checked) {
+    if ($("em-sa").value === "" || $("em-sb").value === "") { wikiToast("Indica el marcador de ambos lados", "err"); return; }
+    result = { score_a: $("em-sa").value, score_b: $("em-sb").value };
+  } else {
+    result = { clear_result: true };
+  }
+  if (editingMatch) {
+    const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/${editingMatch.id}`, "PUT", Object.assign({}, base, result));
+    if (!ok) { wikiToast(r.error || r.detail || "No se pudo guardar", "err"); return; }
+  } else {
+    const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches`, "POST", base);
+    if (!ok) { wikiToast(r.error || r.detail || "No se pudo crear", "err"); return; }
+    if (r.id && !result.clear_result) await apiSend(`/api/events/${d.id}/matches/${r.id}`, "PUT", result);
+  }
+  closeEvModal("event-match-modal"); await openEvent(d.id);
+}
+async function deleteMatch() {
+  if (!editingMatch) return;
+  if (!confirm("¿Eliminar este enfrentamiento?")) return;
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}/matches/${editingMatch.id}`, "DELETE");
+  if (ok) { closeEvModal("event-match-modal"); await openEvent(currentEvent.id); }
+}
+async function generateMatches() {
+  const d = currentEvent, has = (d.matches || []).length > 0;
+  const msg = has
+    ? "Esto generará todos los cruces (todos contra todos) y REEMPLAZARÁ los enfrentamientos actuales. ¿Continuar?"
+    : "¿Generar todos los cruces (todos contra todos) con los participantes actuales?";
+  if (!confirm(msg)) return;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/generate`, "POST", { replace: has });
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo generar", "err"); return; }
+  wikiToast(`${r.created} enfrentamientos generados`, "ok"); await openEvent(d.id);
 }
 
 /* ----- Seguir ----- */
@@ -3381,7 +3678,7 @@ function openEdit() {
   $("ee-revmode").value = s.reveal_mode_date || ""; $("ee-revmap").value = s.reveal_map_date || "";
   $("ee-dstart").value = d.date_start || ""; $("ee-dend").value = d.date_end || "";
   $("ee-desc").value = d.description || ""; evPosterUrl = d.poster_url || null; updatePosterPreview();
-  $("ee-pw").value = ""; $("ee-confirm").checked = d.require_confirmation !== 0;
+  $("ee-pw").value = ""; $("ee-confirm").checked = d.require_confirmation !== 0; $("ee-hidden").checked = !!d.hidden;
   eeVisChange(); eeMapPolChange(); eeMapsPublicChange();
   closeEvModal("event-detail-modal"); openEvModal("event-edit-modal");
 }
@@ -3409,8 +3706,11 @@ async function uploadEventPoster(input) {
 }
 async function submitEditEvent() {
   const d = currentEvent;
+  const fmt = $("ee-format").value;
+  let rules = $("ee-rules").value.trim();
+  if (!rules && fmt && EV_FORMAT_RULES[fmt]) rules = EV_FORMAT_RULES[fmt];  // en blanco → normas estándar del modelo
   const settings = {
-    rounds: parseInt($("ee-rounds").value, 10) || null, rules: $("ee-rules").value.trim(),
+    rounds: parseInt($("ee-rounds").value, 10) || null, rules: rules,
     points: { win: num($("ee-pwin").value, 3), draw: num($("ee-pdraw").value, 1), loss: num($("ee-ploss").value, 0) },
     map_policy: $("ee-mappol").value, fixed_mode: $("ee-fixmode").value.trim(), fixed_map: $("ee-fixmap").value.trim(),
     maps_public: $("ee-mapspublic").checked, reveal_mode_date: $("ee-revmode").value || null, reveal_map_date: $("ee-revmap").value || null,
@@ -3424,6 +3724,7 @@ async function submitEditEvent() {
   if ($("ee-vis").value === "private") {
     if ($("ee-pw").value.trim()) body.password = $("ee-pw").value.trim();
     body.require_confirmation = $("ee-confirm").checked;
+    body.hidden = $("ee-hidden").checked;
   }
   const { ok, d: res } = await apiSend(`/api/events/${d.id}`, "PUT", body);
   if (!ok) { wikiToast(res.error || res.detail || "No se pudo guardar", "err"); return; }
@@ -3470,7 +3771,7 @@ async function bootApp() { await loadAssets(); await refreshAll(); }
 (async () => {
   await loadAuthConfig();
   const me = await fetchMe();
-  if (me && me.username) { hideLogin(); setUser(me); bootApp(); checkImportParam(); }
+  if (me && me.username) { hideLogin(); setUser(me); bootApp(); checkImportParam(); checkEventParam(); }
   else { showLogin(); }
 })();
 

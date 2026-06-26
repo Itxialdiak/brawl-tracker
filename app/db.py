@@ -98,6 +98,41 @@ def init_db():
             title TEXT, body TEXT, parent_id INTEGER,
             change_kind TEXT, by_user_id INTEGER, changed_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, owner_user_id INTEGER NOT NULL,
+            name TEXT NOT NULL, kind TEXT NOT NULL, mode TEXT NOT NULL, visibility TEXT NOT NULL,
+            language TEXT, max_participants INTEGER DEFAULT 12, format TEXT,
+            match_type TEXT DEFAULT 'bo1', date_start TEXT, date_end TEXT,
+            description TEXT, poster_url TEXT, password_hash TEXT,
+            require_confirmation INTEGER DEFAULT 1, settings TEXT,
+            status TEXT DEFAULT 'open', hidden INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS event_participants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
+            user_id INTEGER, player_tag TEXT NOT NULL, team_id INTEGER,
+            added_by_owner INTEGER DEFAULT 0, joined_at TEXT,
+            UNIQUE(event_id, player_tag)
+        );
+        CREATE TABLE IF NOT EXISTS event_teams (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
+            name TEXT NOT NULL, logo_url TEXT, captain_user_id INTEGER, created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS event_follows (
+            event_id INTEGER NOT NULL, user_id INTEGER NOT NULL, followed_at TEXT,
+            PRIMARY KEY (event_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS event_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL, player_tag TEXT NOT NULL, team_name TEXT,
+            message TEXT, status TEXT DEFAULT 'pending', created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS event_matches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
+            round INTEGER DEFAULT 1, a_tag TEXT, b_tag TEXT, a_team INTEGER, b_team INTEGER,
+            mode TEXT, map TEXT, status TEXT DEFAULT 'pending',
+            score_a INTEGER, score_b INTEGER, winner TEXT, evidence_battle_id TEXT,
+            scheduled_at TEXT, created_at TEXT, updated_at TEXT
+        );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
@@ -107,6 +142,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_opponents_brawler ON opponents(brawler);
         CREATE INDEX IF NOT EXISTS idx_opponents_battle  ON opponents(battle_id);
         CREATE INDEX IF NOT EXISTS idx_allies_battle     ON allies(battle_id);
+        CREATE INDEX IF NOT EXISTS idx_ematches_event    ON event_matches(event_id);
         """
     )
     # Migración de bases antiguas: añade columnas nuevas si faltan.
@@ -118,6 +154,7 @@ def init_db():
     _ensure_column(cur, "battles", "my_trophies", "INTEGER")
     _ensure_column(cur, "opponents", "trophies", "INTEGER")
     _ensure_column(cur, "allies", "trophies", "INTEGER")
+    _ensure_column(cur, "events", "hidden", "INTEGER DEFAULT 0")
     # El usuario itxialdiak es administrador por defecto.
     cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
     conn.commit()
@@ -1425,3 +1462,375 @@ def get_report(report_id: int) -> dict | None:
     row = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+# ============================ EVENTOS (LIGAS Y TORNEOS) ============================
+
+_EVENT_KINDS = {"league", "tournament"}
+_EVENT_MODES = {"individual", "teams"}
+_EVENT_VIS = {"public", "acceptance", "private"}
+_MATCH_TYPES = {"bo1", "bo3", "bo5"}
+_EVENT_FORMATS = {"swiss", "mcmahon", "roundrobin", "single_elim", "double_elim", "free"}
+
+
+def _event_row(r) -> dict:
+    d = dict(r)
+    try:
+        d["settings"] = json.loads(d.get("settings") or "{}")
+    except Exception:
+        d["settings"] = {}
+    d["has_password"] = bool(d.pop("password_hash", None))
+    return d
+
+
+def _ev_counts(conn, eid):
+    p = conn.execute("SELECT COUNT(*) FROM event_participants WHERE event_id=?", (eid,)).fetchone()[0]
+    f = conn.execute("SELECT COUNT(*) FROM event_follows WHERE event_id=?", (eid,)).fetchone()[0]
+    return p, f
+
+
+def create_event(owner_user_id, name, kind, mode, visibility, language=None) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    cur = conn.execute(
+        """INSERT INTO events (owner_user_id, name, kind, mode, visibility, language,
+              max_participants, match_type, settings, require_confirmation, status, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (owner_user_id, (name or "").strip(), kind, mode, visibility, language,
+         12, "bo1", "{}", 1, "open", now, now))
+    conn.commit()
+    eid = cur.lastrowid
+    conn.close()
+    return eid
+
+
+def get_event(eid) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM events WHERE id=?", (eid,)).fetchone()
+    conn.close()
+    return _event_row(row) if row else None
+
+
+def get_event_password_hash(eid) -> str | None:
+    conn = get_conn()
+    row = conn.execute("SELECT password_hash FROM events WHERE id=?", (eid,)).fetchone()
+    conn.close()
+    return (row["password_hash"] if row else None)
+
+
+def event_owner(eid) -> int | None:
+    conn = get_conn()
+    row = conn.execute("SELECT owner_user_id FROM events WHERE id=?", (eid,)).fetchone()
+    conn.close()
+    return (row["owner_user_id"] if row else None)
+
+
+def event_counts(eid) -> dict:
+    conn = get_conn()
+    p, f = _ev_counts(conn, eid)
+    conn.close()
+    return {"participants": p, "followers": f}
+
+
+def update_event(eid, fields: dict) -> None:
+    cols = ["name", "kind", "mode", "visibility", "language", "max_participants",
+            "format", "match_type", "date_start", "date_end", "description",
+            "poster_url", "password_hash", "require_confirmation", "hidden", "status"]
+    sets, vals = [], []
+    for c in cols:
+        if c in fields:
+            sets.append(f"{c}=?"); vals.append(fields[c])
+    if "settings" in fields:
+        sets.append("settings=?")
+        vals.append(fields["settings"] if isinstance(fields["settings"], str) else json.dumps(fields["settings"]))
+    if not sets:
+        return
+    sets.append("updated_at=?"); vals.append(datetime.now(timezone.utc).isoformat())
+    vals.append(eid)
+    conn = get_conn()
+    conn.execute(f"UPDATE events SET {', '.join(sets)} WHERE id=?", vals)
+    conn.commit(); conn.close()
+
+
+def delete_event(eid) -> None:
+    conn = get_conn()
+    for t in ("event_participants", "event_teams", "event_follows", "event_requests", "event_matches"):
+        conn.execute(f"DELETE FROM {t} WHERE event_id=?", (eid,))
+    conn.execute("DELETE FROM events WHERE id=?", (eid,))
+    conn.commit(); conn.close()
+
+
+# --- seguir ---
+def follow_event(eid, user_id) -> None:
+    conn = get_conn()
+    conn.execute("INSERT OR IGNORE INTO event_follows (event_id, user_id, followed_at) VALUES (?,?,?)",
+                 (eid, user_id, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def unfollow_event(eid, user_id) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM event_follows WHERE event_id=? AND user_id=?", (eid, user_id))
+    conn.commit(); conn.close()
+
+
+def is_following_event(eid, user_id) -> bool:
+    conn = get_conn()
+    row = conn.execute("SELECT 1 FROM event_follows WHERE event_id=? AND user_id=?", (eid, user_id)).fetchone()
+    conn.close()
+    return bool(row)
+
+
+# --- participantes ---
+def list_participants(eid) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT ep.id, ep.user_id, ep.player_tag, ep.team_id, ep.added_by_owner, ep.joined_at,
+                  p.name AS player_name, p.icon_id, t.name AS team_name, t.logo_url AS team_logo
+           FROM event_participants ep
+           LEFT JOIN players p ON p.tag = ep.player_tag
+           LEFT JOIN event_teams t ON t.id = ep.team_id
+           WHERE ep.event_id=? ORDER BY ep.joined_at""", (eid,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def participant_count(eid) -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM event_participants WHERE event_id=?", (eid,)).fetchone()[0]
+    conn.close()
+    return n
+
+
+def tag_in_event(eid, tag) -> bool:
+    conn = get_conn()
+    row = conn.execute("SELECT 1 FROM event_participants WHERE event_id=? AND player_tag=?",
+                       (eid, normalize_tag(tag))).fetchone()
+    conn.close()
+    return bool(row)
+
+
+def add_participant(eid, user_id, tag, team_id=None, added_by_owner=0) -> int | None:
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            """INSERT INTO event_participants (event_id, user_id, player_tag, team_id, added_by_owner, joined_at)
+               VALUES (?,?,?,?,?,?)""",
+            (eid, user_id, normalize_tag(tag), team_id, added_by_owner,
+             datetime.now(timezone.utc).isoformat()))
+        conn.commit()
+        pid = cur.lastrowid
+    except sqlite3.IntegrityError:
+        pid = None
+    conn.close()
+    return pid
+
+
+def remove_participant(eid, participant_id) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM event_participants WHERE id=? AND event_id=?", (participant_id, eid))
+    conn.commit(); conn.close()
+
+
+# --- solicitudes de inscripción ---
+def create_request(eid, user_id, tag, team_name=None, message=None) -> int:
+    conn = get_conn()
+    cur = conn.execute(
+        """INSERT INTO event_requests (event_id, user_id, player_tag, team_name, message, status, created_at)
+           VALUES (?,?,?,?,?,?,?)""",
+        (eid, user_id, normalize_tag(tag), team_name, message, "pending",
+         datetime.now(timezone.utc).isoformat()))
+    conn.commit(); rid = cur.lastrowid; conn.close()
+    return rid
+
+
+def list_requests(eid, status="pending") -> list[dict]:
+    conn = get_conn()
+    q = """SELECT er.*, u.username, p.name AS player_name
+           FROM event_requests er LEFT JOIN users u ON u.id = er.user_id
+           LEFT JOIN players p ON p.tag = er.player_tag WHERE er.event_id=?"""
+    args = [eid]
+    if status:
+        q += " AND er.status=?"; args.append(status)
+    q += " ORDER BY er.created_at"
+    rows = conn.execute(q, args).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def pending_request_count(eid) -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM event_requests WHERE event_id=? AND status='pending'",
+                     (eid,)).fetchone()[0]
+    conn.close()
+    return n
+
+
+def get_request(rid) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM event_requests WHERE id=?", (rid,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def user_pending_request(eid, user_id) -> dict | None:
+    conn = get_conn()
+    row = conn.execute(
+        """SELECT * FROM event_requests WHERE event_id=? AND user_id=? AND status='pending'
+           ORDER BY created_at DESC LIMIT 1""", (eid, user_id)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def set_request_status(rid, status) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE event_requests SET status=? WHERE id=?", (status, rid))
+    conn.commit(); conn.close()
+
+
+# --- equipos ---
+def list_teams(eid) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM event_teams WHERE event_id=? ORDER BY created_at", (eid,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_team(eid, name, logo_url=None, captain_user_id=None) -> int:
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO event_teams (event_id, name, logo_url, captain_user_id, created_at) VALUES (?,?,?,?,?)",
+        (eid, (name or "").strip(), logo_url, captain_user_id, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); tid = cur.lastrowid; conn.close()
+    return tid
+
+
+# --- listados ---
+def list_my_events(user_id) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT DISTINCT e.* FROM events e
+           WHERE e.owner_user_id=?
+              OR e.id IN (SELECT event_id FROM event_participants WHERE user_id=?)
+              OR e.id IN (SELECT event_id FROM event_follows WHERE user_id=?)
+           ORDER BY e.updated_at DESC""",
+        (user_id, user_id, user_id)).fetchall()
+    out = []
+    for r in rows:
+        d = _event_row(r)
+        p, f = _ev_counts(conn, d["id"])
+        d["participants"] = p; d["followers"] = f
+        if d["owner_user_id"] == user_id:
+            d["relation"] = "owner"
+            d["pending"] = conn.execute(
+                "SELECT COUNT(*) FROM event_requests WHERE event_id=? AND status='pending'",
+                (d["id"],)).fetchone()[0]
+        elif conn.execute("SELECT 1 FROM event_participants WHERE event_id=? AND user_id=?",
+                          (d["id"], user_id)).fetchone():
+            d["relation"] = "participant"
+        else:
+            d["relation"] = "follower"
+        out.append(d)
+    conn.close()
+    return out
+
+
+def list_board_events(user_id, types=None, langs=None, acceptance=None) -> list[dict]:
+    conn = get_conn()
+    acc = set(acceptance) if acceptance else {"public", "acceptance"}
+    vis_clauses, args = [], []
+    if "public" in acc:
+        vis_clauses.append("e.visibility='public'")
+    if "acceptance" in acc:
+        vis_clauses.append("e.visibility='acceptance'")
+    if "private" in acc:
+        # Los privados se listan para que cualquiera pueda seguirlos y decidir si
+        # le interesan; solo el apuntarse está protegido (contraseña/validación).
+        # Si el dueño los marca como ocultos (hidden=1), no aparecen en el tablón:
+        # solo se accede a ellos con el enlace directo.
+        vis_clauses.append("(e.visibility='private' AND e.hidden=0)")
+    if not vis_clauses:
+        conn.close(); return []
+    q = "SELECT e.* FROM events e WHERE (" + " OR ".join(vis_clauses) + ")"
+    if types:
+        q += " AND e.kind IN (" + ",".join("?" * len(types)) + ")"; args += list(types)
+    if langs:
+        q += " AND e.language IN (" + ",".join("?" * len(langs)) + ")"; args += list(langs)
+    q += " ORDER BY e.created_at DESC"
+    rows = conn.execute(q, args).fetchall()
+    out = []
+    for r in rows:
+        d = _event_row(r)
+        p, f = _ev_counts(conn, d["id"])
+        d["participants"] = p; d["followers"] = f
+        out.append(d)
+    conn.close()
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Enfrentamientos y resultados (Fase 1)
+# ---------------------------------------------------------------------------
+
+def list_matches(eid) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT m.*, pa.name AS a_name, pb.name AS b_name,
+                  ta.name AS a_team_name, ta.logo_url AS a_team_logo,
+                  tb.name AS b_team_name, tb.logo_url AS b_team_logo
+           FROM event_matches m
+           LEFT JOIN players pa ON pa.tag = m.a_tag
+           LEFT JOIN players pb ON pb.tag = m.b_tag
+           LEFT JOIN event_teams ta ON ta.id = m.a_team
+           LEFT JOIN event_teams tb ON tb.id = m.b_team
+           WHERE m.event_id=? ORDER BY m.round, m.id""", (eid,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_match(mid) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM event_matches WHERE id=?", (mid,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_match(eid, round=1, a_tag=None, b_tag=None, a_team=None, b_team=None,
+                 mode=None, map=None, scheduled_at=None) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    cur = conn.execute(
+        """INSERT INTO event_matches (event_id, round, a_tag, b_tag, a_team, b_team,
+              mode, map, status, scheduled_at, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?, 'pending', ?, ?, ?)""",
+        (eid, round or 1, a_tag, b_tag, a_team, b_team, mode, map, scheduled_at, now, now))
+    conn.commit(); mid = cur.lastrowid; conn.close()
+    return mid
+
+
+def update_match(mid, fields: dict) -> None:
+    cols = ["round", "a_tag", "b_tag", "a_team", "b_team", "mode", "map", "status",
+            "score_a", "score_b", "winner", "evidence_battle_id", "scheduled_at"]
+    sets, vals = [], []
+    for c in cols:
+        if c in fields:
+            sets.append(f"{c}=?"); vals.append(fields[c])
+    if not sets:
+        return
+    sets.append("updated_at=?"); vals.append(datetime.now(timezone.utc).isoformat())
+    vals.append(mid)
+    conn = get_conn()
+    conn.execute(f"UPDATE event_matches SET {', '.join(sets)} WHERE id=?", vals)
+    conn.commit(); conn.close()
+
+
+def delete_match(eid, mid) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM event_matches WHERE id=? AND event_id=?", (mid, eid))
+    conn.commit(); conn.close()
+
+
+def clear_matches(eid) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM event_matches WHERE event_id=?", (eid,))
+    conn.commit(); conn.close()

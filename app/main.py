@@ -912,9 +912,451 @@ async def api_get_report(report_id: int, user: dict = Depends(auth.require_user)
     return _public_report(rep, with_content=True)
 
 
+# ============================ EVENTOS (LIGAS Y TORNEOS) ============================
+
+_EVENT_MEDIA_DIR = os.path.join(FRONTEND_DIR, "media", "events")
+_EV_KINDS = {"league", "tournament"}
+_EV_MODES = {"individual", "teams"}
+_EV_VIS = {"public", "acceptance", "private"}
+_EV_MATCH = {"bo1", "bo3", "bo5"}
+
+
+def _event_public(e: dict) -> dict:
+    """Vista del evento sin el hash de la contraseña."""
+    return {
+        "id": e["id"], "owner_user_id": e["owner_user_id"], "name": e["name"],
+        "kind": e["kind"], "mode": e["mode"], "visibility": e["visibility"],
+        "language": e.get("language"), "max_participants": e.get("max_participants"),
+        "format": e.get("format"), "match_type": e.get("match_type"),
+        "date_start": e.get("date_start"), "date_end": e.get("date_end"),
+        "description": e.get("description"), "poster_url": e.get("poster_url"),
+        "has_password": e.get("has_password", False),
+        "require_confirmation": e.get("require_confirmation"),
+        "hidden": e.get("hidden"),
+        "settings": e.get("settings") or {}, "status": e.get("status"),
+        "participants": e.get("participants"), "followers": e.get("followers"),
+        "relation": e.get("relation"),
+    }
+
+
+def _can_view_event(e: dict, user_id: int) -> bool:
+    # La visibilidad controla CÓMO se entra (contraseña/validación) y si el evento
+    # aparece en el tablón ('hidden'), no quién puede ver su ficha. Cualquiera con el
+    # enlace puede consultarla (los privados ocultos se comparten por enlace directo).
+    return True
+
+
+def _round_robin(ids: list):
+    """Calendario todos-contra-todos (método del círculo). Devuelve lista de jornadas,
+    cada una con pares (a, b)."""
+    ids = list(ids)
+    if len(ids) % 2:
+        ids.append(None)  # descanso si son impares
+    n = len(ids)
+    arr = ids[:]
+    rounds = []
+    for _ in range(n - 1):
+        pairs = []
+        for i in range(n // 2):
+            a, b = arr[i], arr[n - 1 - i]
+            if a is not None and b is not None:
+                pairs.append((a, b))
+        rounds.append(pairs)
+        arr = [arr[0]] + [arr[-1]] + arr[1:-1]  # rota dejando fijo el primero
+    return rounds
+
+
+def _compute_standings(e: dict, matches: list, participants: list, teams: list) -> list:
+    """Clasificación a partir de los enfrentamientos jugados, con los puntos del evento."""
+    pts = (e.get("settings") or {}).get("points") or {}
+    pw, pdr, pl = pts.get("win", 3), pts.get("draw", 1), pts.get("loss", 0)
+    teams_mode = e["mode"] == "teams"
+    rows = {}
+    if teams_mode:
+        for t in teams:
+            rows[t["id"]] = {"key": t["id"], "name": t.get("name") or "Equipo", "logo": t.get("logo_url"),
+                             "pj": 0, "g": 0, "e": 0, "p": 0, "sf": 0, "sa": 0, "pts": 0}
+    else:
+        for p in participants:
+            rows[p["player_tag"]] = {"key": p["player_tag"], "name": p.get("player_name") or p["player_tag"],
+                                     "tag": p["player_tag"], "icon_id": p.get("icon_id"),
+                                     "pj": 0, "g": 0, "e": 0, "p": 0, "sf": 0, "sa": 0, "pts": 0}
+    for m in matches:
+        if m.get("status") != "played":
+            continue
+        ka, kb = (m.get("a_team"), m.get("b_team")) if teams_mode else (m.get("a_tag"), m.get("b_tag"))
+        if ka not in rows or kb not in rows:
+            continue
+        sa, sb = m.get("score_a") or 0, m.get("score_b") or 0
+        ra, rb = rows[ka], rows[kb]
+        ra["pj"] += 1; rb["pj"] += 1
+        ra["sf"] += sa; ra["sa"] += sb; rb["sf"] += sb; rb["sa"] += sa
+        w = m.get("winner")
+        if w == "a":
+            ra["g"] += 1; rb["p"] += 1; ra["pts"] += pw; rb["pts"] += pl
+        elif w == "b":
+            rb["g"] += 1; ra["p"] += 1; rb["pts"] += pw; ra["pts"] += pl
+        else:
+            ra["e"] += 1; rb["e"] += 1; ra["pts"] += pdr; rb["pts"] += pdr
+    out = list(rows.values())
+    for r in out:
+        r["dif"] = r["sf"] - r["sa"]
+    out.sort(key=lambda r: (-r["pts"], -r["dif"], -r["sf"], str(r["name"]).lower()))
+    return out
+
+
+@app.post("/api/events")
+def api_event_create(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    body = payload or {}
+    name = (body.get("name") or "").strip()
+    kind, mode, vis = body.get("kind"), body.get("mode"), body.get("visibility")
+    lang = body.get("language") or None
+    if not name:
+        return JSONResponse({"error": "Pon un nombre al evento."}, status_code=400)
+    if kind not in _EV_KINDS or mode not in _EV_MODES or vis not in _EV_VIS:
+        return JSONResponse({"error": "Datos de evento no válidos."}, status_code=400)
+    eid = db.create_event(user["id"], name, kind, mode, vis, lang)
+    return {"ok": True, "id": eid}
+
+
+@app.get("/api/events/mine")
+def api_events_mine(user: dict = Depends(auth.require_user)):
+    return {"events": db.list_my_events(user["id"])}
+
+
+@app.get("/api/events/board")
+def api_events_board(types: str = Query(""), langs: str = Query(""),
+                     acceptance: str = Query(""), user: dict = Depends(auth.require_user)):
+    t = [x for x in types.split(",") if x] or None
+    lg = [x for x in langs.split(",") if x] or None
+    a = [x for x in acceptance.split(",") if x] or None
+    return {"events": db.list_board_events(user["id"], t, lg, a)}
+
+
+@app.get("/api/events/{eid}")
+def api_event_detail(eid: int, user: dict = Depends(auth.require_user)):
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    if not _can_view_event(e, user["id"]):
+        raise HTTPException(status_code=403, detail="Evento privado.")
+    counts = db.event_counts(eid)
+    e["participants"], e["followers"] = counts["participants"], counts["followers"]
+    is_owner = e["owner_user_id"] == user["id"]
+    parts = db.list_participants(eid)
+    e["relation"] = "owner" if is_owner else (
+        "participant" if any(p.get("user_id") == user["id"] for p in parts) else (
+            "follower" if db.is_following_event(eid, user["id"]) else "none"))
+    pub = _event_public(e)
+    pub["participants_list"] = parts
+    pub["teams"] = db.list_teams(eid)
+    pub["is_owner"] = is_owner
+    pub["is_following"] = db.is_following_event(eid, user["id"])
+    pub["my_request"] = db.user_pending_request(eid, user["id"])
+    pub["my_tags"] = db.list_players_for_user(user["id"])
+    pub["matches"] = db.list_matches(eid)
+    pub["standings"] = _compute_standings(e, pub["matches"], parts, pub["teams"])
+    if is_owner:
+        pub["requests"] = db.list_requests(eid, "pending")
+    return pub
+
+
+@app.put("/api/events/{eid}")
+def api_event_update(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    body = payload or {}
+    fields = {}
+    for c in ("name", "kind", "mode", "visibility", "language", "format",
+              "match_type", "date_start", "date_end", "description", "poster_url", "status"):
+        if c in body:
+            fields[c] = body[c]
+    if "max_participants" in body:
+        try:
+            fields["max_participants"] = max(2, min(512, int(body["max_participants"])))
+        except Exception:  # noqa: BLE001
+            pass
+    if "require_confirmation" in body:
+        fields["require_confirmation"] = 1 if body["require_confirmation"] else 0
+    if "hidden" in body:
+        fields["hidden"] = 1 if body["hidden"] else 0
+    if "settings" in body and isinstance(body["settings"], dict):
+        fields["settings"] = body["settings"]
+    if "password" in body:
+        pw = (body["password"] or "").strip()
+        fields["password_hash"] = auth.hash_password(pw) if pw else None
+    if fields.get("kind") and fields["kind"] not in _EV_KINDS:
+        return JSONResponse({"error": "Tipo no válido."}, status_code=400)
+    if fields.get("visibility") and fields["visibility"] not in _EV_VIS:
+        return JSONResponse({"error": "Visibilidad no válida."}, status_code=400)
+    if fields.get("match_type") and fields["match_type"] not in _EV_MATCH:
+        return JSONResponse({"error": "Enfrentamiento no válido."}, status_code=400)
+    db.update_event(eid, fields)
+    return {"ok": True}
+
+
+@app.delete("/api/events/{eid}")
+def api_event_delete(eid: int, user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    db.delete_event(eid)
+    return {"ok": True}
+
+
+@app.post("/api/events/{eid}/follow")
+def api_event_follow(eid: int, user: dict = Depends(auth.require_user)):
+    if not db.get_event(eid):
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    db.follow_event(eid, user["id"])
+    return {"ok": True, "followers": db.event_counts(eid)["followers"]}
+
+
+@app.delete("/api/events/{eid}/follow")
+def api_event_unfollow(eid: int, user: dict = Depends(auth.require_user)):
+    db.unfollow_event(eid, user["id"])
+    return {"ok": True, "followers": db.event_counts(eid)["followers"]}
+
+
+@app.post("/api/events/{eid}/join")
+def api_event_join(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    tag = (body.get("player_tag") or "").strip()
+    if not tag:
+        return JSONResponse({"error": "Elige con qué ID te apuntas."}, status_code=400)
+    tag = db.normalize_tag(tag)
+    if not db.user_follows(user["id"], tag):
+        return JSONResponse({"error": "Ese ID no está en tu cuenta."}, status_code=400)
+    if db.tag_in_event(eid, tag):
+        return JSONResponse({"error": "Ese ID ya está inscrito en el evento."}, status_code=409)
+    if db.participant_count(eid) >= (e.get("max_participants") or 12):
+        return JSONResponse({"error": "El evento está completo."}, status_code=409)
+    team_name = (body.get("team_name") or "").strip() or None
+    team_logo = (body.get("team_logo_url") or "").strip() or None
+    vis = e["visibility"]
+
+    def _do_join():
+        team_id = None
+        if e["mode"] == "teams" and team_name:
+            team_id = db.create_team(eid, team_name, team_logo, user["id"])
+        db.add_participant(eid, user["id"], tag, team_id, 0)
+
+    if vis == "public":
+        _do_join()
+        return {"ok": True, "joined": True}
+    if vis == "acceptance":
+        db.create_request(eid, user["id"], tag, team_name, body.get("message"))
+        return {"ok": True, "requested": True}
+    # privado
+    ph = db.get_event_password_hash(eid)
+    if ph and not auth.verify_password(body.get("password") or "", ph):
+        return JSONResponse({"error": "Contraseña incorrecta."}, status_code=403)
+    if e.get("require_confirmation"):
+        db.create_request(eid, user["id"], tag, team_name, body.get("message"))
+        return {"ok": True, "requested": True}
+    _do_join()
+    return {"ok": True, "joined": True}
+
+
+@app.post("/api/events/{eid}/requests/{rid}/accept")
+def api_event_req_accept(eid: int, rid: int, user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    req = db.get_request(rid)
+    if not req or req["event_id"] != eid:
+        return JSONResponse({"error": "Solicitud no encontrada."}, status_code=404)
+    if req["status"] != "pending":
+        return JSONResponse({"error": "Esa solicitud ya está resuelta."}, status_code=409)
+    e = db.get_event(eid)
+    if db.participant_count(eid) >= (e.get("max_participants") or 12):
+        return JSONResponse({"error": "No quedan plazas."}, status_code=409)
+    if not db.tag_in_event(eid, req["player_tag"]):
+        team_id = None
+        if e["mode"] == "teams" and req.get("team_name"):
+            team_id = db.create_team(eid, req["team_name"], None, req["user_id"])
+        db.add_participant(eid, req["user_id"], req["player_tag"], team_id, 0)
+    db.set_request_status(rid, "accepted")
+    return {"ok": True}
+
+
+@app.post("/api/events/{eid}/requests/{rid}/reject")
+def api_event_req_reject(eid: int, rid: int, user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    req = db.get_request(rid)
+    if not req or req["event_id"] != eid:
+        return JSONResponse({"error": "Solicitud no encontrada."}, status_code=404)
+    db.set_request_status(rid, "rejected")
+    return {"ok": True}
+
+
+@app.post("/api/events/{eid}/invite")
+def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    tag = ((payload or {}).get("player_tag") or "").strip()
+    if not tag:
+        return JSONResponse({"error": "Indica el tag del jugador."}, status_code=400)
+    tag = db.normalize_tag(tag)
+    if db.tag_in_event(eid, tag):
+        return JSONResponse({"error": "Ese ID ya está inscrito."}, status_code=409)
+    if db.participant_count(eid) >= (e.get("max_participants") or 12):
+        return JSONResponse({"error": "No quedan plazas."}, status_code=409)
+    team_name = ((payload or {}).get("team_name") or "").strip() or None
+    team_id = db.create_team(eid, team_name, None, None) if (e["mode"] == "teams" and team_name) else None
+    db.add_participant(eid, None, tag, team_id, 1)
+    return {"ok": True}
+
+
+@app.delete("/api/events/{eid}/participants/{pid}")
+def api_event_remove_participant(eid: int, pid: int, user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    db.remove_participant(eid, pid)
+    return {"ok": True}
+
+
+@app.post("/api/events/upload-image")
+def api_event_upload(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    data = (payload or {}).get("data") or ""
+    mime = ((payload or {}).get("mime") or "").lower()
+    if data.startswith("data:"):
+        head, _, b64 = data.partition(",")
+        if not mime and ":" in head and ";" in head:
+            mime = head[head.index(":") + 1:head.index(";")].lower()
+        data = b64
+    ext = _IMG_EXT.get(mime)
+    if not ext:
+        return JSONResponse({"error": "Formato no admitido (usa PNG, JPG, GIF o WEBP)."}, status_code=400)
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "Imagen no válida."}, status_code=400)
+    if not raw or len(raw) > 6 * 1024 * 1024:
+        return JSONResponse({"error": "Imagen vacía o supera los 6 MB."}, status_code=400)
+    os.makedirs(_EVENT_MEDIA_DIR, exist_ok=True)
+    name = uuid.uuid4().hex + ext
+    with open(os.path.join(_EVENT_MEDIA_DIR, name), "wb") as f:
+        f.write(raw)
+    return {"ok": True, "url": "/static/media/events/" + name}
+
+
+@app.post("/api/events/{eid}/matches")
+def api_match_create(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    try:
+        rnd = max(1, int(body.get("round") or 1))
+    except Exception:  # noqa: BLE001
+        rnd = 1
+    mode = (body.get("mode") or "").strip() or None
+    mp = (body.get("map") or "").strip() or None
+    if e["mode"] == "teams":
+        a, b = body.get("a_team"), body.get("b_team")
+        if not a or not b or str(a) == str(b):
+            return JSONResponse({"error": "Elige dos equipos distintos."}, status_code=400)
+        mid = db.create_match(eid, rnd, a_team=int(a), b_team=int(b), mode=mode, map=mp)
+    else:
+        a = db.normalize_tag(body["a_tag"]) if body.get("a_tag") else None
+        b = db.normalize_tag(body["b_tag"]) if body.get("b_tag") else None
+        if not a or not b or a == b:
+            return JSONResponse({"error": "Elige dos jugadores distintos."}, status_code=400)
+        mid = db.create_match(eid, rnd, a_tag=a, b_tag=b, mode=mode, map=mp)
+    return {"ok": True, "id": mid}
+
+
+@app.put("/api/events/{eid}/matches/{mid}")
+def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    m = db.get_match(mid)
+    if not m or m["event_id"] != eid:
+        return JSONResponse({"error": "Enfrentamiento no encontrado."}, status_code=404)
+    body = payload or {}
+    fields = {}
+    if "round" in body:
+        try:
+            fields["round"] = max(1, int(body["round"]))
+        except Exception:  # noqa: BLE001
+            pass
+    for c in ("mode", "map"):
+        if c in body:
+            fields[c] = (body[c] or "").strip() or None
+    if body.get("clear_result"):
+        fields.update({"status": "pending", "winner": None, "score_a": None, "score_b": None})
+    elif "winner" in body or "score_a" in body or "score_b" in body:
+        def _toint(x):
+            try:
+                return int(x) if x not in (None, "") else None
+            except Exception:  # noqa: BLE001
+                return None
+        sa, sb, w = _toint(body.get("score_a")), _toint(body.get("score_b")), body.get("winner")
+        if sa is not None and sb is not None and not w:
+            w = "a" if sa > sb else ("b" if sb > sa else "draw")
+        elif w and sa is None and sb is None:
+            sa, sb = (1, 0) if w == "a" else ((0, 1) if w == "b" else (0, 0))
+        if w in ("a", "b", "draw"):
+            fields.update({"winner": w, "score_a": sa, "score_b": sb, "status": "played"})
+    db.update_match(mid, fields)
+    return {"ok": True}
+
+
+@app.delete("/api/events/{eid}/matches/{mid}")
+def api_match_delete(eid: int, mid: int, user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    db.delete_match(eid, mid)
+    return {"ok": True}
+
+
+@app.post("/api/events/{eid}/matches/generate")
+def api_match_generate(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    if body.get("replace"):
+        db.clear_matches(eid)
+    settings = e.get("settings") or {}
+    try:
+        legs = max(1, min(10, int(body.get("legs") or settings.get("rounds") or 1)))
+    except Exception:  # noqa: BLE001
+        legs = 1
+    fixed = settings.get("map_policy") == "fixed"
+    mode = settings.get("fixed_mode") if fixed else None
+    mp = settings.get("fixed_map") if fixed else None
+    teams_mode = e["mode"] == "teams"
+    ids = [t["id"] for t in db.list_teams(eid)] if teams_mode else \
+          [p["player_tag"] for p in db.list_participants(eid)]
+    if len(ids) < 2:
+        return JSONResponse({"error": "Hacen falta al menos 2 participantes."}, status_code=400)
+    schedule = _round_robin(ids)
+    created, round_no = 0, 0
+    for leg in range(legs):
+        for jornada in schedule:
+            round_no += 1
+            for (a, b) in jornada:
+                if leg % 2 == 1:
+                    a, b = b, a
+                if teams_mode:
+                    db.create_match(eid, round_no, a_team=a, b_team=b, mode=mode, map=mp)
+                else:
+                    db.create_match(eid, round_no, a_tag=a, b_tag=b, mode=mode, map=mp)
+                created += 1
+    return {"ok": True, "created": created}
+
+
 @app.get("/")
 def index():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
-
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
