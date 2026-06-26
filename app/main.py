@@ -16,6 +16,8 @@ import os
 import json
 import re
 import time
+import base64
+import uuid
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -631,6 +633,37 @@ def api_wiki_propose(payload: dict = Body(...), user: dict = Depends(auth.requir
             return JSONResponse({"error": "Ponle un título."}, status_code=400)
     pid = db.create_proposal(user["id"], kind, node_id, data, summary, justification)
     return {"ok": True, "id": pid}
+
+
+_WIKI_MEDIA_DIR = os.path.join(FRONTEND_DIR, "media", "wiki")
+_IMG_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
+
+
+@app.post("/api/wiki/upload-image")
+def api_wiki_upload(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    data = (payload or {}).get("data") or ""
+    mime = ((payload or {}).get("mime") or "").lower()
+    if data.startswith("data:"):
+        head, _, b64 = data.partition(",")
+        if not mime and ":" in head and ";" in head:
+            mime = head[head.index(":") + 1:head.index(";")].lower()
+        data = b64
+    ext = _IMG_EXT.get(mime)
+    if not ext:
+        return JSONResponse({"error": "Formato no admitido (usa PNG, JPG, GIF o WEBP)."}, status_code=400)
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "Imagen no válida."}, status_code=400)
+    if not raw:
+        return JSONResponse({"error": "Imagen vacía."}, status_code=400)
+    if len(raw) > 6 * 1024 * 1024:
+        return JSONResponse({"error": "La imagen supera los 6 MB."}, status_code=400)
+    os.makedirs(_WIKI_MEDIA_DIR, exist_ok=True)
+    name = uuid.uuid4().hex + ext
+    with open(os.path.join(_WIKI_MEDIA_DIR, name), "wb") as f:
+        f.write(raw)
+    return {"ok": True, "url": "/static/media/wiki/" + name}
 
 
 # --------------------------- Administración ---------------------------

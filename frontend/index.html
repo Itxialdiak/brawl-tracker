@@ -165,6 +165,18 @@
   .wiki-body strong { color: #fff; }
   .wiki-body a { color: var(--cyan); }
   .wiki-body hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+  .wiki-body img { display: block; max-width: 100%; height: auto; border-radius: 12px; margin: 18px auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,.4); border: 1px solid var(--border); }
+  .wiki-body figure { margin: 18px 0; text-align: center; }
+  .wiki-body figcaption { color: var(--muted); font-size: 12.5px; margin-top: 7px; font-style: italic; }
+  .wiki-body blockquote { border-left: 3px solid var(--cyan); margin: 16px 0; padding: 6px 18px; color: var(--muted);
+    font-style: italic; background: rgba(63,225,255,0.05); border-radius: 0 10px 10px 0; }
+  .wiki-body blockquote p:last-child { margin-bottom: 0; }
+  .wiki-body > *:first-child { margin-top: 0; }
+  /* En el editor, la imagen seleccionada se resalta */
+  .we-editor img { cursor: default; }
+  .we-img-btn { color: var(--gold) !important; border-color: rgba(245,184,42,0.4) !important; }
+  .we-img-btn:hover { background: rgba(245,184,42,0.08) !important; }
 
   .wiki-body table { border-collapse: collapse; width: 100%; margin: 8px 0 18px; font-size: 13.5px; }
   .wiki-body table.wk-data th { background: linear-gradient(100deg, rgba(198,79,240,0.22), rgba(91,84,255,0.18));
@@ -183,8 +195,8 @@
   .wiki-body table.wk-callout td:first-child:empty { display: none; }
   .wiki-body .colgroup, .wiki-body colgroup { display: none; }
 
-  .we-editor { min-height: 220px; max-height: 46vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px;
-    padding: 14px 16px; background: rgba(10,10,31,0.5); outline: none; }
+  .we-editor { min-height: 320px; max-height: 62vh; overflow-y: auto; resize: vertical; border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; background: rgba(10,10,31,0.5); outline: none; }
   .we-editor:focus { border-color: var(--cyan); }
   .we-toolbar { display: flex; gap: 5px; margin: 4px 0 6px; flex-wrap: wrap; }
   .we-toolbar button { font-size: 12px; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border);
@@ -192,8 +204,9 @@
   .we-toolbar button:hover { border-color: var(--cyan); color: var(--cyan); }
   .we-divider { font-family: var(--display); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold);
     border-top: 1px solid var(--border); margin: 20px 0 12px; padding-top: 12px; }
-  .modal-wide { max-width: 720px; width: 94vw; }
-  .modal-xwide { max-width: 1040px; width: 96vw; }
+  .modal-card.modal-wide { max-width: 720px; width: 94vw; }
+  .modal-card.modal-xwide { max-width: 1080px; width: 96vw; max-height: calc(100vh - 28px); overflow-y: auto; }
+  .modal-card.modal-xwide .modal-close { position: sticky; float: right; top: 4px; z-index: 5; }
 
   /* ===================== PANEL DE ADMINISTRACIÓN ===================== */
   .admin-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -752,7 +765,7 @@
 
   <!-- Ventana editar / crear nodo de wiki -->
   <div id="wiki-edit-modal" class="modal-overlay" onclick="if(event.target===this)closeWikiEdit()">
-    <div class="modal-card has-close modal-wide">
+    <div class="modal-card has-close modal-xwide">
       <button class="modal-close" onclick="closeWikiEdit()" title="Cerrar" aria-label="Cerrar">✕</button>
       <div class="modal-title" id="we-title">Editar</div>
       <div class="modal-sub" id="we-sub">Tus cambios se enviarán a revisión y se publicarán cuando un administrador los apruebe.</div>
@@ -770,12 +783,16 @@
         <div class="we-toolbar">
           <button type="button" onmousedown="fmt(event,'bold')" title="Negrita"><b>N</b></button>
           <button type="button" onmousedown="fmt(event,'italic')" title="Cursiva"><i>C</i></button>
+          <button type="button" onmousedown="block(event,'h3')" title="Subtítulo">H Subtítulo</button>
           <button type="button" onmousedown="fmt(event,'insertUnorderedList')" title="Lista">• Lista</button>
+          <button type="button" onmousedown="block(event,'blockquote')" title="Cita / destacado">❝ Cita</button>
           <button type="button" onmousedown="insertBox(event)" title="Cuadro resaltado">▭ Cuadro</button>
           <button type="button" onmousedown="insertTable(event)" title="Tabla de datos">▦ Tabla</button>
+          <button type="button" onmousedown="pickImage(event)" title="Subir imagen" class="we-img-btn">🖼 Imagen</button>
         </div>
         <div class="we-editor wiki-body" id="we-body" contenteditable="true"></div>
-        <div class="field-hint">Puedes dar formato con los botones de arriba. Se conservan los cuadros y tablas existentes.</div>
+        <input type="file" id="we-image-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="handleImageFile(this)" />
+        <div class="field-hint">Da formato con la barra: subtítulos, listas, citas, cuadros, tablas e imágenes. Se conserva el formato existente.</div>
       </div>
 
       <div class="we-divider">Para enviar a revisión</div>
@@ -2093,6 +2110,7 @@ async function submitReorder() {
 
 /* ---------- Mini-editor de formato ---------- */
 function fmt(e, cmd) { e.preventDefault(); document.execCommand(cmd, false, null); $("we-body").focus(); }
+function block(e, tag) { e.preventDefault(); $("we-body").focus(); document.execCommand("formatBlock", false, tag); }
 function insertBox(e) {
   e.preventDefault(); $("we-body").focus();
   document.execCommand("insertHTML", false,
@@ -2102,6 +2120,32 @@ function insertTable(e) {
   e.preventDefault(); $("we-body").focus();
   document.execCommand("insertHTML", false,
     '<table class="wk-data"><thead><tr><th>Columna 1</th><th>Columna 2</th></tr></thead><tbody><tr><td>—</td><td>—</td></tr><tr><td>—</td><td>—</td></tr></tbody></table><p><br></p>');
+}
+let savedRange = null;
+function saveSel() {
+  const s = window.getSelection();
+  if (s && s.rangeCount && $("we-body").contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange();
+  else savedRange = null;
+}
+function restoreSel() {
+  $("we-body").focus();
+  if (savedRange) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); }
+}
+function pickImage(e) { e.preventDefault(); saveSel(); $("we-image-input").click(); }
+async function handleImageFile(input) {
+  const file = input.files && input.files[0]; input.value = "";
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { wikiToast("Eso no es una imagen", "err"); return; }
+  if (file.size > 6 * 1024 * 1024) { wikiToast("La imagen supera los 6 MB", "err"); return; }
+  wikiToast("Subiendo imagen…", "");
+  try {
+    const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    const { ok, d } = await apiSend("/api/wiki/upload-image", "POST", { data: dataUrl, mime: file.type });
+    if (!ok) { wikiToast(d.error || "No se pudo subir la imagen", "err"); return; }
+    restoreSel();
+    document.execCommand("insertHTML", false, '<img src="' + d.url + '" alt=""><p><br></p>');
+    wikiToast("Imagen añadida ✓", "ok");
+  } catch (e) { wikiToast("Error al subir la imagen", "err"); }
 }
 
 /* ============================ ADMINISTRACIÓN ============================ */
