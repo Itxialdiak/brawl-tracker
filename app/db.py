@@ -931,11 +931,24 @@ def _derive_is_win(result, rank, mode):
     return None
 
 
+# La API da dos modos: battle.mode (mecánica base) y event.mode (modo del evento).
+# Brawl Hockey llega como 'brawlBall' en battle.mode pero como 'airHockey' en
+# event.mode, así que se confundía con Balón Brawl. Corregimos solo ese caso; el
+# resto se queda con battle.mode como siempre. 'brawlHockey' casa con el icono de
+# Brawlify (scHash). Añade aquí futuros casos mal etiquetados si aparecen.
+EVENT_MODE_FIX = {"airHockey": "brawlHockey"}
+
+
+def canonical_mode(event_mode, battle_mode) -> str:
+    return EVENT_MODE_FIX.get(event_mode, battle_mode or event_mode or "unknown")
+
+
 def parse_battle(raw: dict, player_tag: str) -> dict | None:
     battle = raw.get("battle") or {}
     event = raw.get("event") or {}
     battle_time = raw.get("battleTime")
-    mode = battle.get("mode") or event.get("mode") or "unknown"
+    id_mode = battle.get("mode") or event.get("mode") or "unknown"  # estable: no rehace ids antiguos
+    mode = canonical_mode(event.get("mode"), battle.get("mode"))
     bmap = event.get("map") or "unknown"
     btype = battle.get("type")
     duration = battle.get("duration")
@@ -978,7 +991,7 @@ def parse_battle(raw: dict, player_tag: str) -> dict | None:
 
     is_star = 1 if (star_tag and normalize_tag(star_tag) == norm_me) else 0
     is_win = _derive_is_win(result, rank, mode)
-    battle_id = hashlib.sha1(f"{norm_me}|{battle_time}|{mode}|{bmap}|{my_brawler}".encode()).hexdigest()
+    battle_id = hashlib.sha1(f"{norm_me}|{battle_time}|{id_mode}|{bmap}|{my_brawler}".encode()).hexdigest()
 
     return {
         "id": battle_id, "player_tag": norm_me, "battle_time": battle_time,
@@ -998,7 +1011,7 @@ def ingest_battles(items: list[dict], player_tag: str) -> int:
         b = parse_battle(raw, player_tag)
         if not b:
             continue
-        existing = cur.execute("SELECT my_trophies FROM battles WHERE id=?", (b["id"],)).fetchone()
+        existing = cur.execute("SELECT my_trophies, mode FROM battles WHERE id=?", (b["id"],)).fetchone()
         has_trophy_data = b["my_trophies"] is not None or any(
             t is not None for _, t in (b["opponents"] + b["allies"]))
 
@@ -1014,12 +1027,17 @@ def ingest_battles(items: list[dict], player_tag: str) -> int:
             )
             new_count += 1
             _insert_participants(cur, b)
-        elif existing["my_trophies"] is None and has_trophy_data:
-            # Partida ya guardada antes de tener copas: las rellenamos ahora.
-            cur.execute("UPDATE battles SET my_trophies=? WHERE id=?", (b["my_trophies"], b["id"]))
-            cur.execute("DELETE FROM opponents WHERE battle_id=?", (b["id"],))
-            cur.execute("DELETE FROM allies WHERE battle_id=?", (b["id"],))
-            _insert_participants(cur, b)
+        else:
+            # Auto-corrige el modo si cambió la normalización (p.ej. Hockey antes
+            # guardado como brawlBall), sin tocar el id (así no se duplica).
+            if existing["mode"] != b["mode"]:
+                cur.execute("UPDATE battles SET mode=? WHERE id=?", (b["mode"], b["id"]))
+            if existing["my_trophies"] is None and has_trophy_data:
+                # Partida ya guardada antes de tener copas: las rellenamos ahora.
+                cur.execute("UPDATE battles SET my_trophies=? WHERE id=?", (b["my_trophies"], b["id"]))
+                cur.execute("DELETE FROM opponents WHERE battle_id=?", (b["id"],))
+                cur.execute("DELETE FROM allies WHERE battle_id=?", (b["id"],))
+                _insert_participants(cur, b)
     conn.commit(); conn.close()
     return new_count
 

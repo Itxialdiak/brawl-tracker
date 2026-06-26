@@ -351,7 +351,7 @@
   .stat .v small { font-size: 16px; color: var(--muted); }
   .stat .sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px,1fr)); gap: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px,1fr)); gap: 18px; margin-bottom: 24px; }
   .grid.grid-5 { grid-template-columns: repeat(5, minmax(0,1fr)); gap: 14px; margin-top: 18px; }
   @media (max-width: 1150px) { .grid.grid-5 { grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); } }
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; }
@@ -1068,6 +1068,23 @@
   .lvl-btn { font-family:var(--display); font-weight:700; font-size:13px; width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--panel); color:var(--muted); cursor:pointer; }
   .lvl-btn.active { background:var(--gold); color:var(--bg); border-color:var(--gold); }
   @media (max-width: 640px) { .br-d-top { grid-template-columns:1fr; } .br-d-img { max-width:300px; margin:0 auto; } }
+
+  /* ---------- Paneles colapsables (6 + "ver más") ---------- */
+  .rows.collapsed > .row:nth-child(n+7) { display:none; }
+  .more-toggle { display:block; width:100%; margin-top:12px; padding:8px; background:transparent; border:1px dashed var(--border); border-radius:9px; color:var(--muted); font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:.4px; text-transform:uppercase; cursor:pointer; transition:color .15s,border-color .15s,background .15s; }
+  .more-toggle:hover { color:var(--text); border-color:rgba(150,130,255,.45); background:rgba(150,130,255,.06); }
+
+  /* ---------- Donuts de modos ---------- */
+  .donut-wrap { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .donut-svg { width:150px; height:150px; flex-shrink:0; }
+  .donut-center-n { fill:var(--text); font-family:var(--display); font-weight:700; font-size:30px; text-anchor:middle; }
+  .donut-center-l { fill:var(--muted); font-size:11px; text-anchor:middle; text-transform:uppercase; letter-spacing:.5px; }
+  .donut-legend { flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px; max-height:172px; overflow-y:auto; }
+  .dleg-row { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .dleg-dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+  .dleg-row img { width:18px; height:18px; object-fit:contain; flex-shrink:0; }
+  .dleg-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dleg-val { font-family:var(--display); font-weight:700; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -1479,6 +1496,22 @@
         <div class="panel p-vs"><h2><span class="dot"></span>Contra cada brawler</h2>
           <div class="hint">Win rate y copas medias del rival.</div><div class="rows" id="r-vs"></div></div>
       </div>
+      <div class="charts-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
+          <div class="hint">Balance acumulado de trofeos.</div>
+          <div class="chart-box" id="trophy-chart"></div></div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Forma reciente · win rate</h2>
+          <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
+          <div class="chart-box" id="winrate-chart"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Modos más jugados</h2>
+          <div class="hint">Reparto de tus partidas por modo de juego.</div>
+          <div class="chart-box" id="mode-play-donut"></div></div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Mejores modos · win rate</h2>
+          <div class="hint">Comparativa de tu win rate por modo.</div>
+          <div class="chart-box" id="mode-wr-donut"></div></div>
+      </div>
     </div>
 
     <!-- ANALÍTICAS -->
@@ -1491,14 +1524,6 @@
         <h2 class="section-title" style="font-size:16px">Qué jugar ahora</h2>
         <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
         <div class="rotation-grid" id="rotation-grid"></div>
-      </div>
-      <div class="charts-row">
-        <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
-          <div class="hint">Balance acumulado de trofeos.</div>
-          <div class="chart-box" id="trophy-chart"></div></div>
-        <div class="panel chart-sq"><h2><span class="dot"></span>Forma reciente · win rate</h2>
-          <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
-          <div class="chart-box" id="winrate-chart"></div></div>
       </div>
       <div class="grid">
         <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
@@ -2057,7 +2082,7 @@ function labelCell(item, kind) {
   }
   if (kind === "mode") {
     const a = modeAsset(item.label);
-    return `${a && a.icon ? imgTag(a.icon, "mode-icon") : ""}<span>${lbl}</span>`;
+    return `${a && a.icon ? imgTag(a.icon, "mode-icon") : ""}<span>${esc(modeName(item.label))}</span>`;
   }
   const url = brawlerPortrait(item.label);
   const prefix = kind === "vs" ? `<span class="vs">vs</span>` : "";
@@ -2083,11 +2108,30 @@ function rowHTML(item, kind) {
     <div class="bar-wrap"><div class="bar" style="width:${barW}%;background:${color}"></div></div>
     <div class="meta">${item.wins}V · ${item.losses}D${item.undecided ? " · " + item.undecided + "E" : ""} — ${extra}</div></div>`;
 }
+/* ---------- Paneles colapsables (muestran 6 filas; "ver más" despliega) ---------- */
+function updateMoreBtn(btn, rowsEl, threshold, collapsed) {
+  const n = rowsEl.querySelectorAll(":scope > .row").length;
+  btn.textContent = collapsed ? `Ver más (${n - threshold})` : "Ver menos";
+}
+function applyCollapse(rowsEl, threshold = 6) {
+  if (!rowsEl) return;
+  let btn = rowsEl.nextElementSibling;
+  if (!btn || !btn.classList.contains("more-toggle")) {
+    btn = document.createElement("button");
+    btn.className = "more-toggle";
+    btn.addEventListener("click", () => updateMoreBtn(btn, rowsEl, threshold, rowsEl.classList.toggle("collapsed")));
+    rowsEl.after(btn);
+  }
+  const n = rowsEl.querySelectorAll(":scope > .row").length;
+  if (n > threshold) { rowsEl.classList.add("collapsed"); btn.style.display = ""; updateMoreBtn(btn, rowsEl, threshold, true); }
+  else { rowsEl.classList.remove("collapsed"); btn.style.display = "none"; }
+}
 function render(el, data, kind) {
   const min = parseInt($("f-min").value) || 1;
   const f = data.filter((d) => d.total >= min);
   el.innerHTML = f.length ? f.map((d) => rowHTML(d, kind)).join("")
     : `<div class="empty"><span class="big">∅</span>Aún no hay datos suficientes.<br>Deja el tracker corriendo mientras se juega.</div>`;
+  applyCollapse(el);
 }
 async function loadOverview() {
   const o = await getJSON("/api/overview?" + qs());
@@ -2111,8 +2155,17 @@ async function loadPanels() {
   ]);
   render($("r-brawler"), b, "brawler"); render($("r-mode"), m, "mode");
   render($("r-map"), mp, "map"); render($("r-vs"), vs, "vs");
+  renderModeDonuts(m);
 }
-async function loadStats() { await Promise.all([loadOverview(), loadPanels()]); }
+async function loadStats() { await Promise.all([loadOverview(), loadPanels(), loadStatsCharts()]); }
+async function loadStatsCharts() {
+  if (!currentPlayer) return;
+  try {
+    const rep = await getJSON("/api/report?" + qs());
+    $("trophy-chart").innerHTML = trophyChart(rep.trophy_series);
+    $("winrate-chart").innerHTML = winrateChart(rep.winrate_evolution);
+  } catch (e) { /* sin gráficos si falla */ }
+}
 
 /* ---------- Historial ---------- */
 function bchip(p, me = false) {
@@ -2136,7 +2189,7 @@ function battleCard(b) {
   return `<div class="battle-card"${accent}>
     <div class="bc-head">
       <span class="bc-result ${resClass}">${resTxt}</span>
-      <span class="bc-mode">${modeIcon}${esc(b.mode)} · ${mapHtml}</span>
+      <span class="bc-mode">${modeIcon}${esc(modeName(b.mode))} · ${mapHtml}</span>
       <span class="bc-time">${fmtTime(b.battle_time)}</span>
       <span class="bc-trophy">${tro}</span>
     </div>
@@ -2291,6 +2344,18 @@ async function refreshAll() {
 
 /* ---------- "Qué jugar ahora" ---------- */
 function prettyMode(m) { return (m || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (c) => c.toUpperCase()); }
+/* Traducción de modos al castellano. El key (gemGrab, hotZone…) se mantiene como
+   valor interno (útil con la API y los iconos); solo cambia lo que se muestra.
+   Los modos no listados caen a prettyMode (p.ej. wipeout -> "Wipeout"). */
+const MODE_ES = {
+  gemGrab: "Atrapagemas", brawlBall: "Balón Brawl", bounty: "Caza Estelar",
+  heist: "Atraco", hotZone: "Zona Restringida", knockout: "Noqueo", duels: "Duelos",
+  soloShowdown: "Supervivencia (solo)", duoShowdown: "Supervivencia (dúo)",
+  trioShowdown: "Supervivencia (trío)", brawlHockey: "Brawl Hockey", wipeout: "Destrucción",
+  // Códigos crudos de la API (rotación) que difieren del canónico que guardamos:
+  airHockey: "Brawl Hockey", deathmatch5v5: "Destrucción",
+};
+function modeName(key) { return key ? (MODE_ES[key] || prettyMode(key)) : ""; }
 async function loadRotation() {
   const block = $("rotation-block"), grid = $("rotation-grid");
   if (!currentPlayer) { block.style.display = "none"; return; }
@@ -2329,7 +2394,7 @@ function renderRotCard(e) {
   return `<div class="rot-card ${cls}"${mapAttr}>
     <div class="rot-head"${headStyle}>
       ${modeIc ? `<img class="rot-mode-ic" src="${modeIc}" alt="" onerror="this.style.display='none'">` : ""}
-      <div class="rot-title"><div class="rot-map">${esc(e.map)}</div><div class="rot-mode">${esc(prettyMode(e.mode))}</div></div>
+      <div class="rot-title"><div class="rot-map">${esc(e.map)}</div><div class="rot-mode">${esc(modeName(e.mode))}</div></div>
       ${wrHtml}
     </div>${brsHtml}</div>`;
 }
@@ -3010,7 +3075,7 @@ function renderBrawlerDetail(d) {
   let modeHtml = "";
   if (d.your && d.your.by_mode && d.your.by_mode.length) {
     modeHtml = `<div class="br-section"><h3>Tu rendimiento por modo</h3><div class="rows">` +
-      d.your.by_mode.map((m) => `<div class="row"><div class="name">${esc(prettyMode(m.mode))}</div>
+      d.your.by_mode.map((m) => `<div class="row"><div class="name">${esc(modeName(m.mode))}</div>
         <div class="pct" style="color:${pctColor(m.winrate)}">${m.winrate == null ? "—" : m.winrate + "%"}</div>
         <div class="meta" style="grid-column:1/-1">${m.battles} partidas</div></div>`).join("") +
       `</div></div>`;
@@ -3602,10 +3667,8 @@ async function loadReport() {
   const a = await getJSON("/api/report?" + qs());
   renderStreak(a.streak);
   renderHighlights(a.highlights);
-  $("trophy-chart").innerHTML = trophyChart(a.trophy_series);
-  $("winrate-chart").innerHTML = winrateChart(a.winrate_evolution);
-  $("trophy-diff").innerHTML = renderBuckets(a.trophy_diff, true);
-  $("hourly").innerHTML = renderHourly(a.battle_points);
+  $("trophy-diff").innerHTML = renderBuckets(a.trophy_diff, true); applyCollapse($("trophy-diff"));
+  $("hourly").innerHTML = renderHourly(a.battle_points); applyCollapse($("hourly"));
   $("heatmap").innerHTML = heatmap(a.crosstab);
   render($("ri-allies"), a.allies, "brawler");
   renderValuation(a.by_brawler);
@@ -3678,13 +3741,14 @@ function renderValuation(byBrawler) {
   const o = elig.filter((b) => b.winrate < 45 && b.total >= avg).sort((a, b) => a.winrate - b.winrate).slice(0, 5);
   under.innerHTML = u.length ? u.map((b) => rowHTML(b, "brawler")).join("") : `<div class="empty">Nada destacable: no tienes brawlers con buen win rate y pocas partidas.</div>`;
   over.innerHTML = o.length ? o.map((b) => rowHTML(b, "brawler")).join("") : `<div class="empty">Nada que revisar: no abusas de ningún brawler flojo.</div>`;
+  applyCollapse(under); applyCollapse(over);
 }
 function hlCard(icon, label, item, kind, valueFn) {
   let inner = icon, name = "—", value = "—";
   if (item) {
     value = valueFn(item); name = esc(item.label);
     if (kind === "brawler" && brawlerPortrait(item.label)) inner = imgTag(brawlerPortrait(item.label), "hl-portrait");
-    else if (kind === "mode" && modeAsset(item.label)) inner = imgTag(modeAsset(item.label).icon, "hl-portrait");
+    else if (kind === "mode") { name = esc(modeName(item.label)); const a = modeAsset(item.label); if (a) inner = imgTag(a.icon, "hl-portrait"); }
     else if (kind === "map" && mapAsset(item.label)) name = `<span class="map-link" data-map="${esc(item.label)}">${esc(item.label)}</span>`;
   }
   return `<div class="hl-card"><div class="hl-visual">${inner}</div><div class="hl-body"><div class="hl-label">${label}</div><div class="hl-name">${name}</div><div class="hl-value">${value}</div></div></div>`;
@@ -3718,11 +3782,55 @@ function trophyChart(series) {
   </svg>
   <div class="chart-cap">Balance acumulado: <b style="color:${color}">${last >= 0 ? "+" : ""}${last} 🏆</b> en ${series.length} partidas</div>`;
 }
+
+/* ---------- Donuts de modos (en la pestaña Estadísticas) ---------- */
+function modeColor(label, i) {
+  const a = modeAsset(label);
+  if (a && a.color) return a.color;  // color real del modo (Brawlify) si lo hay
+  const pal = ["#5b54ff", "#3fe1ff", "#c64ff0", "#36e0a0", "#f5b82a", "#ff4d73", "#ff8e3c", "#b388ff"];
+  return pal[i % pal.length];
+}
+function donutChart(items, centerLabel) {
+  const total = items.reduce((s, it) => s + it.value, 0) || 1;
+  const r = 56, cx = 75, cy = 75, C = 2 * Math.PI * r;
+  let off = 0;
+  const arcs = items.map((it) => {
+    const len = (it.value / total) * C;
+    const seg = `<circle r="${r}" cx="${cx}" cy="${cy}" fill="none" stroke="${it.color}" stroke-width="20" stroke-linecap="butt" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"><title>${esc(modeName(it.label))}: ${it.display}</title></circle>`;
+    off += len; return seg;
+  }).join("");
+  const legend = items.map((it) => {
+    const a = modeAsset(it.label);
+    const ic = a && a.icon ? `<img src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
+    return `<div class="dleg-row"><span class="dleg-dot" style="background:${it.color}"></span>${ic}<span class="dleg-name">${esc(modeName(it.label))}</span><span class="dleg-val">${it.display}</span></div>`;
+  }).join("");
+  return `<div class="donut-wrap"><svg viewBox="0 0 150 150" class="donut-svg">${arcs}
+    <text x="${cx}" y="${cy - 3}" class="donut-center-n">${items.length}</text>
+    <text x="${cx}" y="${cy + 14}" class="donut-center-l">${esc(centerLabel)}</text></svg>
+    <div class="donut-legend">${legend}</div></div>`;
+}
+function renderModeDonuts(modeData) {
+  const playEl = $("mode-play-donut"), wrEl = $("mode-wr-donut");
+  if (!playEl || !wrEl) return;
+  const min = parseInt($("f-min").value) || 1;
+  const data = (modeData || []).filter((d) => d.label && d.total >= min);
+  if (!data.length) {
+    const e = `<div class="empty">Sin datos suficientes todavía.</div>`;
+    playEl.innerHTML = e; wrEl.innerHTML = e; return;
+  }
+  const byPlay = data.slice().sort((a, b) => b.total - a.total)
+    .map((d, i) => ({ label: d.label, value: d.total, display: d.total + "p", color: modeColor(d.label, i) }));
+  playEl.innerHTML = donutChart(byPlay, "modos");
+  const byWr = data.filter((d) => d.winrate != null).sort((a, b) => b.winrate - a.winrate)
+    .map((d, i) => ({ label: d.label, value: Math.max(1, d.winrate), display: d.winrate + "%", color: modeColor(d.label, i) }));
+  wrEl.innerHTML = byWr.length ? donutChart(byWr, "win rate") : `<div class="empty">Sin win rate por modo todavía.</div>`;
+}
+
 function heatBg(wr) { if (wr >= 55) return "rgba(65,224,138,0.14)"; if (wr < 45) return "rgba(255,93,108,0.14)"; return "rgba(255,200,61,0.12)"; }
 function heatmap(ct) {
   if (!ct.brawlers.length || !ct.modes.length) return `<div class="empty">Sin datos para la tabla cruzada todavía.</div>`;
   let h = `<table class="heat"><thead><tr><th></th>`;
-  h += ct.modes.map((m) => { const a = modeAsset(m); return `<th>${a && a.icon ? imgTag(a.icon, "heat-mode") : ""}<span>${esc(m)}</span></th>`; }).join("");
+  h += ct.modes.map((m) => { const a = modeAsset(m); return `<th>${a && a.icon ? imgTag(a.icon, "heat-mode") : ""}<span>${esc(modeName(m))}</span></th>`; }).join("");
   h += `</tr></thead><tbody>`;
   for (const b of ct.brawlers) {
     const port = brawlerPortrait(b);
