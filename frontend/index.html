@@ -436,9 +436,11 @@
   /* Analíticas: "Qué jugar ahora" */
   .rotation-block { margin-bottom: 26px; }
   .rotation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
-  .rot-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; }
+  .rot-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; transition: transform .15s, border-color .15s, box-shadow .15s; }
   .rot-card.good { border-color: rgba(65,224,138,.45); }
   .rot-card.bad { border-color: rgba(255,93,108,.4); }
+  .rot-card[data-map] { cursor: pointer; }
+  .rot-card[data-map]:hover { transform: translateY(-2px); border-color: rgba(150,130,255,.45); box-shadow: 0 10px 26px rgba(0,0,0,.38); }
   .rot-head { display: flex; align-items: center; gap: 11px; padding: 14px 16px; background-size: cover; background-position: center; }
   .rot-mode-ic { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
   .rot-title { flex: 1; min-width: 0; }
@@ -601,6 +603,138 @@
   .auth-submit { width: 100%; margin-top: 4px; }
   .auth-error { color: var(--loss); font-size: 13px; min-height: 18px; margin-bottom: 8px; }
   .auth-note { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  /* ===================== TORNEOS Y LIGAS ===================== */
+  .lg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .lg-mine-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .lgtab { font-family: var(--display); font-weight: 600; font-size: 12.5px; letter-spacing: .4px; text-transform: uppercase;
+    color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 7px 13px; cursor: pointer; transition: all .15s; }
+  .lgtab:hover { color: var(--text); }
+  .lgtab.active { color: #0a0a1f; background: linear-gradient(100deg, var(--gold), var(--cyan)); border-color: transparent; }
+
+  .event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 14px; }
+  .event-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s; display: flex; flex-direction: column; }
+  .event-card:hover { transform: translateY(-3px); border-color: rgba(150,130,255,.45); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+  .event-card .ec-poster { height: 96px; background: linear-gradient(135deg, var(--bg-elev), #241c52); background-size: cover; background-position: center; position: relative; }
+  .event-card .ec-kindtag { position: absolute; top: 8px; left: 8px; font-family: var(--display); font-weight: 700; font-size: 10px; letter-spacing: .6px;
+    text-transform: uppercase; padding: 3px 9px; border-radius: 20px; background: rgba(10,10,31,.72); color: var(--cyan); border: 1px solid var(--border); }
+  .event-card .ec-vistag { position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: .4px; background: rgba(10,10,31,.72); border: 1px solid var(--border); }
+  .ec-vistag.public { color: var(--win); } .ec-vistag.acceptance { color: var(--gold); } .ec-vistag.private { color: var(--magenta); }
+  .event-card .ec-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+  .event-card .ec-name { font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1.2; }
+  .event-card .ec-sub { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .event-card .ec-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .event-card .ec-chip { font-size: 11px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+  .event-card .ec-relation { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--border); }
+  .ec-relation.owner { color: var(--gold); } .ec-relation.participant { color: var(--cyan); } .ec-relation.follower { color: var(--muted); }
+  .ec-pending-dot { background: var(--loss); color: #fff; font-size: 10px; font-weight: 700; border-radius: 20px; padding: 2px 7px; }
+
+  /* Ficha de evento (detalle) */
+  .evd-poster { height: 150px; border-radius: 14px; background-size: cover; background-position: center; margin-bottom: 14px; border: 1px solid var(--border); }
+  .evd-title { font-family: var(--display); font-weight: 700; font-size: clamp(20px,2.6vw,26px); letter-spacing: .4px; margin-bottom: 10px; padding-right: 40px; }
+  .evd-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .evd-badge { font-family: var(--display); font-weight: 700; font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; }
+  .evd-badge.vis-public { color: var(--win); } .evd-badge.vis-acceptance { color: var(--gold); } .evd-badge.vis-private { color: var(--magenta); }
+  .evd-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .evd-joined { font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--win); align-self: center; }
+  .evd-joined.pending { color: var(--gold); }
+  .evd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; margin-bottom: 18px; }
+  .evd-stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .evd-stat-k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .evd-stat-v { font-family: var(--display); font-weight: 700; font-size: 16px; margin-top: 4px; }
+  .evd-section { margin-bottom: 18px; }
+  .evd-section h4 { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .evd-desc { color: var(--text); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+  .evd-muted { color: var(--muted); font-size: 13px; }
+  .evd-parts { display: flex; flex-direction: column; gap: 6px; }
+  .evd-part { display: flex; align-items: center; gap: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+  .evd-part-name { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }
+  .evd-part-tag { color: var(--cyan); font-family: var(--display); font-size: 12px; flex: 0 0 auto; }
+  .evd-team { font-size: 11px; color: var(--magenta); border: 1px solid var(--border); border-radius: 12px; padding: 1px 7px; margin-left: 6px; }
+  .evd-x { background: transparent; border: none; color: var(--loss); font-size: 14px; cursor: pointer; padding: 2px 6px; flex: 0 0 auto; }
+  .evd-req { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: rgba(245,184,42,.06); border: 1px solid rgba(245,184,42,.25); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
+  .evd-req-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .mini-ok, .mini-no { font-family: var(--display); font-weight: 600; font-size: 12px; border-radius: 8px; padding: 5px 11px; cursor: pointer; border: 1px solid var(--border); }
+  .mini-ok { background: var(--win); color: #0a0a1f; border-color: transparent; }
+  .mini-no { background: transparent; color: var(--loss); border-color: rgba(255,77,115,.4); }
+  .evd-empty-table { text-align: center; padding: 28px 20px; color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; font-size: 13.5px; line-height: 1.5; }
+
+  .lg-empty { text-align: center; padding: 36px 20px; color: var(--muted); border: 1px dashed var(--border); border-radius: 14px; font-size: 14px; }
+  .lg-board { margin-top: 34px; }
+
+  /* Filtros con checkboxes */
+  .board-filters { display: flex; flex-wrap: wrap; gap: 12px 26px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; }
+  .filter-group { display: flex; flex-direction: column; gap: 8px; }
+  .filter-label { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--gold); }
+  .filter-group .chk, .lang-chks .chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; user-select: none; }
+  .lang-chks { display: grid; grid-template-columns: repeat(2, auto); gap: 6px 18px; }
+  .chk input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cyan); cursor: pointer; flex: 0 0 auto; }
+
+  /* Toggle de segmentos (crear) */
+  .seg-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .seg-toggle button { flex: 1 1 auto; font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--muted);
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; cursor: pointer; transition: all .15s; }
+  .seg-toggle button:hover { color: var(--text); }
+  .seg-toggle button.active { color: #0a0a1f; background: linear-gradient(100deg, var(--magenta), var(--cyan)); border-color: transparent; }
+
+  .ec-lbl { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 14px 0 6px; }
+  .ec-mini { text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 11px; }
+  .ec-hint { font-size: 12px; color: var(--cyan); margin-top: 6px; }
+  #event-create-modal input, #event-create-modal select, #event-join-modal input, #event-join-modal select, #event-invite-modal input { width: 100%; }
+
+  .modal-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border);
+    background: rgba(10,10,31,.6); color: var(--muted); font-size: 15px; cursor: pointer; z-index: 5; transition: all .15s; }
+  .modal-x:hover { color: var(--text); border-color: var(--cyan); }
+
+  /* Editor de evento */
+  .ee-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+  .ee-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .ee-field { display: flex; flex-direction: column; }
+  .ee-field input, .ee-field select, .ee-textarea { width: 100%; }
+  .ee-row { display: flex; gap: 8px; } .ee-row input { flex: 1 1 0; min-width: 0; }
+  .ee-textarea { font-family: var(--body); font-size: 14px; color: var(--text); background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 12px; outline: none; resize: vertical; line-height: 1.5; }
+  .ee-textarea:focus { border-color: var(--cyan); }
+  .ee-sep { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--gold);
+    margin: 22px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .ee-chk { margin: 12px 0 4px; }
+  .ee-poster-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ee-poster-preview { width: 130px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+  .ee-upload { cursor: pointer; }
+  .ee-actions { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+  .danger-ghost { background: transparent; border: 1px solid rgba(255,77,115,.4); color: var(--loss); border-radius: 10px; padding: 9px 16px;
+    font-family: var(--display); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .15s; }
+  .danger-ghost:hover { background: rgba(255,77,115,.12); }
+
+  /* Ficha del evento */
+  .ed-poster { height: 170px; border-radius: 14px; margin-bottom: 16px; background: linear-gradient(135deg, var(--bg-elev), #2a1f5e); background-size: cover; background-position: center; border: 1px solid var(--border); }
+  .ed-title { font-family: var(--display); font-weight: 700; font-size: clamp(20px,3vw,28px); letter-spacing: .5px; margin-bottom: 8px; }
+  .ed-badges { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .ed-badge { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .5px; text-transform: uppercase;
+    padding: 4px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-elev); color: var(--muted); }
+  .ed-badge.k-cyan { color: var(--cyan); } .ed-badge.k-gold { color: var(--gold); } .ed-badge.k-mag { color: var(--magenta); } .ed-badge.k-win { color: var(--win); }
+  .ed-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .ed-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+  .ed-block { background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 16px 18px; margin-bottom: 16px; }
+  .ed-block h4 { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+  .ed-meta-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(150,130,255,.1); font-size: 13.5px; }
+  .ed-meta-row:last-child { border-bottom: none; }
+  .ed-meta-row .k { color: var(--muted); } .ed-meta-row .v { font-weight: 600; text-align: right; }
+  .ed-desc { font-size: 14px; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
+  .ed-parts { display: flex; flex-direction: column; gap: 7px; }
+  .ed-part { display: flex; align-items: center; gap: 9px; font-size: 13.5px; padding: 5px 0; }
+  .ed-part .pp-tag { color: var(--cyan); font-family: var(--display); font-size: 12px; }
+  .ed-part .pp-team { color: var(--gold); font-size: 11px; margin-left: auto; }
+  .ed-part .pp-rm { margin-left: auto; background: none; border: none; color: var(--loss); cursor: pointer; font-size: 13px; }
+  .ed-slots { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .ed-req { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 0; border-bottom: 1px solid rgba(150,130,255,.1); font-size: 13px; }
+  .ed-req .rq-act { margin-left: auto; display: flex; gap: 6px; }
+  .ed-matchups { text-align: center; padding: 34px 18px; color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; font-size: 13.5px; }
+  .ed-matchups .mm-big { font-size: 30px; display: block; margin-bottom: 8px; opacity: .6; }
+  .mini-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; }
+  .btn.mini-btn, .ghost.mini-btn { font-weight: 600; }
+
   /* ===================== RESPONSIVE / MÓVIL ===================== */
   /* Scroll horizontal para tablas anchas (wiki) en cualquier tamaño */
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin: 8px 0 18px; }
@@ -675,6 +809,19 @@
     .modal-card { padding: 24px 18px; }
     .modal-card.has-close { padding-top: 50px; }
     .rv-just, .rv-meta { font-size: 12.5px; }
+
+    /* Torneos y Ligas en móvil */
+    .lg-head .add-word { display: none; }
+    #create-event-btn { padding: 9px 15px; }
+    .lg-mine-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .lg-mine-tabs::-webkit-scrollbar { display: none; }
+    .lgtab { flex: 0 0 auto; white-space: nowrap; }
+    .event-grid { grid-template-columns: 1fr; }
+    .board-filters { flex-direction: column; gap: 14px; }
+    .lang-chks { grid-template-columns: repeat(2, 1fr); }
+    .ee-grid, .ee-grid-3 { grid-template-columns: 1fr; }
+    .ed-grid { grid-template-columns: 1fr; }
+    .modal-x { top: 10px; right: 10px; }
   }
 
   @media (max-width: 380px) {
@@ -1193,13 +1340,214 @@
 
   <!-- ===================== SECCIÓN: TORNEOS Y LIGAS (futura) ===================== -->
   <section class="app-section" id="section-leagues">
-    <div class="section-placeholder">
-      <div class="ph-icon">🏆</div>
-      <h2>Torneos y Ligas</h2>
-      <div class="ph-badge">Próximamente</div>
-      <p>Organiza y gestiona ligas y torneos amateur: crea una competición con equipos, genera los enfrentamientos automáticamente según el formato elegido, registra los resultados ronda a ronda y comparte la clasificación para que otros la sigan en directo.</p>
+    <!-- Gestor de eventos -->
+    <div class="lg-head">
+      <h2 class="section-title" style="margin:0">Mis eventos</h2>
+      <button class="btn" id="create-event-btn" onclick="openCreateEvent()">+<span class="add-word"> Crear evento</span></button>
+    </div>
+    <div class="lg-mine-tabs">
+      <button class="lgtab active" data-lgtab="all" onclick="filterMine('all')">Todos</button>
+      <button class="lgtab" data-lgtab="owner" onclick="filterMine('owner')">Creados</button>
+      <button class="lgtab" data-lgtab="participant" onclick="filterMine('participant')">Apuntado</button>
+      <button class="lgtab" data-lgtab="follower" onclick="filterMine('follower')">Siguiendo</button>
+    </div>
+    <div class="event-grid" id="my-events-grid"></div>
+    <div class="lg-empty" id="my-events-empty" style="display:none">Aún no tienes eventos en esta categoría. Crea uno con «+ Crear evento» o explora el tablón de abajo.</div>
+
+    <!-- Tablón de eventos -->
+    <div class="lg-board">
+      <h2 class="section-title" style="margin-bottom:14px">Tablón de eventos</h2>
+      <div class="board-filters">
+        <div class="filter-group">
+          <span class="filter-label">Tipo</span>
+          <label class="chk"><input type="checkbox" value="league" data-fil="types" checked onchange="loadBoard()"><span>Ligas</span></label>
+          <label class="chk"><input type="checkbox" value="tournament" data-fil="types" checked onchange="loadBoard()"><span>Torneos</span></label>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Aceptación</span>
+          <label class="chk"><input type="checkbox" value="public" data-fil="acceptance" checked onchange="loadBoard()"><span>Sin aceptación</span></label>
+          <label class="chk"><input type="checkbox" value="acceptance" data-fil="acceptance" checked onchange="loadBoard()"><span>Con aceptación</span></label>
+          <label class="chk"><input type="checkbox" value="private" data-fil="acceptance" onchange="loadBoard()"><span>Privados</span></label>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Idioma</span>
+          <div class="lang-chks" id="lang-filter-chks"></div>
+        </div>
+      </div>
+      <div class="event-grid" id="board-events-grid"></div>
+      <div class="lg-empty" id="board-events-empty" style="display:none">No hay eventos públicos que coincidan con los filtros.</div>
     </div>
   </section>
+
+  <!-- Modal: crear evento -->
+  <div class="modal-overlay" id="event-create-modal">
+    <div class="modal-card">
+      <h3 class="modal-title">Crear evento</h3>
+      <label class="ec-lbl">Nombre del evento</label>
+      <input type="text" id="ec-name" placeholder="p. ej. Liga Crokers de primavera" />
+      <label class="ec-lbl">Tipo</label>
+      <div class="seg-toggle" id="ec-kind">
+        <button type="button" class="active" data-v="league">Liga</button>
+        <button type="button" data-v="tournament">Torneo</button>
+      </div>
+      <label class="ec-lbl">Modalidad</label>
+      <div class="seg-toggle" id="ec-mode">
+        <button type="button" class="active" data-v="individual">Individual</button>
+        <button type="button" data-v="teams">Por equipos</button>
+      </div>
+      <label class="ec-lbl">Visibilidad</label>
+      <div class="seg-toggle" id="ec-vis">
+        <button type="button" class="active" data-v="public">Público</button>
+        <button type="button" data-v="acceptance">Con aceptación</button>
+        <button type="button" data-v="private">Privado</button>
+      </div>
+      <div class="ec-hint" id="ec-vis-hint">Cualquiera puede apuntarse al instante.</div>
+      <label class="ec-lbl">Idioma principal</label>
+      <select id="ec-lang"></select>
+      <div class="modal-actions">
+        <button class="ghost" type="button" onclick="closeEvModal('event-create-modal')">Cancelar</button>
+        <button class="btn" type="button" onclick="submitCreateEvent()">Crear evento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: ficha del evento -->
+  <div class="modal-overlay" id="event-detail-modal">
+    <div class="modal-card modal-xwide">
+      <button class="modal-x" type="button" onclick="closeEvModal('event-detail-modal')">✕</button>
+      <div id="event-detail-body"><!-- render por JS --></div>
+    </div>
+  </div>
+
+  <!-- Modal: editar evento (organizador) -->
+  <div class="modal-overlay" id="event-edit-modal">
+    <div class="modal-card modal-xwide">
+      <button class="modal-x" type="button" onclick="closeEvModal('event-edit-modal')">✕</button>
+      <h3 class="modal-title">Editar evento</h3>
+      <div class="ee-grid">
+        <div class="ee-field"><label class="ec-lbl">Nombre</label><input type="text" id="ee-name" /></div>
+        <div class="ee-field"><label class="ec-lbl">Estado</label>
+          <select id="ee-status"><option value="open">Inscripción abierta</option><option value="ongoing">En curso</option><option value="finished">Finalizado</option></select></div>
+        <div class="ee-field"><label class="ec-lbl">Tipo</label>
+          <select id="ee-kind"><option value="league">Liga</option><option value="tournament">Torneo</option></select></div>
+        <div class="ee-field"><label class="ec-lbl">Modalidad</label>
+          <select id="ee-mode"><option value="individual">Individual</option><option value="teams">Por equipos</option></select></div>
+        <div class="ee-field"><label class="ec-lbl">Visibilidad</label>
+          <select id="ee-vis" onchange="eeVisChange()"><option value="public">Público</option><option value="acceptance">Con aceptación</option><option value="private">Privado</option></select></div>
+        <div class="ee-field"><label class="ec-lbl">Idioma principal</label><select id="ee-lang"></select></div>
+        <div class="ee-field"><label class="ec-lbl">Nº máximo de participantes</label><input type="number" id="ee-max" min="2" max="512" value="12" /></div>
+        <div class="ee-field"><label class="ec-lbl">Tipo de enfrentamiento</label>
+          <select id="ee-match"><option value="bo1">A 1 combate</option><option value="bo3">Al mejor de 3</option><option value="bo5">Al mejor de 5</option></select></div>
+      </div>
+
+      <div class="ee-sep">Formato y normas</div>
+      <div class="ee-grid">
+        <div class="ee-field"><label class="ec-lbl">Modelo de competición</label>
+          <select id="ee-format" onchange="eeFormatChange()">
+            <option value="">— Elegir —</option>
+            <option value="swiss">Suizo</option><option value="mcmahon">McMahon</option>
+            <option value="roundrobin">Round Robin (todos contra todos)</option>
+            <option value="single_elim">Eliminación directa</option>
+            <option value="double_elim">Doble eliminación</option>
+            <option value="free">Liga libre</option>
+          </select></div>
+        <div class="ee-field"><label class="ec-lbl">Nº de vueltas (ligas)</label><input type="number" id="ee-rounds" min="1" max="20" placeholder="1" /></div>
+      </div>
+      <div class="ee-field"><label class="ec-lbl">Normas del formato <span class="ec-mini">(puedes editarlas o crear tu propio modelo)</span></label>
+        <textarea id="ee-rules" class="ee-textarea" rows="3" placeholder="Describe cómo funciona el formato…"></textarea></div>
+      <div class="ee-grid ee-grid-3">
+        <div class="ee-field"><label class="ec-lbl">Puntos victoria</label><input type="number" id="ee-pwin" value="3" /></div>
+        <div class="ee-field"><label class="ec-lbl">Puntos empate</label><input type="number" id="ee-pdraw" value="1" /></div>
+        <div class="ee-field"><label class="ec-lbl">Puntos derrota</label><input type="number" id="ee-ploss" value="0" /></div>
+      </div>
+
+      <div class="ee-sep">Mapas y modos</div>
+      <div class="ee-grid">
+        <div class="ee-field"><label class="ec-lbl">¿Cómo se deciden?</label>
+          <select id="ee-mappol" onchange="eeMapPolChange()">
+            <option value="fixed">Modo y mapa fijos</option>
+            <option value="random">Aleatorios por partida</option>
+            <option value="per_match">Los acuerdan los jugadores</option>
+          </select></div>
+        <div class="ee-field" id="ee-fixed-wrap">
+          <label class="ec-lbl">Modo / Mapa fijos</label>
+          <div class="ee-row"><input type="text" id="ee-fixmode" placeholder="Modo (p. ej. Atrapagemas)" /><input type="text" id="ee-fixmap" placeholder="Mapa (p. ej. Mina Dura)" /></div>
+        </div>
+      </div>
+      <label class="chk ee-chk"><input type="checkbox" id="ee-mapspublic" checked onchange="eeMapsPublicChange()"><span>Mapas y modos públicos desde la publicación</span></label>
+      <div class="ee-grid" id="ee-reveal-wrap" style="display:none">
+        <div class="ee-field"><label class="ec-lbl">Revelar el modo el…</label><input type="date" id="ee-revmode" /></div>
+        <div class="ee-field"><label class="ec-lbl">Revelar el mapa el…</label><input type="date" id="ee-revmap" /></div>
+      </div>
+
+      <div class="ee-sep">Fechas, descripción y cartel</div>
+      <div class="ee-grid">
+        <div class="ee-field"><label class="ec-lbl">Fecha de inicio</label><input type="date" id="ee-dstart" /></div>
+        <div class="ee-field"><label class="ec-lbl">Fecha de fin</label><input type="date" id="ee-dend" /></div>
+      </div>
+      <div class="ee-field"><label class="ec-lbl">Descripción</label><textarea id="ee-desc" class="ee-textarea" rows="4" placeholder="Explica las reglas, premios, requisitos…"></textarea></div>
+      <div class="ee-field"><label class="ec-lbl">Cartel del evento</label>
+        <div class="ee-poster-row">
+          <img id="ee-poster-preview" class="ee-poster-preview" style="display:none" />
+          <label class="ghost ee-upload">Subir imagen<input type="file" id="ee-poster-file" accept="image/*" style="display:none" onchange="uploadEventPoster(this)"></label>
+          <button type="button" class="ghost" id="ee-poster-clear" style="display:none" onclick="clearPoster()">Quitar</button>
+        </div>
+      </div>
+
+      <div id="ee-private-box" style="display:none">
+        <div class="ee-sep">Privado</div>
+        <div class="ee-field"><label class="ec-lbl">Contraseña <span class="ec-mini">(déjala vacía para no cambiarla)</span></label><input type="text" id="ee-pw" placeholder="Contraseña para apuntarse" /></div>
+        <label class="chk ee-chk"><input type="checkbox" id="ee-confirm" checked><span>Requiere confirmación del organizador (si lo desactivas, cualquiera con la contraseña entra directo)</span></label>
+      </div>
+
+      <div class="modal-actions ee-actions">
+        <button class="danger-ghost" type="button" onclick="deleteEvent()">Eliminar evento</button>
+        <div style="flex:1"></div>
+        <button class="ghost" type="button" onclick="closeEvModal('event-edit-modal')">Cancelar</button>
+        <button class="btn" type="button" onclick="submitEditEvent()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: apuntarse -->
+  <div class="modal-overlay" id="event-join-modal">
+    <div class="modal-card">
+      <h3 class="modal-title" id="ejoin-title">Apuntarse al evento</h3>
+      <label class="ec-lbl">¿Con qué ID te apuntas?</label>
+      <select id="ejoin-tag"></select>
+      <div class="ec-hint">Solo puedes inscribir cada ID una vez, pero puedes apuntar varios IDs de tu cuenta.</div>
+      <div id="ejoin-pw-wrap" style="display:none">
+        <label class="ec-lbl">Contraseña del evento</label>
+        <input type="password" id="ejoin-pw" placeholder="Contraseña" />
+      </div>
+      <div id="ejoin-team-wrap" style="display:none">
+        <label class="ec-lbl">Nombre de tu equipo</label>
+        <input type="text" id="ejoin-team" placeholder="Nombre del equipo" />
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" type="button" onclick="closeEvModal('event-join-modal')">Cancelar</button>
+        <button class="btn" id="ejoin-submit" type="button" onclick="submitJoin()">Apuntarse</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: invitar/añadir jugador (organizador) -->
+  <div class="modal-overlay" id="event-invite-modal">
+    <div class="modal-card">
+      <h3 class="modal-title">Añadir jugador</h3>
+      <label class="ec-lbl">Tag del jugador</label>
+      <input type="text" id="einv-tag" placeholder="#TAG del jugador" />
+      <div class="ec-hint">Rellena una plaza con cualquier jugador por su tag.</div>
+      <div id="einv-team-wrap" style="display:none">
+        <label class="ec-lbl">Nombre del equipo (opcional)</label>
+        <input type="text" id="einv-team" placeholder="Equipo" />
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" type="button" onclick="closeEvModal('event-invite-modal')">Cancelar</button>
+        <button class="btn" type="button" onclick="submitInvite()">Añadir</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================== SECCIÓN: ADMINISTRACIÓN (solo admins) ===================== -->
   <section class="app-section" id="section-admin">
@@ -1417,7 +1765,9 @@ function showMap(name) {
 }
 document.addEventListener("click", (e) => {
   const link = e.target.closest(".map-link");
-  if (link) showMap(link.dataset.map);
+  if (link) { showMap(link.dataset.map); return; }
+  const card = e.target.closest(".rot-card[data-map]");
+  if (card) showMap(card.dataset.map);
 });
 $("lb-close").addEventListener("click", () => $("lightbox").classList.remove("show"));
 $("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") $("lightbox").classList.remove("show"); });
@@ -1521,7 +1871,8 @@ function renderRotCard(e) {
   const brsHtml = brs
     ? `<div class="rot-brawlers"><div class="rot-br-label">Tus mejores brawlers aquí</div><div class="rot-br-row">${brs}</div></div>`
     : `<div class="rot-brawlers"><div class="rot-empty">Juega este mapa para ver tus mejores brawlers.</div></div>`;
-  return `<div class="rot-card ${cls}">
+  const mapAttr = mapImg ? ` data-map="${esc(e.map)}" title="Ver mapa"` : "";
+  return `<div class="rot-card ${cls}"${mapAttr}>
     <div class="rot-head"${headStyle}>
       ${modeIc ? `<img class="rot-mode-ic" src="${modeIc}" alt="" onerror="this.style.display='none'">` : ""}
       <div class="rot-title"><div class="rot-map">${esc(e.map)}</div><div class="rot-mode">${esc(prettyMode(e.mode))}</div></div>
@@ -1933,6 +2284,7 @@ function showSection(name) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (name === "guide") loadWikiTree();
   if (name === "admin") { loadAdminPending(); }
+  if (name === "leagues") loadLeagues();
 }
 
 /* ---------- Pestañas ---------- */
@@ -2755,6 +3107,362 @@ async function doLogout() {
   showLogin(); switchAuth("login");
 }
 $("logout-btn").addEventListener("click", doLogout);
+
+/* ============================ LIGAS Y TORNEOS ============================ */
+const EV_LANGS = [
+  { c: "es", n: "Castellano" }, { c: "ca", n: "Català" }, { c: "gl", n: "Galego" },
+  { c: "eu", n: "Euskara" }, { c: "ast", n: "Asturianu" }, { c: "oc", n: "Aranés / Occitan" },
+  { c: "en", n: "English" }, { c: "pt", n: "Português" }, { c: "fr", n: "Français" },
+  { c: "it", n: "Italiano" }, { c: "de", n: "Deutsch" }, { c: "nl", n: "Nederlands" },
+  { c: "pl", n: "Polski" }, { c: "tr", n: "Türkçe" }, { c: "ru", n: "Русский" },
+  { c: "ar", n: "العربية" }, { c: "zh", n: "中文" }, { c: "ja", n: "日本語" },
+  { c: "ko", n: "한국어" }, { c: "other", n: "Otro idioma" },
+];
+function evLangName(c) { const x = EV_LANGS.find((l) => l.c === c); return x ? x.n : (c || "—"); }
+const EV_KIND_LABEL = { league: "Liga", tournament: "Torneo" };
+const EV_MODE_LABEL = { individual: "Individual", teams: "Por equipos" };
+const EV_VIS_LABEL = { public: "Público", acceptance: "Con aceptación", private: "Privado" };
+const EV_MATCH_LABEL = { bo1: "A 1 combate", bo3: "Al mejor de 3", bo5: "Al mejor de 5" };
+const EV_STATUS_LABEL = { open: "Inscripción abierta", ongoing: "En curso", finished: "Finalizado" };
+const EV_FORMAT_LABEL = { swiss: "Suizo", mcmahon: "McMahon", roundrobin: "Round Robin", single_elim: "Eliminación directa", double_elim: "Doble eliminación", free: "Liga libre" };
+const EV_FORMAT_RULES = {
+  swiss: "Sistema suizo: cada ronda empareja a jugadores con puntuación similar. No hay eliminación; se juega un número fijo de rondas y gana quien más puntos sume.",
+  mcmahon: "Sistema McMahon: como el suizo, pero con puntos iniciales según el nivel o categoría de cada jugador. Ideal para muchos participantes de niveles dispares.",
+  roundrobin: "Todos contra todos: cada participante se enfrenta a todos los demás. Gana quien más puntos acumule. Puede jugarse a una o varias vueltas.",
+  single_elim: "Eliminación directa: quien pierde queda fuera. Cuadro de rondas hasta la final.",
+  double_elim: "Doble eliminación: hay cuadro de ganadores y de perdedores; te eliminan tras dos derrotas.",
+  free: "Liga libre: los jugadores concretan sus enfrentamientos libremente dentro del rango de fechas; se acumulan puntos por victoria.",
+};
+const VIS_HINTS = {
+  public: "Cualquiera puede apuntarse al instante.",
+  acceptance: "Los jugadores solicitan plaza y tú las aceptas.",
+  private: "Solo con contraseña; puedes exigir además tu confirmación.",
+};
+
+let evMyEvents = [], evMineFilter = "all", currentEvent = null, evLeaguesInit = false, evPosterUrl = null;
+
+function openEvModal(id) { $(id).classList.add("open"); }
+function closeEvModal(id) { $(id).classList.remove("open"); }
+
+function loadLeagues() {
+  if (!evLeaguesInit) { initLeaguesUI(); evLeaguesInit = true; }
+  loadMyEvents(); loadBoard();
+}
+function initLeaguesUI() {
+  const opts = EV_LANGS.map((l) => `<option value="${l.c}">${esc(l.n)}</option>`).join("");
+  $("ec-lang").innerHTML = opts; $("ee-lang").innerHTML = opts; $("ec-lang").value = "es";
+  $("lang-filter-chks").innerHTML = EV_LANGS.map((l) =>
+    `<label class="chk"><input type="checkbox" value="${l.c}" data-fil="langs" onchange="loadBoard()"><span>${esc(l.n)}</span></label>`).join("");
+  initSegToggle("ec-kind"); initSegToggle("ec-mode");
+  initSegToggle("ec-vis", (v) => { $("ec-vis-hint").textContent = VIS_HINTS[v] || ""; });
+}
+function initSegToggle(id, onChange) {
+  $(id).querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    $(id).querySelectorAll("button").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active"); if (onChange) onChange(b.dataset.v);
+  }));
+}
+function segValue(id) { const a = $(id).querySelector("button.active"); return a ? a.dataset.v : null; }
+
+/* ----- Crear evento ----- */
+function openCreateEvent() {
+  $("ec-name").value = ""; $("ec-lang").value = "es";
+  ["ec-kind", "ec-mode", "ec-vis"].forEach((id) =>
+    $(id).querySelectorAll("button").forEach((x, i) => x.classList.toggle("active", i === 0)));
+  $("ec-vis-hint").textContent = VIS_HINTS.public;
+  openEvModal("event-create-modal");
+}
+async function submitCreateEvent() {
+  const name = $("ec-name").value.trim();
+  if (!name) { wikiToast("Pon un nombre al evento", "err"); return; }
+  const body = { name, kind: segValue("ec-kind"), mode: segValue("ec-mode"), visibility: segValue("ec-vis"), language: $("ec-lang").value };
+  const { ok, d } = await apiSend("/api/events", "POST", body);
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo crear", "err"); return; }
+  closeEvModal("event-create-modal"); wikiToast("Evento creado", "ok");
+  await loadMyEvents(); openEvent(d.id);
+}
+
+/* ----- Mis eventos ----- */
+async function loadMyEvents() {
+  try { const d = await getJSON("/api/events/mine"); evMyEvents = d.events || []; }
+  catch (e) { evMyEvents = []; }
+  renderMyEvents();
+}
+function filterMine(f) {
+  evMineFilter = f;
+  document.querySelectorAll(".lgtab").forEach((t) => t.classList.toggle("active", t.dataset.lgtab === f));
+  renderMyEvents();
+}
+function renderMyEvents() {
+  const grid = $("my-events-grid"), empty = $("my-events-empty");
+  let list = evMyEvents;
+  if (evMineFilter !== "all") list = list.filter((e) => e.relation === evMineFilter);
+  if (!list.length) { grid.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  grid.innerHTML = list.map((e) => eventCardHTML(e, true)).join("");
+}
+
+/* ----- Tablón ----- */
+function filterValues(name) {
+  return Array.from(document.querySelectorAll(`input[data-fil="${name}"]:checked`)).map((c) => c.value);
+}
+async function loadBoard() {
+  const qs = new URLSearchParams();
+  const types = filterValues("types"), acc = filterValues("acceptance"), langs = filterValues("langs");
+  if (types.length) qs.set("types", types.join(","));
+  if (acc.length) qs.set("acceptance", acc.join(","));
+  if (langs.length) qs.set("langs", langs.join(","));
+  const grid = $("board-events-grid"), empty = $("board-events-empty");
+  try {
+    const d = await getJSON("/api/events/board?" + qs.toString());
+    const list = d.events || [];
+    if (!list.length) { grid.innerHTML = ""; empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    grid.innerHTML = list.map((e) => eventCardHTML(e, false)).join("");
+  } catch (e) { grid.innerHTML = ""; empty.style.display = "block"; }
+}
+
+/* ----- Tarjeta ----- */
+function relationLabel(r) { return { owner: "Organizas", participant: "Participas", follower: "Sigues" }[r] || ""; }
+function eventCardHTML(e, showRelation) {
+  const poster = e.poster_url ? `style="background-image:url('${esc(e.poster_url)}')"` : "";
+  let relHTML = "";
+  if (showRelation && e.relation) {
+    relHTML = `<span class="ec-relation ${e.relation}">${relationLabel(e.relation)}</span>`;
+    if (e.relation === "owner" && e.pending) relHTML += `<span class="ec-pending-dot">${e.pending}</span>`;
+  }
+  return `<div class="event-card" onclick="openEvent(${e.id})">
+    <div class="ec-poster" ${poster}>
+      <span class="ec-kindtag">${EV_KIND_LABEL[e.kind] || ""}</span>
+      <span class="ec-vistag ${e.visibility}">${EV_VIS_LABEL[e.visibility] || ""}</span>
+    </div>
+    <div class="ec-body">
+      <div class="ec-name">${esc(e.name)}</div>
+      <div class="ec-sub"><span>${EV_MODE_LABEL[e.mode] || ""}</span><span>${esc(evLangName(e.language))}</span>${e.status && e.status !== "open" ? `<span>${EV_STATUS_LABEL[e.status] || ""}</span>` : ""}</div>
+      <div class="ec-foot">
+        <span class="ec-chip">👥 ${e.participants || 0}/${e.max_participants || 12}</span>
+        <span class="ec-chip">★ ${e.followers || 0}</span>
+        <span style="display:flex;gap:5px;align-items:center">${relHTML}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ----- Ficha de evento ----- */
+function num(v, dflt) { const n = parseInt(v, 10); return isNaN(n) ? dflt : n; }
+function fmtDateRange(a, b) {
+  const f = (x) => { if (!x) return ""; const p = String(x).split("-"); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : x; };
+  return a && b ? `${f(a)} – ${f(b)}` : f(a || b);
+}
+function statBox(k, v) { return `<div class="evd-stat"><div class="evd-stat-k">${esc(k)}</div><div class="evd-stat-v">${esc(v)}</div></div>`; }
+
+async function openEvent(eid) {
+  try {
+    const d = await getJSON("/api/events/" + eid);
+    if (d.error || d.detail) { wikiToast(d.error || d.detail, "err"); return; }
+    currentEvent = d; renderEventDetail(d); openEvModal("event-detail-modal");
+  } catch (e) { /* 401 gestionado por getJSON */ }
+}
+function renderEventDetail(d) {
+  const s = d.settings || {};
+  const badges = [
+    `<span class="evd-badge">${EV_KIND_LABEL[d.kind] || ""}</span>`,
+    `<span class="evd-badge">${EV_MODE_LABEL[d.mode] || ""}</span>`,
+    `<span class="evd-badge vis-${d.visibility}">${EV_VIS_LABEL[d.visibility] || ""}</span>`,
+    `<span class="evd-badge">${esc(evLangName(d.language))}</span>`,
+    (d.status && d.status !== "open") ? `<span class="evd-badge">${EV_STATUS_LABEL[d.status] || ""}</span>` : "",
+  ].join("");
+
+  const stats = [];
+  stats.push(statBox("Participantes", `${d.participants || 0} / ${d.max_participants || 12}`));
+  stats.push(statBox("Seguidores", String(d.followers || 0)));
+  if (d.format) stats.push(statBox("Formato", EV_FORMAT_LABEL[d.format] || d.format));
+  stats.push(statBox("Enfrentamiento", EV_MATCH_LABEL[d.match_type] || "A 1 combate"));
+  if (d.date_start || d.date_end) stats.push(statBox("Fechas", fmtDateRange(d.date_start, d.date_end)));
+
+  let mapsBlock = "";
+  if (s.map_policy === "fixed" && (s.fixed_mode || s.fixed_map)) {
+    mapsBlock = `<div class="evd-section"><h4>Modo y mapa</h4>${s.maps_public !== false
+      ? `<p>${esc(s.fixed_mode || "—")} · ${esc(s.fixed_map || "—")}</p>`
+      : `<p class="evd-muted">Se revelarán más adelante.</p>`}</div>`;
+  } else if (s.map_policy === "random") {
+    mapsBlock = `<div class="evd-section"><h4>Modo y mapa</h4><p class="evd-muted">Aleatorios en cada partida.</p></div>`;
+  } else if (s.map_policy === "per_match") {
+    mapsBlock = `<div class="evd-section"><h4>Modo y mapa</h4><p class="evd-muted">Los acuerdan los jugadores en cada enfrentamiento.</p></div>`;
+  }
+
+  const parts = d.participants_list || [];
+  const partsHTML = parts.length ? parts.map((p) => {
+    const team = (d.mode === "teams" && p.team_name) ? `<span class="evd-team">${esc(p.team_name)}</span>` : "";
+    const rm = d.is_owner ? `<button class="evd-x" onclick="removeParticipant(${p.id})" title="Quitar">✕</button>` : "";
+    return `<div class="evd-part"><span class="evd-part-name">${esc(p.player_name || p.player_tag)}${team}</span><span class="evd-part-tag">${esc(p.player_tag)}</span>${rm}</div>`;
+  }).join("") : `<p class="evd-muted">Aún no hay participantes.</p>`;
+
+  let reqHTML = "";
+  if (d.is_owner && d.requests && d.requests.length) {
+    reqHTML = `<div class="evd-section"><h4>Solicitudes pendientes (${d.requests.length})</h4>` +
+      d.requests.map((r) => `<div class="evd-req">
+        <span>${esc(r.player_name || r.player_tag)} <span class="evd-part-tag">${esc(r.player_tag)}</span>${r.team_name ? " · " + esc(r.team_name) : ""} <span class="evd-muted">(${esc(r.username || "")})</span></span>
+        <span class="evd-req-actions"><button class="mini-ok" onclick="acceptRequest(${r.id})">Aceptar</button><button class="mini-no" onclick="rejectRequest(${r.id})">Rechazar</button></span>
+      </div>`).join("") + `</div>`;
+  }
+
+  const actions = [];
+  if (d.is_owner) {
+    actions.push(`<button class="btn" onclick="openEdit()">✎ Editar evento</button>`);
+    if ((d.participants || 0) < (d.max_participants || 12)) actions.push(`<button class="ghost" onclick="openInvite()">+ Añadir jugador</button>`);
+  } else {
+    actions.push(d.is_following
+      ? `<button class="ghost" onclick="unfollowEvent()">★ Siguiendo</button>`
+      : `<button class="ghost" onclick="followEvent()">☆ Seguir</button>`);
+    if (d.relation === "participant") actions.push(`<span class="evd-joined">✓ Ya participas</span>`);
+    else if (d.my_request) actions.push(`<span class="evd-joined pending">⏳ Solicitud pendiente</span>`);
+    else if (!d.status || d.status === "open") {
+      actions.push(`<button class="btn" onclick="openJoin()">${d.visibility === "acceptance" ? "Solicitar plaza" : "Apuntarse"}</button>`);
+    }
+  }
+
+  $("event-detail-body").innerHTML = `
+    ${d.poster_url ? `<div class="evd-poster" style="background-image:url('${esc(d.poster_url)}')"></div>` : ""}
+    <h2 class="evd-title">${esc(d.name)}</h2>
+    <div class="evd-badges">${badges}</div>
+    <div class="evd-actions">${actions.join("")}</div>
+    <div class="evd-stats">${stats.join("")}</div>
+    ${d.description ? `<div class="evd-section"><h4>Descripción</h4><p class="evd-desc">${esc(d.description)}</p></div>` : ""}
+    ${mapsBlock}
+    ${reqHTML}
+    <div class="evd-section"><h4>Participantes (${parts.length}/${d.max_participants || 12})</h4><div class="evd-parts">${partsHTML}</div></div>
+    <div class="evd-section"><h4>Enfrentamientos y resultados</h4>
+      <div class="evd-empty-table">El evento aún no ha comenzado. Aquí aparecerán los enfrentamientos, los resultados y la clasificación a medida que avance.</div>
+    </div>`;
+}
+
+/* ----- Seguir ----- */
+async function followEvent() { const { ok } = await apiSend(`/api/events/${currentEvent.id}/follow`, "POST"); if (ok) { await openEvent(currentEvent.id); loadMyEvents(); } }
+async function unfollowEvent() { const { ok } = await apiSend(`/api/events/${currentEvent.id}/follow`, "DELETE"); if (ok) { await openEvent(currentEvent.id); loadMyEvents(); } }
+
+/* ----- Apuntarse ----- */
+function openJoin() {
+  const d = currentEvent, tags = d.my_tags || [];
+  if (!tags.length) { wikiToast("Añade primero un ID en Brawlytics", "err"); return; }
+  $("ejoin-tag").innerHTML = tags.map((t) => `<option value="${esc(t.tag)}">${esc(t.name || t.tag)} (${esc(t.tag)})</option>`).join("");
+  $("ejoin-pw-wrap").style.display = d.visibility === "private" ? "block" : "none";
+  $("ejoin-team-wrap").style.display = d.mode === "teams" ? "block" : "none";
+  $("ejoin-pw").value = ""; $("ejoin-team").value = "";
+  const solicit = d.visibility === "acceptance";
+  $("ejoin-title").textContent = solicit ? "Solicitar plaza" : "Apuntarse al evento";
+  $("ejoin-submit").textContent = solicit ? "Solicitar plaza" : "Apuntarse";
+  openEvModal("event-join-modal");
+}
+async function submitJoin() {
+  const d = currentEvent, body = { player_tag: $("ejoin-tag").value };
+  if (d.visibility === "private") body.password = $("ejoin-pw").value;
+  if (d.mode === "teams" && $("ejoin-team").value.trim()) body.team_name = $("ejoin-team").value.trim();
+  const { ok, d: res } = await apiSend(`/api/events/${d.id}/join`, "POST", body);
+  if (!ok) { wikiToast(res.error || res.detail || "No se pudo apuntar", "err"); return; }
+  closeEvModal("event-join-modal");
+  wikiToast(res.requested ? "Solicitud enviada" : "¡Apuntado!", "ok");
+  await openEvent(d.id); loadMyEvents();
+}
+
+/* ----- Editar (organizador) ----- */
+function openEdit() {
+  const d = currentEvent, s = d.settings || {};
+  $("ee-name").value = d.name || ""; $("ee-status").value = d.status || "open";
+  $("ee-kind").value = d.kind; $("ee-mode").value = d.mode; $("ee-vis").value = d.visibility;
+  $("ee-lang").value = d.language || "es"; $("ee-max").value = d.max_participants || 12;
+  $("ee-match").value = d.match_type || "bo1"; $("ee-format").value = d.format || "";
+  $("ee-rounds").value = s.rounds || ""; $("ee-rules").value = s.rules || "";
+  $("ee-pwin").value = (s.points && s.points.win != null) ? s.points.win : 3;
+  $("ee-pdraw").value = (s.points && s.points.draw != null) ? s.points.draw : 1;
+  $("ee-ploss").value = (s.points && s.points.loss != null) ? s.points.loss : 0;
+  $("ee-mappol").value = s.map_policy || "fixed"; $("ee-fixmode").value = s.fixed_mode || ""; $("ee-fixmap").value = s.fixed_map || "";
+  $("ee-mapspublic").checked = s.maps_public !== false;
+  $("ee-revmode").value = s.reveal_mode_date || ""; $("ee-revmap").value = s.reveal_map_date || "";
+  $("ee-dstart").value = d.date_start || ""; $("ee-dend").value = d.date_end || "";
+  $("ee-desc").value = d.description || ""; evPosterUrl = d.poster_url || null; updatePosterPreview();
+  $("ee-pw").value = ""; $("ee-confirm").checked = d.require_confirmation !== 0;
+  eeVisChange(); eeMapPolChange(); eeMapsPublicChange();
+  closeEvModal("event-detail-modal"); openEvModal("event-edit-modal");
+}
+function eeVisChange() { $("ee-private-box").style.display = $("ee-vis").value === "private" ? "block" : "none"; }
+function eeFormatChange() { const f = $("ee-format").value; if (f && EV_FORMAT_RULES[f] && !$("ee-rules").value.trim()) $("ee-rules").value = EV_FORMAT_RULES[f]; }
+function eeMapPolChange() { $("ee-fixed-wrap").style.display = $("ee-mappol").value === "fixed" ? "block" : "none"; }
+function eeMapsPublicChange() { $("ee-reveal-wrap").style.display = $("ee-mapspublic").checked ? "none" : "grid"; }
+function updatePosterPreview() {
+  const img = $("ee-poster-preview"), clr = $("ee-poster-clear");
+  if (evPosterUrl) { img.src = evPosterUrl; img.style.display = "block"; clr.style.display = "inline-block"; }
+  else { img.style.display = "none"; clr.style.display = "none"; }
+}
+function clearPoster() { evPosterUrl = null; updatePosterPreview(); }
+async function uploadEventPoster(input) {
+  const file = input.files && input.files[0]; input.value = "";
+  if (!file) return;
+  if (file.size > 6 * 1024 * 1024) { wikiToast("La imagen supera los 6 MB", "err"); return; }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const { ok, d } = await apiSend("/api/events/upload-image", "POST", { data: reader.result, mime: file.type });
+    if (!ok) { wikiToast(d.error || d.detail || "No se pudo subir", "err"); return; }
+    evPosterUrl = d.url; updatePosterPreview(); wikiToast("Cartel subido", "ok");
+  };
+  reader.readAsDataURL(file);
+}
+async function submitEditEvent() {
+  const d = currentEvent;
+  const settings = {
+    rounds: parseInt($("ee-rounds").value, 10) || null, rules: $("ee-rules").value.trim(),
+    points: { win: num($("ee-pwin").value, 3), draw: num($("ee-pdraw").value, 1), loss: num($("ee-ploss").value, 0) },
+    map_policy: $("ee-mappol").value, fixed_mode: $("ee-fixmode").value.trim(), fixed_map: $("ee-fixmap").value.trim(),
+    maps_public: $("ee-mapspublic").checked, reveal_mode_date: $("ee-revmode").value || null, reveal_map_date: $("ee-revmap").value || null,
+  };
+  const body = {
+    name: $("ee-name").value.trim(), status: $("ee-status").value, kind: $("ee-kind").value, mode: $("ee-mode").value,
+    visibility: $("ee-vis").value, language: $("ee-lang").value, max_participants: num($("ee-max").value, 12),
+    match_type: $("ee-match").value, format: $("ee-format").value, date_start: $("ee-dstart").value || null,
+    date_end: $("ee-dend").value || null, description: $("ee-desc").value.trim(), poster_url: evPosterUrl || null, settings,
+  };
+  if ($("ee-vis").value === "private") {
+    if ($("ee-pw").value.trim()) body.password = $("ee-pw").value.trim();
+    body.require_confirmation = $("ee-confirm").checked;
+  }
+  const { ok, d: res } = await apiSend(`/api/events/${d.id}`, "PUT", body);
+  if (!ok) { wikiToast(res.error || res.detail || "No se pudo guardar", "err"); return; }
+  closeEvModal("event-edit-modal"); wikiToast("Cambios guardados", "ok");
+  await openEvent(d.id); loadMyEvents();
+}
+async function deleteEvent() {
+  if (!confirm("¿Eliminar este evento? Esta acción no se puede deshacer.")) return;
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}`, "DELETE");
+  if (ok) { closeEvModal("event-edit-modal"); wikiToast("Evento eliminado", "ok"); loadMyEvents(); }
+}
+
+/* ----- Invitar / solicitudes / participantes (organizador) ----- */
+function openInvite() {
+  $("einv-tag").value = ""; $("einv-team").value = "";
+  $("einv-team-wrap").style.display = currentEvent.mode === "teams" ? "block" : "none";
+  openEvModal("event-invite-modal");
+}
+async function submitInvite() {
+  const body = { player_tag: $("einv-tag").value.trim() };
+  if (currentEvent.mode === "teams" && $("einv-team").value.trim()) body.team_name = $("einv-team").value.trim();
+  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/invite`, "POST", body);
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo añadir", "err"); return; }
+  closeEvModal("event-invite-modal"); wikiToast("Jugador añadido", "ok"); await openEvent(currentEvent.id);
+}
+async function acceptRequest(rid) {
+  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/requests/${rid}/accept`, "POST");
+  if (!ok) { wikiToast(d.error || d.detail || "Error", "err"); return; }
+  await openEvent(currentEvent.id);
+}
+async function rejectRequest(rid) {
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}/requests/${rid}/reject`, "POST");
+  if (ok) await openEvent(currentEvent.id);
+}
+async function removeParticipant(pid) {
+  if (!confirm("¿Quitar a este participante?")) return;
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}/participants/${pid}`, "DELETE");
+  if (ok) await openEvent(currentEvent.id);
+}
 
 /* ---------- Arranque ---------- */
 async function bootApp() { await loadAssets(); await refreshAll(); }
