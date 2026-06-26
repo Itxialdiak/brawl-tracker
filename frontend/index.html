@@ -3,24 +3,26 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Brawl Tracker</title>
+<title>BrawlSensei</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #090d13; --bg-elev: #111824;
-    --panel: rgba(255,255,255,0.025); --border: rgba(255,255,255,0.08);
-    --text: #e9eef6; --muted: #76849b;
-    --gold: #ffc83d; --cyan: #36e1ff; --win: #41e08a; --loss: #ff5d6c; --neutral: #9aa6bd;
+    --bg: #0a0a1f; --bg-elev: #16133a;
+    --panel: rgba(26,21,58,0.72); --border: rgba(150,130,255,0.17);
+    --text: #ece9ff; --muted: #948dc4;
+    --gold: #f5b82a; --cyan: #3fe1ff; --magenta: #c64ff0; --blue: #5b54ff;
+    --win: #36e0a0; --loss: #ff4d73; --neutral: #948dc4;
     --display: "Chakra Petch", sans-serif; --body: "Outfit", sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: var(--body); color: var(--text);
     background:
-      radial-gradient(1100px 600px at 80% -10%, rgba(54,225,255,0.07), transparent 60%),
-      radial-gradient(900px 500px at 0% 0%, rgba(255,200,61,0.06), transparent 55%), var(--bg);
+      linear-gradient(180deg, rgba(8,7,24,0.80), rgba(8,7,24,0.93) 55%, rgba(8,7,24,0.97)),
+      url('/static/media/Fondo-figura.png') center top / cover no-repeat,
+      var(--bg);
     background-attachment: fixed; min-height: 100vh;
     padding: 28px clamp(16px,4vw,48px) 80px; line-height: 1.5;
   }
@@ -36,6 +38,58 @@
   .brand .proxy.show { display: inline-block; }
   .toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .status { font-size: 12px; color: var(--muted); text-align: right; }
+
+  /* Banner superior: imagen centrada al 50%, márgenes dejan ver el fondo de la página */
+  .app-banner-bar {
+    margin: -28px calc(-1 * clamp(16px,4vw,48px)) 20px;
+  }
+  .app-banner {
+    width: 50%; margin: 0 auto; height: 156px;
+    background: url('/static/media/banner.png') center / 100% 100% no-repeat;
+    border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.45);
+  }
+  @media (max-width: 760px) { .app-banner { width: 88%; height: 104px; } .app-banner-bar { margin-bottom: 16px; } }
+  @media (max-width: 480px) { .app-banner { width: 94%; height: 76px; } }
+
+  /* Menú de secciones (sustituye al nombre de la app) */
+  .section-nav { display: flex; gap: 7px; flex-wrap: wrap; }
+  .snav {
+    font-family: var(--display); font-weight: 700; font-size: clamp(13px,1.5vw,15px);
+    letter-spacing: .6px; text-transform: uppercase; color: var(--muted);
+    background: transparent; border: 1px solid transparent; border-radius: 11px;
+    padding: 9px 16px; cursor: pointer; transition: color .15s, background .15s, border-color .15s, box-shadow .15s;
+  }
+  .snav:hover { color: var(--text); border-color: var(--border); }
+  .snav.active {
+    color: #0a0a1f; background: linear-gradient(100deg, var(--magenta), var(--cyan));
+    box-shadow: 0 7px 22px rgba(198,79,240,0.32);
+  }
+
+  /* Secciones de nivel superior */
+  .app-section { display: none; }
+  .app-section.active { display: block; animation: rise .4s ease both; }
+  .bytics-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+
+  /* Placeholder de secciones futuras */
+  .section-placeholder {
+    text-align: center; padding: 72px 28px; background: var(--bg-elev);
+    border: 1px solid var(--border); border-radius: 20px; margin-top: 6px;
+    position: relative; overflow: hidden;
+  }
+  .section-placeholder::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; opacity: .5;
+    background: radial-gradient(560px 240px at 50% -10%, rgba(198,79,240,0.16), transparent 60%),
+                radial-gradient(460px 220px at 50% 110%, rgba(63,225,255,0.12), transparent 60%);
+  }
+  .section-placeholder > * { position: relative; z-index: 1; }
+  .section-placeholder .ph-icon { font-size: 46px; margin-bottom: 14px; }
+  .section-placeholder h2 { font-family: var(--display); font-size: clamp(22px,3vw,28px); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .section-placeholder .ph-badge {
+    display: inline-block; font-family: var(--display); font-weight: 600; font-size: 11px;
+    letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold);
+    border: 1px solid rgba(245,184,42,.45); border-radius: 999px; padding: 4px 13px; margin-bottom: 20px;
+  }
+  .section-placeholder p { color: var(--muted); max-width: 640px; margin: 0 auto; line-height: 1.65; font-size: 14px; }
   .status b { color: var(--text); font-weight: 500; }
 
   button.btn { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .8px; text-transform: uppercase; cursor: pointer; color: #0a0d13; background: linear-gradient(100deg, var(--gold), #ffb627); border: none; border-radius: 10px; padding: 11px 18px; box-shadow: 0 6px 20px rgba(255,200,61,0.22); transition: transform .12s, box-shadow .12s, opacity .12s; }
@@ -341,7 +395,9 @@
     background: radial-gradient(900px 500px at 50% 0%, rgba(255,200,61,0.07), transparent 55%), var(--bg); }
   .auth-card { width: 100%; max-width: 380px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 18px; padding: 34px 30px; box-shadow: 0 24px 70px rgba(0,0,0,.55); animation: rise .45s ease both; }
   .auth-brand { text-align: center; margin-bottom: 24px; }
-  .auth-brand h1 { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: 1.5px; text-transform: uppercase; background: linear-gradient(100deg, var(--gold), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .auth-banner-wrap { margin: -34px -30px 18px; border-radius: 18px 18px 0 0; overflow: hidden; border-bottom: 1px solid var(--border); box-shadow: 0 8px 26px rgba(0,0,0,.4); }
+  .auth-banner-wrap img { width: 100%; height: auto; display: block; }
+  .auth-brand h1 { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: 1.5px; text-transform: uppercase; background: linear-gradient(100deg, var(--magenta), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .auth-brand p { color: var(--muted); font-size: 13px; margin-top: 5px; }
   .auth-tabs { display: flex; gap: 4px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
   .auth-tab { flex: 1; font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 11px; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
@@ -359,8 +415,8 @@
   <div id="auth-overlay" class="auth-overlay">
     <div class="auth-card">
       <div class="auth-brand">
-        <h1>Brawl Tracker</h1>
-        <p>Estadísticas de Brawl Stars</p>
+        <div class="auth-banner-wrap"><img src="/static/media/banner.png" alt="BrawlSensei" /></div>
+        <p>Brawl Stars · analítica, estrategia y ligas</p>
       </div>
       <div class="auth-tabs">
         <button class="auth-tab active" id="auth-tab-login" onclick="switchAuth('login')">Iniciar sesión</button>
@@ -517,20 +573,30 @@
     </div>
   </div>
 
+  <div class="app-banner-bar">
+    <div class="app-banner" role="img" aria-label="BrawlSensei"></div>
+  </div>
+
   <div class="banner" id="banner"></div>
 
   <header>
-    <div class="brand">
-      <h1>Brawl Tracker</h1>
-      <p>Estadísticas multi-jugador<span class="proxy" id="proxy-pill">vía proxy RoyaleAPI</span></p>
-    </div>
+    <nav class="section-nav">
+      <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawlytics</button>
+      <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
+      <button class="snav" data-section="leagues" onclick="showSection('leagues')">Torneos y Ligas</button>
+    </nav>
     <div class="toolbar">
-      <div class="status" id="status">—</div>
       <button class="user-pill" id="user-pill" onclick="openAccount()"></button>
-      <button class="btn" id="refresh">Actualizar ahora</button>
       <button class="ghost" id="logout-btn" title="Cerrar sesión">Salir</button>
     </div>
   </header>
+
+  <!-- ===================== SECCIÓN: BRAWLYTICS (el tracker) ===================== -->
+  <section class="app-section active" id="section-brawlytics">
+    <div class="bytics-bar">
+      <div class="status" id="status">—</div>
+      <button class="btn" id="refresh">Actualizar ahora</button>
+    </div>
 
   <div class="player-bar">
     <div class="seg">
@@ -650,7 +716,7 @@
           <button class="rscope" data-scope="national" id="rscope-national">Mi país</button>
           <span class="rank-country-hint" id="rank-country-hint"></span>
         </div>
-        <button class="btn rank-create-btn" onclick="openLigilla()">+ Crear Ranking</button>
+        <button class="btn rank-create-btn" onclick="openLigilla()">+ Crear liguilla</button>
       </div>
       <p class="hint" style="margin-bottom:16px">Clic en la cabecera de una categoría para plegarla/desplegarla. Arrástrala por la cabecera para cambiar su orden (se recoge al arrastrar).</p>
       <div class="grid" id="rankings-grid">
@@ -713,6 +779,27 @@
       </div>
     </div>
   </div>
+  </section>
+
+  <!-- ===================== SECCIÓN: GUÍA DE ESTRATEGIA (wiki, futura) ===================== -->
+  <section class="app-section" id="section-guide">
+    <div class="section-placeholder">
+      <div class="ph-icon">📖</div>
+      <h2>Guía de Estrategia</h2>
+      <div class="ph-badge">Próximamente</div>
+      <p>Una wiki colaborativa de estrategia para Brawl Stars: conceptos, mecánicas y consejos aportados por la comunidad. Cualquiera podrá proponer ediciones, que pasarán por un control de cambios y se publicarán solo cuando un administrador las apruebe.</p>
+    </div>
+  </section>
+
+  <!-- ===================== SECCIÓN: TORNEOS Y LIGAS (futura) ===================== -->
+  <section class="app-section" id="section-leagues">
+    <div class="section-placeholder">
+      <div class="ph-icon">🏆</div>
+      <h2>Torneos y Ligas</h2>
+      <div class="ph-badge">Próximamente</div>
+      <p>Organiza y gestiona ligas y torneos amateur: crea una competición con equipos, genera los enfrentamientos automáticamente según el formato elegido, registra los resultados ronda a ronda y comparte la clasificación para que otros la sigan en directo.</p>
+    </div>
+  </section>
 
   <div class="lightbox" id="lightbox">
     <button class="close" id="lb-close" aria-label="Cerrar">&times;</button>
@@ -944,7 +1031,7 @@ async function loadPlayers() {
 }
 async function loadStatus() {
   const s = await getJSON("/api/status");
-  $("proxy-pill").classList.toggle("show", !!s.via_proxy);
+  const pp = $("proxy-pill"); if (pp) pp.classList.toggle("show", !!s.via_proxy);
   $("coach-hint").textContent = s.coach_configured ? "" : "Configura ANTHROPIC_API_KEY en el .env para activarlo.";
   const lp = s.last_poll || {};
   let txt = `${(s.players || []).length} jugador(es) · sondeo cada <b>${s.poll_interval}s</b>`;
@@ -1406,6 +1493,13 @@ async function confirmImport() {
     btn.disabled = false;
     switchTab("rankings");
   } catch (e) { $("import-err").textContent = "Error de red."; btn.disabled = false; }
+}
+
+/* ---------- Secciones de nivel superior ---------- */
+function showSection(name) {
+  document.querySelectorAll(".app-section").forEach((s) => s.classList.toggle("active", s.id === "section-" + name));
+  document.querySelectorAll(".snav").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* ---------- Pestañas ---------- */
