@@ -601,6 +601,84 @@
   .auth-submit { width: 100%; margin-top: 4px; }
   .auth-error { color: var(--loss); font-size: 13px; min-height: 18px; margin-bottom: 8px; }
   .auth-note { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  /* ===================== RESPONSIVE / MÓVIL ===================== */
+  /* Scroll horizontal para tablas anchas (wiki) en cualquier tamaño */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin: 8px 0 18px; }
+  .table-scroll table { margin: 0 !important; }
+
+  @media (max-width: 768px) {
+    body { padding: 14px 16px 60px; }
+    .app-banner-bar { margin: -14px -16px 16px; }
+
+    /* Cabecera: nav en tira deslizable + barra de usuario debajo */
+    header { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 11px; margin-bottom: 16px; }
+    .section-nav { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 4px; min-width: 0;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .section-nav::-webkit-scrollbar { display: none; }
+    .snav { flex: 0 0 auto; white-space: nowrap; padding: 8px 13px; }
+    .toolbar { justify-content: flex-end; gap: 10px; min-width: 0; }
+
+    /* Barra de estado/actualizar */
+    .bytics-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+    .bytics-bar .btn { width: 100%; }
+    .status { text-align: left; }
+
+    /* Controles de formulario a ancho completo */
+    select, input[type="text"], input[type="number"] { min-width: 0; width: 100%; }
+
+    /* Barra de jugador: apilar segmentos */
+    .player-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 13px 14px; }
+    .player-bar .seg { flex: 1 1 100%; flex-wrap: wrap; gap: 8px; }
+    .player-bar .spacer { display: none; }
+    .player-bar .seg select, .player-bar .seg #add-tag { flex: 1 1 auto; }
+    #add-player, #remove-player { flex: 0 0 auto; width: auto; }
+
+    /* Filtros: dos por fila */
+    .filters { gap: 11px; margin-bottom: 18px; }
+    .field { flex: 1 1 140px; }
+    .field select, .field input { width: 100%; }
+
+    /* Pestañas: deslizables en una fila */
+    .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex: 0 0 auto; white-space: nowrap; padding: 11px 13px; font-size: 13px; }
+
+    /* Tarjetas de resumen: dos columnas */
+    .overview { grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 20px; }
+    .stat { padding: 14px 15px; }
+    .stat .v { font-size: 23px; } .stat .v small { font-size: 13px; }
+
+    /* Cabecera de jugador más compacta */
+    .player-header { gap: 12px; }
+    .player-icon { width: 52px; height: 52px; }
+
+    /* Paneles y rejillas */
+    .panel { padding: 16px 15px; }
+    .grid { gap: 14px; }
+
+    /* Wiki: relleno menor y barra de herramientas del editor compacta */
+    .wiki-content { padding: 18px 16px; }
+    .wiki-nav { padding: 12px; }
+    .we-toolbar button { padding: 5px 8px; font-size: 11px; }
+
+    /* Admin: que las tarjetas puedan encoger y los botones quepan */
+    .admin-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .admin-tabs::-webkit-scrollbar { display: none; }
+    .atab { flex: 0 0 auto; white-space: nowrap; }
+    .prop-main, .hist-main { min-width: 0; flex-basis: 100%; }
+    .prop-actions, .user-actions { flex-wrap: wrap; }
+
+    /* Modales: aprovechar el ancho y reducir relleno */
+    .modal-card { padding: 24px 18px; }
+    .modal-card.has-close { padding-top: 50px; }
+    .rv-just, .rv-meta { font-size: 12.5px; }
+  }
+
+  @media (max-width: 380px) {
+    .overview { grid-template-columns: 1fr; }
+    .snav { font-size: 12px; padding: 8px 11px; }
+    .brand .pname, .player-header .pname { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -1883,6 +1961,10 @@ function wikiToast(msg, kind) {
   t.textContent = msg; t.className = "show " + (kind || "");
   clearTimeout(t._t); t._t = setTimeout(() => { t.className = ""; }, 3400);
 }
+// Envuelve las tablas en un contenedor con scroll horizontal (para móvil)
+function wrapTables(html) {
+  return (html || "").replace(/<table/g, '<div class="table-scroll"><table').replace(/<\/table>/g, "</table></div>");
+}
 
 async function loadWikiTree(keepActive) {
   try {
@@ -1953,7 +2035,7 @@ function renderWikiNode(n) {
        </div>
      </div>
      <div class="wc-divider"></div>
-     <div class="wiki-body">${n.body || '<p style="color:var(--muted)">(Sin contenido todavía. Pulsa «Editar» para añadirlo.)</p>'}</div>`;
+     <div class="wiki-body">${wrapTables(n.body) || '<p style="color:var(--muted)">(Sin contenido todavía. Pulsa «Editar» para añadirlo.)</p>'}</div>`;
 }
 
 /* ---------- Editor de nodos (editar / crear) ---------- */
@@ -2212,7 +2294,7 @@ async function openReview(pid) {
 function closeReview() { $("review-modal").classList.remove("open"); reviewId = null; }
 
 function diffCol(side, header, title, bodyHtml) {
-  return `<div class="rv-col ${side}"><div class="rv-col-h">${header}</div>${title ? "<h4>" + esc(title) + "</h4>" : ""}<div class="wiki-body">${bodyHtml || ""}</div></div>`;
+  return `<div class="rv-col ${side}"><div class="rv-col-h">${header}</div>${title ? "<h4>" + esc(title) + "</h4>" : ""}<div class="wiki-body">${wrapTables(bodyHtml) || ""}</div></div>`;
 }
 function renderDiff(p, cur, parent) {
   const pl = p.payload || {};
