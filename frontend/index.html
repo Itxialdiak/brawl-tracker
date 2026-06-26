@@ -229,6 +229,7 @@
   .modal-btn { width: 100%; margin-top: 6px; }
   .modal-msg { font-size: 12px; min-height: 16px; margin-top: 8px; }
   .modal-msg.err { color: var(--loss); }
+  .modal-msg.ok { color: var(--win); }
   .field-saved { color: var(--win); font-size: 12px; min-height: 14px; margin: -6px 0 12px; }
 
   /* Estado: actualizando */
@@ -274,6 +275,22 @@
   .panel.collapsed .collapse-head { margin-bottom: 0; }
   .panel.collapsed .collapse-head .caret { transform: rotate(0deg); }
   .panel.collapsed .collapse-body { display: none; }
+
+  /* Liguillas + drag & drop */
+  .rank-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .rank-create-btn { white-space: nowrap; }
+  .modal-card textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 11px 12px; outline: none; margin-bottom: 6px; resize: vertical; }
+  .modal-card textarea:focus { border-color: var(--cyan); }
+  .field-hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+  .cr-panel .collapse-head .caret { margin-left: 9px; }
+  .cr-actions { margin-left: auto; display: flex; gap: 4px; }
+  .cr-actions button { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; width: 28px; height: 26px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color .12s, border-color .12s; }
+  .cr-actions button:hover { color: var(--text); border-color: var(--cyan); }
+  .cr-actions button.danger:hover { color: var(--loss); border-color: var(--loss); }
+  .cr-owner-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; margin-left: 9px; font-family: var(--display); }
+  .cr-missing { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .collapse-head[draggable="true"] { cursor: grab; }
+  .panel.dragging { opacity: .5; outline: 1px dashed var(--cyan); }
 
   /* Informe: gráfica de trofeos */
   .chart-box { margin-top: 6px; }
@@ -461,6 +478,45 @@
     </div>
   </div>
 
+  <!-- Ventana crear/editar liguilla -->
+  <div id="ligilla-modal" class="modal-overlay" onclick="if(event.target===this)closeLigilla()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeLigilla()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title" id="ligilla-title">Crear liguilla</div>
+      <div class="modal-sub">Una clasificación propia entre los jugadores que tú elijas (amigos, club, rivales…). Se ordena por trofeos.</div>
+      <div class="field-label">Nombre</div>
+      <input type="text" id="ligilla-name" maxlength="60" placeholder="Ej. Liga del club" />
+      <div class="field-label">Player IDs</div>
+      <textarea id="ligilla-tags" rows="5" placeholder="#2P0LYQQRJ&#10;#900C8PYJP&#10;…"></textarea>
+      <div class="field-hint">Pega los #TAG de los jugadores, separados por espacios, comas o saltos de línea.</div>
+      <button class="btn modal-btn" id="ligilla-save" onclick="saveLigilla()">Guardar</button>
+      <div class="modal-msg err" id="ligilla-err"></div>
+    </div>
+  </div>
+
+  <!-- Ventana compartir liguilla -->
+  <div id="share-modal" class="modal-overlay" onclick="if(event.target===this)closeShare()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeShare()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Compartir liguilla</div>
+      <div class="modal-sub" id="share-sub">Quien abra este enlace (con cuenta) podrá añadir la liguilla a su cuenta.</div>
+      <input type="text" id="share-link" readonly onclick="this.select()" />
+      <button class="btn modal-btn" id="share-copy" onclick="copyShareLink()">Copiar enlace</button>
+      <div class="modal-msg ok" id="share-msg"></div>
+    </div>
+  </div>
+
+  <!-- Ventana importar liguilla -->
+  <div id="import-modal" class="modal-overlay" onclick="if(event.target===this)closeImport()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeImport()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Importar liguilla</div>
+      <div class="modal-sub" id="import-sub">…</div>
+      <button class="btn modal-btn" id="import-btn" onclick="confirmImport()">Añadir a mi cuenta</button>
+      <div class="modal-msg err" id="import-err"></div>
+    </div>
+  </div>
+
   <div class="banner" id="banner"></div>
 
   <header>
@@ -557,7 +613,7 @@
         <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
           <div class="hint">Balance acumulado de trofeos.</div>
           <div class="chart-box" id="trophy-chart"></div></div>
-        <div class="panel chart-sq"><h2><span class="dot"></span>Tendencia reciente · win rate</h2>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Forma reciente · win rate</h2>
           <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
           <div class="chart-box" id="winrate-chart"></div></div>
       </div>
@@ -588,36 +644,40 @@
     <!-- RANKINGS -->
     <div class="tab-content" id="tab-rankings">
       <h2 class="section-title">Rankings</h2>
-      <div class="rank-scope">
-        <button class="rscope active" data-scope="global">Global</button>
-        <button class="rscope" data-scope="national" id="rscope-national">Mi país</button>
-        <span class="rank-country-hint" id="rank-country-hint"></span>
+      <div class="rank-topbar">
+        <div class="rank-scope">
+          <button class="rscope active" data-scope="global">Global</button>
+          <button class="rscope" data-scope="national" id="rscope-national">Mi país</button>
+          <span class="rank-country-hint" id="rank-country-hint"></span>
+        </div>
+        <button class="btn rank-create-btn" onclick="openLigilla()">+ Crear Ranking</button>
       </div>
-      <div class="grid">
-        <div class="panel collapsible" style="grid-column:1/-1">
-          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de jugador<span class="caret">▸</span></h2>
+      <p class="hint" style="margin-bottom:16px">Clic en la cabecera de una categoría para plegarla/desplegarla. Arrástrala por la cabecera para cambiar su orden (se recoge al arrastrar).</p>
+      <div class="grid" id="rankings-grid">
+        <div class="panel collapsible" data-cat="player" style="grid-column:1/-1">
+          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de jugador<span class="caret">▸</span></h2>
           <div class="collapse-body">
             <div class="hint" id="rank-player-hint">Top 200 de jugadores por trofeos. Si estás dentro, te resalto.</div>
             <div id="rank-player"></div>
           </div>
         </div>
-        <div class="panel collapsible" style="grid-column:1/-1">
-          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de un brawler<span class="caret">▸</span></h2>
+        <div class="panel collapsible" data-cat="brawler" style="grid-column:1/-1">
+          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de un brawler<span class="caret">▸</span></h2>
           <div class="collapse-body">
             <div class="rank-pick"><span class="lbl">Brawler</span><select id="rank-brawler-sel"></select></div>
             <div class="hint" id="rank-brawler-hint"></div>
             <div id="rank-brawler"></div>
           </div>
         </div>
-        <div class="panel collapsible" style="grid-column:1/-1">
-          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de clubs<span class="caret">▸</span></h2>
+        <div class="panel collapsible" data-cat="clubs" style="grid-column:1/-1">
+          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de clubs<span class="caret">▸</span></h2>
           <div class="collapse-body">
             <div class="hint" id="rank-clubs-hint">Top 200 de clubs. Resalto el tuyo si aparece.</div>
             <div id="rank-clubs"></div>
           </div>
         </div>
-        <div class="panel collapsible" style="grid-column:1/-1">
-          <h2 class="collapse-head" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking interno de tu club<span class="caret">▸</span></h2>
+        <div class="panel collapsible" data-cat="internal" style="grid-column:1/-1">
+          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking interno de tu club<span class="caret">▸</span></h2>
           <div class="collapse-body">
             <div class="hint" id="rank-internal-hint"></div>
             <div id="rank-internal"></div>
@@ -1053,6 +1113,9 @@ async function loadRankings() {
   } else { sel.innerHTML = `<option value="">—</option>`; }
   updateScopeUI();
   loadPlayerRanking(); loadClubRanking(); loadBrawlerRanking(); loadClubInternal();
+  await renderCustomRankings();
+  await applySavedOrder();
+  setupRankingsDnD();
 }
 async function loadPlayerRanking() {
   const el = $("rank-player"); el.innerHTML = '<div class="rk-loading">Cargando…</div>';
@@ -1106,10 +1169,243 @@ function rankRow(item, isMe, kind) {
   const rank = item.rank != null ? item.rank : "";
   const iconId = item.icon_id != null ? item.icon_id : (item.icon && item.icon.id);
   const icon = (kind !== "clubs" && iconId) ? `<img class="rk-icon" src="https://cdn.brawlify.com/profile-icons/regular/${iconId}.png" onerror="this.style.visibility='hidden'">` : "";
-  const club = item.club && item.club.name ? `<span class="rk-club">${esc(item.club.name)}</span>` : "";
+  const clubName = item.club && (typeof item.club === "string" ? item.club : item.club.name);
+  const club = clubName ? `<span class="rk-club">${esc(clubName)}</span>` : "";
   const role = item.role ? `<span class="rk-club">${esc(prettyRole(item.role))}</span>` : "";
   const tro = item.trophies != null ? `${Number(item.trophies).toLocaleString("es-ES")}🏆` : "";
   return `<div class="rk-row ${isMe ? "me" : ""}"><span class="rk-rank">${rank}</span>${icon}<span class="rk-name">${esc(item.name || "")}${club}${role}</span><span class="rk-tro">${tro}</span></div>`;
+}
+
+/* ---------- Liguillas (rankings personalizados) ---------- */
+async function renderCustomRankings() {
+  const grid = $("rankings-grid");
+  grid.querySelectorAll(".panel.cr-panel").forEach((p) => p.remove());
+  let list = [];
+  try { const d = await getJSON("/api/custom-rankings"); list = (d && d.rankings) || []; }
+  catch (e) { list = []; }
+  list.forEach((cr) => grid.appendChild(buildCustomPanel(cr)));
+  list.forEach((cr) => loadCustomStandings(cr.id));
+}
+function buildCustomPanel(cr) {
+  const p = document.createElement("div");
+  p.className = "panel collapsible cr-panel";
+  p.dataset.cat = "custom:" + cr.id;
+  p.style.gridColumn = "1/-1";
+  const ownerTag = cr.owned ? "" : `<span class="cr-owner-tag">importada</span>`;
+  const editBtn = cr.owned ? `<button title="Editar jugadores" onclick="event.stopPropagation();editLigilla(${cr.id})">✎</button>` : "";
+  const delTitle = cr.owned ? "Borrar liguilla" : "Quitar de mi cuenta";
+  const actions =
+    `<button title="Compartir" onclick="event.stopPropagation();shareLigilla(${cr.id})">⤴</button>` +
+    editBtn +
+    `<button class="danger" title="${delTitle}" onclick="event.stopPropagation();deleteLigilla(${cr.id},${cr.owned ? 1 : 0})">🗑</button>`;
+  const nJug = cr.count + " jugador" + (cr.count === 1 ? "" : "es");
+  p.innerHTML =
+    `<h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)">` +
+      `<span class="dot" style="background:var(--cyan)"></span>${esc(cr.name)}${ownerTag}` +
+      `<span class="cr-actions">${actions}</span>` +
+      `<span class="caret">▸</span>` +
+    `</h2>` +
+    `<div class="collapse-body">` +
+      `<div class="hint">Liguilla${cr.owned ? "" : " importada"} · ${nJug} · ordenada por trofeos.</div>` +
+      `<div id="cr-standings-${cr.id}"><div class="rk-loading">Cargando…</div></div>` +
+    `</div>`;
+  return p;
+}
+async function loadCustomStandings(id) {
+  const el = $("cr-standings-" + id);
+  if (!el) return;
+  let d;
+  try { d = await getJSON("/api/custom-rankings/" + id + "/standings"); }
+  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar.</div>'; return; }
+  if (d && d.error) { el.innerHTML = '<div class="rk-empty">' + esc(d.error) + "</div>"; return; }
+  const players = (d && d.players) || [];
+  if (!players.length) { el.innerHTML = '<div class="rk-empty">Sin jugadores válidos todavía.</div>'; }
+  else {
+    let html = `<div class="rk-list">${players.map((pp) => rankRow(pp, rankNorm(pp.tag) === rankNorm(currentPlayer), "players")).join("")}</div>`;
+    if (d.missing && d.missing.length) html += `<div class="cr-missing">No encontrados: ${d.missing.map(esc).join(", ")}</div>`;
+    el.innerHTML = html;
+  }
+}
+
+/* ---------- Drag & drop de categorías ---------- */
+function setupRankingsDnD() {
+  const grid = $("rankings-grid");
+  if (grid._dnd) return;
+  grid._dnd = true;
+  grid.addEventListener("dragstart", (e) => {
+    const head = e.target.closest(".collapse-head");
+    if (!head || !grid.contains(head)) return;
+    const panel = head.closest(".panel");
+    if (!panel) return;
+    panel.classList.add("dragging", "collapsed");
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", panel.dataset.cat || ""); } catch (_) {}
+  });
+  grid.addEventListener("dragover", (e) => {
+    const dragging = grid.querySelector(".panel.dragging");
+    if (!dragging) return;
+    e.preventDefault();
+    const after = getDragAfterElement(grid, e.clientY);
+    if (after == null) grid.appendChild(dragging);
+    else grid.insertBefore(dragging, after);
+  });
+  grid.addEventListener("drop", (e) => { if (grid.querySelector(".panel.dragging")) e.preventDefault(); });
+  grid.addEventListener("dragend", () => {
+    const dragging = grid.querySelector(".panel.dragging");
+    if (dragging) dragging.classList.remove("dragging");
+    saveRankingsOrder();
+  });
+}
+function getDragAfterElement(grid, y) {
+  const els = [...grid.querySelectorAll(".panel:not(.dragging)")];
+  let closest = { offset: -Infinity, el: null };
+  for (const child of els) {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) closest = { offset, el: child };
+  }
+  return closest.el;
+}
+function currentOrder() {
+  return [...$("rankings-grid").querySelectorAll(".panel")].map((p) => p.dataset.cat).filter(Boolean);
+}
+async function saveRankingsOrder() {
+  try {
+    await fetch("/api/rankings-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order: currentOrder() }) });
+  } catch (_) {}
+}
+async function applySavedOrder() {
+  let order = null;
+  try { const d = await getJSON("/api/rankings-order"); order = d && d.order; } catch (_) {}
+  if (!order || !order.length) return;
+  const grid = $("rankings-grid");
+  const panels = [...grid.querySelectorAll(".panel")];
+  const byCat = {};
+  panels.forEach((p) => { byCat[p.dataset.cat] = p; });
+  const used = new Set();
+  order.forEach((cat) => { if (byCat[cat]) { grid.appendChild(byCat[cat]); used.add(cat); } });
+  panels.forEach((p) => { if (!used.has(p.dataset.cat)) grid.appendChild(p); });
+}
+
+/* ---------- Modal crear/editar liguilla ---------- */
+let ligillaEditId = null;
+function openLigilla() {
+  ligillaEditId = null;
+  $("ligilla-title").textContent = "Crear liguilla";
+  $("ligilla-name").value = "";
+  $("ligilla-tags").value = "";
+  $("ligilla-err").textContent = "";
+  $("ligilla-save").disabled = false;
+  $("ligilla-modal").classList.add("open");
+  setTimeout(() => $("ligilla-name").focus(), 60);
+}
+async function editLigilla(id) {
+  ligillaEditId = id;
+  $("ligilla-title").textContent = "Editar liguilla";
+  $("ligilla-err").textContent = "";
+  $("ligilla-name").value = "";
+  $("ligilla-tags").value = "";
+  $("ligilla-save").disabled = false;
+  $("ligilla-modal").classList.add("open");
+  try {
+    const d = await getJSON("/api/custom-rankings/" + id);
+    if (d && !d.error) {
+      $("ligilla-name").value = d.name || "";
+      $("ligilla-tags").value = (d.players || []).join("\n");
+    }
+  } catch (e) {}
+}
+function closeLigilla() { $("ligilla-modal").classList.remove("open"); }
+async function saveLigilla() {
+  const name = $("ligilla-name").value.trim();
+  const players = $("ligilla-tags").value;
+  const err = $("ligilla-err");
+  err.textContent = "";
+  if (!name) { err.textContent = "Ponle un nombre a la liguilla."; return; }
+  if (!players.trim()) { err.textContent = "Añade al menos un player ID."; return; }
+  const btn = $("ligilla-save");
+  btn.disabled = true;
+  try {
+    const editing = ligillaEditId != null;
+    const url = editing ? "/api/custom-rankings/" + ligillaEditId : "/api/custom-rankings";
+    const r = await fetch(url, { method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, players }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { err.textContent = d.error || d.detail || "No se pudo guardar."; btn.disabled = false; return; }
+    closeLigilla();
+    await renderCustomRankings();
+    await applySavedOrder();
+  } catch (e) { err.textContent = "Error de red."; btn.disabled = false; }
+}
+async function deleteLigilla(id, owned) {
+  const msg = owned ? "¿Borrar esta liguilla? Desaparecerá también para quienes la hayan importado." : "¿Quitar esta liguilla importada de tu cuenta?";
+  if (!confirm(msg)) return;
+  try { await fetch("/api/custom-rankings/" + id, { method: "DELETE" }); } catch (e) {}
+  await renderCustomRankings();
+  await applySavedOrder();
+}
+
+/* ---------- Compartir liguilla ---------- */
+async function shareLigilla(id) {
+  let token = null;
+  try { const d = await getJSON("/api/custom-rankings/" + id); if (d && !d.error) token = d.share_token; } catch (e) {}
+  if (!token) { return; }
+  $("share-link").value = location.origin + "/?ligilla=" + encodeURIComponent(token);
+  $("share-msg").textContent = "";
+  $("share-modal").classList.add("open");
+  setTimeout(() => $("share-link").select(), 60);
+}
+function closeShare() { $("share-modal").classList.remove("open"); }
+async function copyShareLink() {
+  const link = $("share-link").value;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(link);
+    else { $("share-link").select(); document.execCommand("copy"); }
+    $("share-msg").textContent = "✓ Enlace copiado al portapapeles.";
+  } catch (e) { $("share-msg").textContent = "Selecciónalo y cópialo a mano (Ctrl+C)."; }
+}
+
+/* ---------- Importar liguilla por enlace ---------- */
+let pendingImportToken = null;
+function checkImportParam() {
+  const token = new URLSearchParams(location.search).get("ligilla");
+  if (token) openImport(token);
+}
+async function openImport(token) {
+  pendingImportToken = token;
+  $("import-err").textContent = "";
+  $("import-sub").textContent = "Cargando…";
+  $("import-btn").style.display = "none";
+  $("import-modal").classList.add("open");
+  let d;
+  try { d = await getJSON("/api/shared-ranking?token=" + encodeURIComponent(token)); }
+  catch (e) { d = { error: "No se pudo cargar el enlace." }; }
+  if (!d || d.error) { $("import-sub").textContent = ""; $("import-err").textContent = (d && d.error) || "Enlace no válido o liguilla borrada."; return; }
+  if (d.already || d.owned) {
+    $("import-sub").innerHTML = `La liguilla <b>${esc(d.name)}</b> ya está en tu cuenta.`;
+    $("import-btn").style.display = "none";
+  } else {
+    $("import-sub").innerHTML = `¿Añadir la liguilla <b>${esc(d.name)}</b> (${d.count} jugador${d.count === 1 ? "" : "es"}) a tu cuenta? Si el dueño la actualiza, verás los cambios.`;
+    $("import-btn").style.display = "";
+  }
+}
+function closeImport() {
+  $("import-modal").classList.remove("open");
+  if (location.search.indexOf("ligilla=") >= 0) history.replaceState(null, "", location.pathname);
+  pendingImportToken = null;
+}
+async function confirmImport() {
+  if (!pendingImportToken) return;
+  $("import-err").textContent = "";
+  const btn = $("import-btn");
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/custom-rankings/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: pendingImportToken }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { $("import-err").textContent = d.error || "No se pudo importar."; btn.disabled = false; return; }
+    closeImport();
+    btn.disabled = false;
+    switchTab("rankings");
+  } catch (e) { $("import-err").textContent = "Error de red."; btn.disabled = false; }
 }
 
 /* ---------- Pestañas ---------- */
@@ -1438,7 +1734,7 @@ async function doRegister() {
 
 function onAuthSuccess(user) {
   $("login-pass").value = ""; $("reg-pass").value = "";
-  hideLogin(); setUser(user); bootApp();
+  hideLogin(); setUser(user); bootApp(); checkImportParam();
 }
 
 async function doLogout() {
@@ -1454,7 +1750,7 @@ async function bootApp() { await loadAssets(); await refreshAll(); }
 (async () => {
   await loadAuthConfig();
   const me = await fetchMe();
-  if (me && me.username) { hideLogin(); setUser(me); bootApp(); }
+  if (me && me.username) { hideLogin(); setUser(me); bootApp(); checkImportParam(); }
   else { showLogin(); }
 })();
 

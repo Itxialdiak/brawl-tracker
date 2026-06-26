@@ -17,6 +17,8 @@ from __future__ import annotations
 import os
 import sqlite3
 import hashlib
+import json
+import secrets
 from datetime import datetime, timezone
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "..", "brawl_stats.db"))
@@ -71,6 +73,15 @@ def init_db():
             user_id INTEGER NOT NULL, player_tag TEXT NOT NULL, added_at TEXT,
             PRIMARY KEY (user_id, player_tag)
         );
+        CREATE TABLE IF NOT EXISTS custom_rankings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, owner_user_id INTEGER NOT NULL,
+            name TEXT NOT NULL, share_token TEXT UNIQUE NOT NULL,
+            player_tags TEXT, created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS user_custom_rankings (
+            user_id INTEGER NOT NULL, ranking_id INTEGER NOT NULL, added_at TEXT,
+            PRIMARY KEY (user_id, ranking_id)
+        );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
@@ -86,6 +97,7 @@ def init_db():
     _ensure_column(cur, "players", "icon_id", "INTEGER")
     _ensure_column(cur, "players", "club_name", "TEXT")
     _ensure_column(cur, "users", "country", "TEXT")
+    _ensure_column(cur, "users", "ranking_order", "TEXT")
     _ensure_column(cur, "battles", "my_trophies", "INTEGER")
     _ensure_column(cur, "opponents", "trophies", "INTEGER")
     _ensure_column(cur, "allies", "trophies", "INTEGER")
@@ -220,6 +232,137 @@ def set_user_password(user_id: int, password_hash: str) -> None:
     conn = get_conn()
     conn.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, user_id))
     conn.commit(); conn.close()
+
+
+# --------------------------- Rankings personalizados (liguillas) ---------------------------
+
+def _norm_tags(tags) -> list:
+    out, seen = [], set()
+    for t in (tags or []):
+        if not t or not str(t).strip():
+            continue
+        nt = normalize_tag(str(t))
+        if nt not in seen:
+            seen.add(nt); out.append(nt)
+    return out
+
+
+def _cr_row(row) -> dict | None:
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["player_tags"] = json.loads(d.get("player_tags") or "[]")
+    except Exception:  # noqa: BLE001
+        d["player_tags"] = []
+    return d
+
+
+def create_custom_ranking(owner_user_id: int, name: str, tags) -> int:
+    token = secrets.token_urlsafe(9)
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO custom_rankings (owner_user_id, name, share_token, player_tags, created_at) "
+        "VALUES (?,?,?,?,?)",
+        (owner_user_id, (name or "Liguilla").strip()[:60], token,
+         json.dumps(_norm_tags(tags)), datetime.now(timezone.utc).isoformat()))
+    rid = cur.lastrowid
+    conn.commit(); conn.close()
+    return rid
+
+
+def get_custom_ranking(rid: int) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM custom_rankings WHERE id=?", (rid,)).fetchone()
+    conn.close()
+    return _cr_row(row)
+
+
+def get_custom_ranking_by_token(token: str) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM custom_rankings WHERE share_token=?", (token,)).fetchone()
+    conn.close()
+    return _cr_row(row)
+
+
+def list_custom_rankings_for_user(user_id: int) -> list:
+    """Rankings que el usuario posee + a los que se ha suscrito (importado)."""
+    conn = get_conn()
+    owned = conn.execute(
+        "SELECT * FROM custom_rankings WHERE owner_user_id=? ORDER BY id", (user_id,)).fetchall()
+    subs = conn.execute(
+        "SELECT cr.* FROM custom_rankings cr "
+        "JOIN user_custom_rankings ucr ON ucr.ranking_id=cr.id "
+        "WHERE ucr.user_id=? AND cr.owner_user_id<>? ORDER BY ucr.added_at",
+        (user_id, user_id)).fetchall()
+    conn.close()
+    res = []
+    for r in owned:
+        d = _cr_row(r); d["owned"] = True; res.append(d)
+    for r in subs:
+        d = _cr_row(r); d["owned"] = False; res.append(d)
+    return res
+
+
+def user_can_view_ranking(user_id: int, rid: int) -> bool:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM custom_rankings WHERE id=? AND owner_user_id=? "
+        "UNION SELECT 1 FROM user_custom_rankings WHERE ranking_id=? AND user_id=?",
+        (rid, user_id, rid, user_id)).fetchone()
+    conn.close()
+    return row is not None
+
+
+def update_custom_ranking(rid: int, owner_user_id: int, name: str, tags) -> bool:
+    conn = get_conn()
+    cur = conn.execute(
+        "UPDATE custom_rankings SET name=?, player_tags=? WHERE id=? AND owner_user_id=?",
+        ((name or "Liguilla").strip()[:60], json.dumps(_norm_tags(tags)), rid, owner_user_id))
+    n = cur.rowcount
+    conn.commit(); conn.close()
+    return n > 0
+
+
+def delete_or_unsubscribe_ranking(user_id: int, rid: int) -> str:
+    """Dueño -> borra el ranking y sus suscripciones. Suscrito -> solo se da de baja."""
+    conn = get_conn(); cur = conn.cursor()
+    owner = cur.execute("SELECT owner_user_id FROM custom_rankings WHERE id=?", (rid,)).fetchone()
+    if owner and owner[0] == user_id:
+        cur.execute("DELETE FROM user_custom_rankings WHERE ranking_id=?", (rid,))
+        cur.execute("DELETE FROM custom_rankings WHERE id=?", (rid,))
+        result = "deleted"
+    else:
+        cur.execute("DELETE FROM user_custom_rankings WHERE ranking_id=? AND user_id=?", (rid, user_id))
+        result = "unsubscribed"
+    conn.commit(); conn.close()
+    return result
+
+
+def subscribe_ranking(user_id: int, rid: int) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT OR IGNORE INTO user_custom_rankings (user_id, ranking_id, added_at) VALUES (?,?,?)",
+        (user_id, rid, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def set_rankings_order(user_id: int, order: list) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE users SET ranking_order=? WHERE id=?", (json.dumps(order), user_id))
+    conn.commit(); conn.close()
+
+
+def get_rankings_order(user_id: int):
+    conn = get_conn()
+    row = conn.execute("SELECT ranking_order FROM users WHERE id=?", (user_id,)).fetchone()
+    conn.close()
+    if row and row["ranking_order"]:
+        try:
+            return json.loads(row["ranking_order"])
+        except Exception:  # noqa: BLE001
+            return None
+    return None
 
 
 def follow_player(user_id: int, tag: str) -> None:
