@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "note": "Dataset curado a mano. Rellena cada brawler por su id. La app funciona aunque falten entradas. Verifica los nombres de hipercarga y los valores; este seed son ejemplos.",
+    "hypercharges_in_game": null,
+    "schema": {
+      "hypercharge": {"name": "texto o null", "icon": "url o ausente"},
+      "stats_by_level": {"health": "[11 valores nivel 1..11]", "damage": "[11 valores]", "speed": "texto", "range": "texto", "reload": "texto"},
+      "builds": [{"name": "texto", "star_power_id": "id o null", "gadget_id": "id o null", "gears": "[ids]", "source": "url"}]
+    }
+  },
+  "16000000": {
+    "hypercharge": {"name": "Supercaparazón"},
+    "builds": [
+      {"name": "Agresiva de cerca", "star_power_id": 23000076, "gadget_id": 23000255, "gears": [], "source": "https://www.brawlify.com/brawlers/detail/Shelly"}
+    ]
+  },
+  "16000001": {
+    "hypercharge": {"name": null}
+  },
+  "16000002": {
+    "hypercharge": {"name": null}
+  }
+}

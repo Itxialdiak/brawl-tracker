@@ -967,6 +967,107 @@
     .snav { font-size: 12px; padding: 8px 11px; }
     .brand .pname, .player-header .pname { font-size: 20px; }
   }
+
+  /* ---------- Apartado Brawlers ---------- */
+  .br-counters { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:18px; }
+  .br-counter { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:15px 17px; display:flex; align-items:center; gap:13px; position:relative; overflow:hidden; }
+  .br-counter::after { content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--gold); }
+  .br-counter.sp::after{background:#ffd75e;} .br-counter.gd::after{background:var(--win);} .br-counter.hc::after{background:var(--magenta);} .br-counter.col::after{background:var(--cyan);}
+  .br-counter .ic { font-size:22px; width:40px; height:40px; display:grid; place-items:center; background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; flex-shrink:0; }
+  .br-counter .body { min-width:0; flex:1; }
+  .br-counter .v { font-family:var(--display); font-weight:700; font-size:23px; line-height:1; }
+  .br-counter .v small { color:var(--muted); font-size:13px; font-weight:600; }
+  .br-counter .k { color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; margin-top:4px; }
+  .br-counter .barwrap { height:5px; border-radius:3px; background:rgba(255,255,255,.07); margin-top:8px; overflow:hidden; }
+  .br-counter .bar { height:100%; border-radius:3px; transition:width .6s cubic-bezier(.2,.8,.2,1); }
+
+  .br-rating { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:18px 22px; margin-bottom:20px; display:grid; grid-template-columns:auto 1fr; gap:26px; align-items:center; }
+  .br-rating .score { text-align:center; min-width:96px; }
+  .br-rating .score .num { font-family:var(--display); font-weight:700; font-size:46px; line-height:1; }
+  .br-rating .score .max { color:var(--muted); font-size:14px; }
+  .br-rating .score .tier { margin-top:8px; font-family:var(--display); font-size:11px; letter-spacing:.6px; text-transform:uppercase; padding:3px 11px; border-radius:20px; background:var(--bg-elev); border:1px solid var(--border); display:inline-block; }
+  .br-rating .subs { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:11px 22px; }
+  .br-sub .lbl { display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; }
+  .br-sub .lbl b { color:var(--text); font-family:var(--display); }
+  .br-sub .barwrap { height:7px; border-radius:4px; background:rgba(255,255,255,.07); overflow:hidden; }
+  .br-sub .bar { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--blue),var(--cyan)); transition:width .6s cubic-bezier(.2,.8,.2,1); }
+
+  .br-account { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:18px; }
+  .br-account .ac { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:13px 15px; text-align:center; }
+  .br-account .ac .v { font-family:var(--display); font-weight:700; font-size:22px; line-height:1; }
+  .br-account .ac .k { color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.5px; margin-top:5px; }
+  .br-distrib { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-bottom:20px; }
+  .br-distrib .panel h2 { margin-bottom:12px; }
+  .dbar { display:grid; grid-template-columns:92px 1fr auto; gap:8px 10px; align-items:center; padding:5px 0; font-size:12.5px; }
+  .dbar .dlbl { color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dbar .dwrap { height:8px; border-radius:5px; background:rgba(255,255,255,.07); overflow:hidden; }
+  .dbar .dfill { height:100%; border-radius:5px; transition:width .6s cubic-bezier(.2,.8,.2,1); }
+  .dbar .dn { font-family:var(--display); font-weight:700; color:var(--muted); }
+
+  .br-toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  .br-search { flex:1; min-width:180px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:11px 16px; color:var(--text); font-family:var(--body); font-size:14px; }
+  .br-search:focus { outline:none; border-color:rgba(150,130,255,.5); }
+  .br-sorts { display:flex; gap:6px; flex-wrap:wrap; }
+  .br-sort { font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); background:var(--panel); border:1px solid var(--border); border-radius:20px; padding:8px 14px; cursor:pointer; transition:color .15s,background .15s,border-color .15s; }
+  .br-sort:hover { color:var(--text); }
+  .br-sort.active { color:var(--bg); background:var(--gold); border-color:var(--gold); }
+
+  .br-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; }
+  .br-card { background:var(--panel); border:1px solid var(--border); border-radius:15px; padding:12px; cursor:pointer; transition:transform .15s,border-color .15s,box-shadow .15s; position:relative; text-align:center; }
+  .br-card:hover { transform:translateY(-3px); border-color:rgba(150,130,255,.5); box-shadow:0 12px 28px rgba(0,0,0,.4); }
+  .br-card.locked { opacity:.5; filter:grayscale(.55); }
+  .br-card .por { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; background:var(--bg-elev); display:block; }
+  .br-card .nm { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:.3px; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .br-card .role { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; min-height:13px; }
+  .br-card .pw { position:absolute; top:8px; left:8px; font-family:var(--display); font-weight:700; font-size:12px; background:rgba(0,0,0,.6); border:1px solid var(--border); border-radius:8px; padding:1px 7px; }
+  .br-card .topright { position:absolute; top:7px; right:8px; display:flex; gap:5px; align-items:center; font-size:13px; }
+  .br-card .meta { display:flex; align-items:center; justify-content:center; gap:9px; margin-top:7px; font-size:11px; color:var(--muted); }
+  .br-card .wr { font-family:var(--display); font-weight:700; }
+  .br-card .dots { display:flex; gap:3px; justify-content:center; margin-top:7px; flex-wrap:wrap; }
+  .br-card .dot2 { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.12); }
+  .br-card .dot2.on-sp { background:#ffd75e; } .br-card .dot2.on-gd { background:var(--win); }
+
+  /* Badge de rango por banda de trofeos */
+  .rank-badge { width:16px; height:16px; border-radius:5px; display:inline-block; position:relative; flex-shrink:0; box-shadow:inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.35); transform:rotate(45deg); }
+  .rank-badge.wood{background:linear-gradient(135deg,#a9703f,#5c3a1e);} .rank-badge.bronze{background:linear-gradient(135deg,#e8a063,#9c5a23);}
+  .rank-badge.silver{background:linear-gradient(135deg,#eef3f7,#9aa7b4);} .rank-badge.gold{background:linear-gradient(135deg,#ffe07a,#e0a008);}
+  .rank-badge.p1{background:linear-gradient(135deg,#7ad3ff,#3a7bd5);} .rank-badge.p2{background:linear-gradient(135deg,#c98bff,#7a35d5);} .rank-badge.p3{background:linear-gradient(135deg,#ff8ec6,#d53a8b);}
+  .rank-badge.p1::after,.rank-badge.p2::after,.rank-badge.p3::after{content:"★"; position:absolute; inset:0; transform:rotate(-45deg); display:grid; place-items:center; font-size:8px; color:rgba(255,255,255,.92);}
+  .rank-chip { display:inline-flex; align-items:center; gap:8px; }
+  .rank-chip .lbl { font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:.4px; }
+
+  /* Ficha de detalle */
+  .br-detail { margin-top:14px; }
+  .br-d-top { display:grid; grid-template-columns:minmax(220px,300px) 1fr; gap:24px; align-items:start; }
+  .br-d-img { background:linear-gradient(160deg,var(--bg-elev),#241c52); border:1px solid var(--border); border-radius:18px; padding:10px; text-align:center; position:relative; overflow:hidden; min-height:180px; display:grid; place-items:center; }
+  .br-d-img img { width:100%; max-height:340px; object-fit:contain; }
+  .br-d-rarity { position:absolute; top:12px; left:12px; font-family:var(--display); font-weight:700; font-size:11px; letter-spacing:.5px; text-transform:uppercase; padding:3px 9px; border-radius:6px; }
+  .br-d-info h1 { font-family:var(--display); font-weight:700; font-size:34px; letter-spacing:.5px; line-height:1.05; }
+  .br-d-role { color:var(--muted); text-transform:uppercase; letter-spacing:.8px; font-size:12px; margin-bottom:12px; }
+  .br-d-desc { color:var(--text); opacity:.9; line-height:1.5; font-size:14px; margin-bottom:16px; }
+  .br-d-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:12px; }
+  .br-d-stat { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:11px 14px; }
+  .br-d-stat .k { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.6px; }
+  .br-d-stat .v { font-family:var(--display); font-weight:700; font-size:22px; margin-top:4px; line-height:1.05; }
+  .br-section { margin-top:24px; }
+  .br-section h3 { font-family:var(--display); font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .ability-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+  .ability { display:flex; gap:12px; background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:12px; align-items:flex-start; }
+  .ability.owned { border-color:rgba(54,224,160,.5); box-shadow:inset 0 0 0 1px rgba(54,224,160,.13); }
+  .ability img { width:46px; height:46px; object-fit:contain; flex-shrink:0; background:var(--bg-elev); border-radius:9px; }
+  .ability .nm { font-family:var(--display); font-weight:700; font-size:14px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .ability .tag { font-size:9px; padding:1px 6px; border-radius:10px; background:var(--win); color:var(--bg); font-weight:700; letter-spacing:.4px; }
+  .ability .ds { color:var(--muted); font-size:12px; margin-top:3px; line-height:1.4; }
+  .hc-card { display:flex; gap:14px; align-items:center; background:linear-gradient(120deg,rgba(198,79,240,.14),var(--panel)); border:1px solid rgba(198,79,240,.4); border-radius:14px; padding:14px; }
+  .hc-card .hcic { width:48px; height:48px; display:grid; place-items:center; font-size:26px; background:var(--bg-elev); border-radius:11px; flex-shrink:0; }
+  .build-card { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:13px 15px; }
+  .build-card .bn { font-family:var(--display); font-weight:700; font-size:14px; }
+  .build-card .src-link { display:inline-block; margin-top:8px; font-size:12px; color:var(--cyan); text-decoration:none; }
+  .build-card .src-link:hover { text-decoration:underline; }
+  .lvl-table { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .lvl-btn { font-family:var(--display); font-weight:700; font-size:13px; width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--panel); color:var(--muted); cursor:pointer; }
+  .lvl-btn.active { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+  @media (max-width: 640px) { .br-d-top { grid-template-columns:1fr; } .br-d-img { max-width:300px; margin:0 auto; } }
 </style>
 </head>
 <body>
@@ -1357,6 +1458,7 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="stats">Estadísticas</button>
+      <button class="tab" data-tab="brawlers">Brawlers</button>
       <button class="tab" data-tab="report">Analíticas</button>
       <button class="tab" data-tab="rankings">Rankings</button>
       <button class="tab" data-tab="history">Historial de partidas</button>
@@ -1491,6 +1593,34 @@
       <div id="coach-detail-view" style="display:none">
         <button class="ghost" id="coach-back">← Volver a la lista</button>
         <div class="report-detail" id="report-detail"></div>
+      </div>
+    </div>
+
+    <!-- BRAWLERS -->
+    <div class="tab-content" id="tab-brawlers">
+      <div id="brawlers-grid-view">
+        <h2 class="section-title">Brawlers</h2>
+        <p class="hint" style="margin-bottom:16px">Tu colección al completo: nivel, rango, star powers y gadgets que tienes, y tu win rate con cada uno. Pincha en un brawler para ver su ficha.</p>
+        <div class="br-account" id="br-account"></div>
+        <div class="br-counters" id="br-counters"></div>
+        <div class="br-rating" id="br-rating"></div>
+        <div class="br-distrib" id="br-distrib"></div>
+        <div class="br-toolbar">
+          <input id="br-search" class="br-search" placeholder="Buscar brawler…" autocomplete="off" />
+          <div class="br-sorts" id="br-sorts">
+            <button class="br-sort active" data-sort="trophies">Mejores</button>
+            <button class="br-sort" data-sort="winrate">Win rate</button>
+            <button class="br-sort" data-sort="rarity">Rareza</button>
+            <button class="br-sort" data-sort="role">Rol</button>
+            <button class="br-sort" data-sort="power">Nivel</button>
+            <button class="br-sort" data-sort="name">Nombre</button>
+          </div>
+        </div>
+        <div class="br-grid" id="br-grid"></div>
+      </div>
+      <div id="brawler-detail-view" style="display:none">
+        <button class="ghost" id="br-back">← Volver a los brawlers</button>
+        <div class="br-detail" id="br-detail"></div>
       </div>
     </div>
   </div>
@@ -2637,8 +2767,296 @@ function switchTab(name) {
   if (name === "report") { loadReport(); loadRotation(); }
   if (name === "rankings") loadRankings();
   if (name === "coach") { showCoachListView(); loadReports(); }
+  if (name === "brawlers") loadBrawlers();
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+/* ============================ BRAWLERS (apartado tipo Brawlify) ============================ */
+let brawlersData = null, brawlersPlayer = null, brSort = "trophies", brSearch = "", statLevelSel = 11;
+const RANK_LABELS = { wood: "Madera", bronze: "Bronce", silver: "Plata", gold: "Oro", p1: "Prestigio 1", p2: "Prestigio 2", p3: "Prestigio 3" };
+const RARITY_ORDER = { "Common": 0, "Rare": 1, "Super Rare": 2, "Epic": 3, "Mythic": 4, "Legendary": 5, "Ultra Legendary": 6 };
+
+function rankBadge(band) { return band ? `<span class="rank-badge ${band}" title="${RANK_LABELS[band] || ""}"></span>` : ""; }
+function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return "var(--gold)"; if (v >= 25) return "var(--cyan)"; return "var(--muted)"; }
+
+async function loadBrawlers() {
+  if (!currentPlayer) return;
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrRating(); renderBrAccount(); renderBrDistrib(); renderBrGrid(); return; }
+  showBrawlersGridView();
+  $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
+  $("br-counters").innerHTML = ""; $("br-rating").innerHTML = "";
+  try {
+    brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
+    brawlersPlayer = currentPlayer;
+  } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
+  renderBrCounters(); renderBrRating(); renderBrAccount(); renderBrDistrib(); renderBrGrid();
+}
+
+function renderBrCounters() {
+  const c = brawlersData.counters;
+  const pct = (o, t) => (t ? Math.round(100 * o / t) : 0);
+  const box = (cls, icon, val, total, label, color, title) => `
+    <div class="br-counter ${cls}"${title ? ` title="${esc(title)}"` : ""}>
+      <div class="ic">${icon}</div>
+      <div class="body">
+        <div class="v">${val}${total != null ? ` <small>/ ${total}</small>` : ""}</div>
+        <div class="k">${label}</div>
+        ${total != null ? `<div class="barwrap"><div class="bar" style="width:${pct(val, total)}%;background:${color}"></div></div>` : ""}
+      </div>
+    </div>`;
+  $("br-counters").innerHTML =
+    box("col", "🥊", c.brawlers.owned, c.brawlers.total, "Brawlers", "var(--cyan)") +
+    box("sp", "★", c.star_powers.owned, c.star_powers.total, "Star Powers", "#ffd75e") +
+    box("gd", "◆", c.gadgets.owned, c.gadgets.total, "Gadgets", "var(--win)") +
+    box("hc", "⚡", c.hypercharges.your_p11_available, c.hypercharges.in_game, "Hipercargas (en tus P11)", "var(--magenta)",
+        "La API no revela qué hipercargas tienes. Mostramos cuántos de tus brawlers a nivel 11 tienen hipercarga disponible, sobre el total del juego (dataset).");
+}
+
+function renderBrRating() {
+  const r = brawlersData.rating;
+  const sub = (label, val) => `<div class="br-sub"><div class="lbl">${label} <b>${val}</b></div>
+    <div class="barwrap"><div class="bar" style="width:${val}%"></div></div></div>`;
+  $("br-rating").innerHTML = `
+    <div class="score">
+      <div><span class="num" style="color:${ratingColor(r.overall)}">${r.overall}</span><span class="max">/100</span></div>
+      <div class="tier">${esc(r.tier)}</div>
+    </div>
+    <div class="subs">
+      ${sub("Colección", r.collection)}${sub("Maestría", r.mastery)}
+      ${sub("Eficiencia", r.efficiency)}${sub("Pushing", r.pushing)}
+    </div>`;
+}
+
+function renderBrAccount() {
+  const a = brawlersData.account || {};
+  if (a.trophies == null) { $("br-account").innerHTML = ""; return; }
+  const fmt = (n) => (n == null ? "—" : Number(n).toLocaleString("es-ES"));
+  const ac = (v, k) => `<div class="ac"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+  $("br-account").innerHTML =
+    ac(fmt(a.trophies), "Trofeos") + ac(fmt(a.highest_trophies), "Máx. histórico") +
+    ac(fmt(a.victories_3v3), "Victorias 3v3") + ac(fmt(a.victories_solo), "Victorias solo") +
+    ac(fmt(a.victories_duo), "Victorias dúo") +
+    (a.exp_level != null ? ac(fmt(a.exp_level), "Nivel de exp.") : "");
+}
+
+function rarColorFor(name) {
+  return { "Common": "#b9eaff", "Rare": "#36e0a0", "Super Rare": "#5b9bff", "Epic": "#c64ff0",
+           "Mythic": "#ff4d73", "Legendary": "#ffd75e", "Ultra Legendary": "#ff8e3c" }[name] || "var(--neutral)";
+}
+function dbar(lbl, n, max, color) {
+  const pct = max ? Math.round(100 * n / max) : 0;
+  return `<div class="dbar"><span class="dlbl">${esc(lbl)}</span>
+    <div class="dwrap"><div class="dfill" style="width:${pct}%;background:${color}"></div></div><span class="dn">${n}</span></div>`;
+}
+function distribPanel(title, body) { return `<div class="panel"><h2><span class="dot"></span>${esc(title)}</h2>${body}</div>`; }
+
+function renderBrDistrib() {
+  const owned = brawlersData.brawlers.filter((b) => b.owned);
+  if (!owned.length) { $("br-distrib").innerHTML = ""; return; }
+  const rarCount = {};
+  owned.forEach((b) => { const r = b.rarity?.name || "—"; rarCount[r] = (rarCount[r] || 0) + 1; });
+  const rarMax = Math.max(...Object.values(rarCount));
+  const rarRows = Object.keys(RARITY_ORDER).filter((r) => rarCount[r])
+    .map((r) => dbar(r, rarCount[r], rarMax, rarColorFor(r))).join("");
+  const pw = {};
+  owned.forEach((b) => { const p = b.power || 0; pw[p] = (pw[p] || 0) + 1; });
+  const pwMax = Math.max(...Object.values(pw));
+  const pwRows = Object.keys(pw).map(Number).sort((a, b) => a - b)
+    .map((p) => dbar("Nivel " + p, pw[p], pwMax, "var(--cyan)")).join("");
+  const bands = [["1250+", 1250], ["1000+", 1000], ["750+", 750], ["500+", 500], ["300+", 300]];
+  const bandRows = bands.map(([lbl, thr]) =>
+    dbar(lbl, owned.filter((b) => (b.trophies || 0) >= thr).length, owned.length, "var(--gold)")).join("");
+  $("br-distrib").innerHTML =
+    distribPanel("Por rareza", rarRows) +
+    distribPanel("Por nivel de poder", pwRows) +
+    distribPanel("Por trofeos", bandRows);
+}
+
+function brComparator(a, b) {
+  const byTro = (b.trophies || 0) - (a.trophies || 0);
+  switch (brSort) {
+    case "winrate": return ((b.your_winrate ?? -1) - (a.your_winrate ?? -1)) || byTro;
+    case "power": return ((b.power || 0) - (a.power || 0)) || byTro;
+    case "name": return (a.name || "").localeCompare(b.name || "");
+    case "rarity": return ((RARITY_ORDER[a.rarity?.name] ?? 9) - (RARITY_ORDER[b.rarity?.name] ?? 9)) || byTro;
+    case "role": return (a.role || "zzz").localeCompare(b.role || "zzz") || byTro;
+    default: return byTro;
+  }
+}
+
+function renderBrGrid() {
+  let list = brawlersData.brawlers.slice();
+  const q = brSearch.trim().toUpperCase();
+  if (q) list = list.filter((b) => (b.name || "").toUpperCase().includes(q));
+  list.sort(brComparator);
+  $("br-grid").innerHTML = list.length
+    ? list.map(renderBrawlerCard).join("")
+    : `<div class="empty" style="grid-column:1/-1">Sin resultados.</div>`;
+}
+
+function renderBrawlerCard(b) {
+  const por = b.portrait
+    ? `<img class="por" src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+    : `<div class="por"></div>`;
+  const pw = b.owned ? `<div class="pw">${b.power}</div>` : "";
+  const badge = b.owned ? rankBadge(b.rank_band) : "";
+  const hc = b.has_hypercharge ? `<span title="Tiene hipercarga">⚡</span>` : "";
+  const wr = b.your_winrate == null ? "" : `<span class="wr" style="color:${pctColor(b.your_winrate)}">${b.your_winrate}%</span>`;
+  const tro = b.owned && b.trophies != null ? `<span>🏆 ${b.trophies}</span>` : "";
+  let dots = "";
+  if (b.owned) {
+    for (let i = 0; i < b.total_star_powers; i++) dots += `<span class="dot2 ${i < b.owned_star_powers ? "on-sp" : ""}"></span>`;
+    for (let i = 0; i < b.total_gadgets; i++) dots += `<span class="dot2 ${i < b.owned_gadgets ? "on-gd" : ""}"></span>`;
+  }
+  return `<div class="br-card ${b.owned ? "" : "locked"}" onclick="showBrawlerDetail(${b.id})">
+    ${pw}<div class="topright">${badge}${hc}</div>
+    ${por}
+    <div class="nm">${esc(b.name)}</div>
+    <div class="role">${esc(b.role || "")}</div>
+    <div class="meta">${tro}${wr}</div>
+    ${dots ? `<div class="dots">${dots}</div>` : ""}
+  </div>`;
+}
+
+function showBrawlersGridView() { $("brawlers-grid-view").style.display = ""; $("brawler-detail-view").style.display = "none"; }
+
+async function showBrawlerDetail(id) {
+  $("brawlers-grid-view").style.display = "none"; $("brawler-detail-view").style.display = "";
+  $("br-detail").innerHTML = `<div class="empty">Cargando ficha…</div>`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  let d;
+  try { d = await getJSON(`/api/brawler/${id}?player=` + encodeURIComponent(currentPlayer)); }
+  catch (e) { $("br-detail").innerHTML = `<div class="empty">No se pudo cargar la ficha.</div>`; return; }
+  renderBrawlerDetail(d);
+}
+
+function abilName(list, id) { const a = (list || []).find((x) => x.id === id); return a ? a.name : null; }
+function buildRefs(bld, d) {
+  const parts = [];
+  const sp = abilName(d.star_powers, bld.star_power_id); if (sp) parts.push("★ " + esc(sp));
+  const gd = abilName(d.gadgets, bld.gadget_id); if (gd) parts.push("◆ " + esc(gd));
+  return parts.join(" · ") || "Configuración recomendada";
+}
+
+function lvlButtons() {
+  return Array.from({ length: 11 }, (_, i) =>
+    `<button class="lvl-btn ${i + 1 === statLevelSel ? "active" : ""}" onclick="setStatLevel(${i + 1})">${i + 1}</button>`).join("");
+}
+function lvlStats(stats) {
+  const val = (v) => (Array.isArray(v) ? (v[statLevelSel - 1] ?? v[v.length - 1]) : v);
+  const labels = { health: "Vida", damage: "Daño", speed: "Velocidad", range: "Alcance", reload: "Recarga", super: "Súper" };
+  return Object.entries(stats).map(([k, v]) =>
+    `<div class="br-d-stat"><div class="k">${labels[k] || esc(k)}</div><div class="v">${esc(String(val(v)))}</div></div>`).join("");
+}
+function setStatLevel(n) {
+  statLevelSel = n;
+  const lt = $("lvl-table"), ls = $("lvl-stats");
+  if (lt) lt.innerHTML = lvlButtons();
+  if (ls) ls.innerHTML = lvlStats(window.__lvlStats || {});
+}
+
+function renderBrawlerDetail(d) {
+  const rar = d.rarity || {}, rarColor = rar.color || "var(--muted)";
+  const img = d.image_full ? `<img src="${d.image_full}" alt="${esc(d.name)}" onerror="this.style.display='none'">` : "";
+
+  let yourStats;
+  if (d.owned) {
+    yourStats = `<div class="br-d-stats">
+      <div class="br-d-stat"><div class="k">Nivel de poder</div><div class="v">${d.power}</div></div>
+      <div class="br-d-stat"><div class="k">Rango</div><div class="v"><span class="rank-chip">${rankBadge(d.rank_band)}<span class="lbl">${RANK_LABELS[d.rank_band] || ""}</span></span></div></div>
+      <div class="br-d-stat"><div class="k">Trofeos</div><div class="v">${d.trophies ?? "—"}<small style="color:var(--muted);font-size:12px"> · máx ${d.highest_trophies ?? "—"}</small></div></div>
+      ${d.your.battles ? `<div class="br-d-stat"><div class="k">Tu win rate</div><div class="v" style="color:${pctColor(d.your.winrate)}">${d.your.winrate == null ? "—" : d.your.winrate + "%"}<small style="color:var(--muted);font-size:12px"> · ${d.your.battles}p</small></div></div>` : ""}
+    </div>`;
+  } else {
+    yourStats = `<div class="hint">Aún no tienes este brawler.</div>`;
+  }
+
+  const ability = (a) => `<div class="ability ${a.owned ? "owned" : ""}">
+    ${a.icon ? `<img src="${a.icon}" alt="" onerror="this.style.display='none'">` : ""}
+    <div><div class="nm">${esc(a.name)} ${a.owned ? '<span class="tag">TIENES</span>' : ""}</div>
+    <div class="ds">${esc(a.description || "")}</div></div></div>`;
+  const sps = (d.star_powers || []).map(ability).join("") || '<div class="empty">—</div>';
+  const gds = (d.gadgets || []).map(ability).join("") || '<div class="empty">—</div>';
+
+  let hcHtml = "";
+  if (d.has_hypercharge || d.hypercharge) {
+    const hc = d.hypercharge || {};
+    const ic = hc.icon ? `<img src="${hc.icon}" style="width:48px;height:48px;object-fit:contain" onerror="this.parentElement.textContent='⚡'">` : "⚡";
+    const p11 = d.owned && d.power >= 11;
+    hcHtml = `<div class="br-section"><h3>⚡ Hipercarga</h3>
+      <div class="hc-card"><div class="hcic">${ic}</div>
+      <div><div class="nm" style="font-family:var(--display);font-weight:700;font-size:15px">${esc(hc.name || "Hipercarga")}</div>
+      <div class="ds" style="color:var(--muted);font-size:12px;margin-top:3px">${p11 ? "Tienes este brawler a nivel 11: hipercarga disponible." : "Requiere el brawler a nivel 11 para desbloquearla."}</div></div></div></div>`;
+  }
+
+  let statsHtml = "";
+  if (d.stats_by_level && Object.keys(d.stats_by_level).length) {
+    window.__lvlStats = d.stats_by_level;
+    statLevelSel = Math.min(11, Math.max(1, d.owned ? (d.power || 11) : 11));
+    statsHtml = `<div class="br-section"><h3>📊 Estadísticas por nivel</h3>
+      <div class="lvl-table" id="lvl-table">${lvlButtons()}</div>
+      <div class="br-d-stats" id="lvl-stats">${lvlStats(d.stats_by_level)}</div></div>`;
+  }
+
+  let buildsHtml = "";
+  if (d.builds && d.builds.length) {
+    buildsHtml = `<div class="br-section"><h3>🛠️ Builds recomendadas</h3><div class="ability-grid">` +
+      d.builds.map((bld) => `<div class="build-card"><div class="bn">${esc(bld.name || "Build")}</div>
+        <div class="ds" style="color:var(--muted);font-size:12px;margin-top:5px">${buildRefs(bld, d)}</div>
+        ${bld.source ? `<a href="${esc(bld.source)}" target="_blank" rel="noopener" class="src-link">Fuente ↗</a>` : ""}</div>`).join("") +
+      `</div></div>`;
+  }
+
+  let modeHtml = "";
+  if (d.your && d.your.by_mode && d.your.by_mode.length) {
+    modeHtml = `<div class="br-section"><h3>Tu rendimiento por modo</h3><div class="rows">` +
+      d.your.by_mode.map((m) => `<div class="row"><div class="name">${esc(prettyMode(m.mode))}</div>
+        <div class="pct" style="color:${pctColor(m.winrate)}">${m.winrate == null ? "—" : m.winrate + "%"}</div>
+        <div class="meta" style="grid-column:1/-1">${m.battles} partidas</div></div>`).join("") +
+      `</div></div>`;
+  }
+
+  $("br-detail").innerHTML = `
+    <div class="br-d-top">
+      <div class="br-d-img"><div class="br-d-rarity" style="background:${rarColor};color:#0a0a1f">${esc(rar.name || "")}</div>${img}</div>
+      <div class="br-d-info">
+        <h1>${esc(d.name)}</h1>
+        <div class="br-d-role">${esc(d.role || "")}</div>
+        <div class="br-d-desc">${esc(d.description || "")}</div>
+        ${yourStats}
+      </div>
+    </div>
+    ${statsHtml}
+    <div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>
+    <div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>
+    ${hcHtml}${buildsHtml}${modeHtml}
+    <div style="margin-top:22px"><button class="ghost" onclick="goBrawlerRanking('${esc(d.name).replace(/'/g, "\\'")}')">Ver ranking de ${esc(d.name)} ↗</button></div>`;
+}
+
+function goBrawlerRanking(name) {
+  switchTab("rankings");
+  setTimeout(() => {
+    const sel = $("rank-brawler-sel");
+    if (sel) {
+      const opt = [...sel.options].find((o) => o.textContent.trim().toUpperCase() === String(name).toUpperCase());
+      if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event("change")); }
+    }
+    const panel = document.querySelector('.collapsible[data-cat="brawler"]');
+    if (panel) { panel.classList.remove("collapsed"); panel.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  }, 250);
+}
+
+(function initBrawlersUI() {
+  const s = $("br-search");
+  if (s) s.addEventListener("input", () => { brSearch = s.value; if (brawlersData) renderBrGrid(); });
+  document.querySelectorAll("#br-sorts .br-sort").forEach((b) => b.addEventListener("click", () => {
+    brSort = b.dataset.sort;
+    document.querySelectorAll("#br-sorts .br-sort").forEach((x) => x.classList.toggle("active", x === b));
+    if (brawlersData) renderBrGrid();
+  }));
+  const back = $("br-back");
+  if (back) back.addEventListener("click", showBrawlersGridView);
+})();
 
 /* ============================ WIKI / GUÍA DE ESTRATEGIA ============================ */
 let wikiTree = [], wikiActiveId = null, wikiIsAdmin = false, reorderMode = false;
@@ -3132,6 +3550,7 @@ $("player-select").addEventListener("change", async () => {
   if (activeTab === "report") { await loadReport(); loadRotation(); }
   if (activeTab === "rankings") loadRankings();
   if (activeTab === "history") await loadHistory(true);
+  brawlersData = null; if (activeTab === "brawlers") loadBrawlers();
   loadReports();
 });
 async function onFilterChange() {

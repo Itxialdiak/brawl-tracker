@@ -55,6 +55,12 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS opponents (battle_id TEXT, brawler TEXT, trophies INTEGER);
         CREATE TABLE IF NOT EXISTS allies    (battle_id TEXT, brawler TEXT, trophies INTEGER);
+        CREATE TABLE IF NOT EXISTS brawler_collection (
+            player_tag TEXT NOT NULL, brawler_id INTEGER NOT NULL, brawler_name TEXT,
+            power INTEGER, rank INTEGER, trophies INTEGER, highest_trophies INTEGER,
+            star_power_ids TEXT, gadget_ids TEXT, gear_ids TEXT, updated_at TEXT,
+            PRIMARY KEY (player_tag, brawler_id)
+        );
         CREATE TABLE IF NOT EXISTS manual_stats (
             battle_id TEXT PRIMARY KEY, kills INTEGER, deaths INTEGER,
             damage INTEGER, healing INTEGER, notes TEXT, updated_at TEXT
@@ -147,6 +153,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_opponents_brawler ON opponents(brawler);
         CREATE INDEX IF NOT EXISTS idx_opponents_battle  ON opponents(battle_id);
         CREATE INDEX IF NOT EXISTS idx_allies_battle     ON allies(battle_id);
+        CREATE INDEX IF NOT EXISTS idx_brcoll_player     ON brawler_collection(player_tag);
         CREATE INDEX IF NOT EXISTS idx_ematches_event    ON event_matches(event_id);
         """
     )
@@ -251,6 +258,116 @@ def mark_polled(tag: str) -> None:
     conn.execute("UPDATE players SET last_polled=? WHERE tag=?",
                  (datetime.now(timezone.utc).isoformat(), normalize_tag(tag)))
     conn.commit(); conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Colección de brawlers del jugador (snapshot persistido de la API oficial)
+# ---------------------------------------------------------------------------
+
+def snapshot_brawlers(tag: str, brawlers: list | None) -> int:
+    """Guarda/actualiza la colección de brawlers del jugador a partir de
+    `profile["brawlers"]` de la API oficial. Idempotente (upsert por
+    player_tag+brawler_id). Devuelve cuántos brawlers se han escrito."""
+    if not brawlers:
+        return 0
+    tag = normalize_tag(tag)
+    now = datetime.now(timezone.utc).isoformat()
+
+    def ids(b, key):
+        return json.dumps([x.get("id") for x in (b.get(key) or []) if x.get("id") is not None])
+
+    conn = get_conn(); cur = conn.cursor()
+    n = 0
+    for b in brawlers:
+        bid = b.get("id")
+        if bid is None:
+            continue
+        cur.execute(
+            """INSERT INTO brawler_collection
+                 (player_tag, brawler_id, brawler_name, power, rank, trophies, highest_trophies,
+                  star_power_ids, gadget_ids, gear_ids, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(player_tag, brawler_id) DO UPDATE SET
+                 brawler_name=excluded.brawler_name, power=excluded.power, rank=excluded.rank,
+                 trophies=excluded.trophies, highest_trophies=excluded.highest_trophies,
+                 star_power_ids=excluded.star_power_ids, gadget_ids=excluded.gadget_ids,
+                 gear_ids=excluded.gear_ids, updated_at=excluded.updated_at""",
+            (tag, bid, b.get("name"), b.get("power"), b.get("rank"), b.get("trophies"),
+             b.get("highestTrophies"), ids(b, "starPowers"), ids(b, "gadgets"), ids(b, "gears"), now),
+        )
+        n += 1
+    conn.commit(); conn.close()
+    return n
+
+
+def get_collection(tag: str) -> list[dict]:
+    """Colección persistida del jugador, con los arrays JSON ya deserializados,
+    ordenada por trofeos descendentes."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM brawler_collection WHERE player_tag=? ORDER BY trophies DESC",
+        (normalize_tag(tag),),
+    ).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        for k in ("star_power_ids", "gadget_ids", "gear_ids"):
+            try:
+                d[k] = json.loads(d.get(k) or "[]")
+            except Exception:  # noqa: BLE001
+                d[k] = []
+        out.append(d)
+    return out
+
+
+def collection_counts(tag: str) -> dict:
+    """Resumen de la colección: brawlers, star powers/gadgets/gears poseídos,
+    distribución de poder y bandas de trofeos. Base de contadores y rating."""
+    coll = get_collection(tag)
+    powers = [b.get("power") or 0 for b in coll]
+    trophies = [b.get("trophies") or 0 for b in coll]
+    return {
+        "brawlers": len(coll),
+        "star_powers_owned": sum(len(b["star_power_ids"]) for b in coll),
+        "gadgets_owned": sum(len(b["gadget_ids"]) for b in coll),
+        "gears_owned": sum(len(b["gear_ids"]) for b in coll),
+        "p11": sum(1 for p in powers if p >= 11),
+        "avg_power": round(sum(powers) / len(powers), 1) if powers else 0,
+        "total_trophies": sum(trophies),
+        "bands": {b: sum(1 for t in trophies if t >= b) for b in (300, 500, 750, 1000, 1250)},
+    }
+
+
+def account_rating(tag: str, catalog_totals: dict | None = None) -> dict:
+    """Rating de cuenta 0–100 con sub-scores, calculado por nosotros (la API no lo
+    da). `catalog_totals` = {brawlers, star_powers, gadgets} del catálogo de
+    Brawlify; si falta, se usan estimaciones para no romper. Pesos ajustables."""
+    coll = get_collection(tag)
+    ct = catalog_totals or {}
+    total_brawlers = ct.get("brawlers") or len(coll) or 1
+    avail = (ct.get("star_powers") or 0) + (ct.get("gadgets") or 0) or (len(coll) * 4) or 1
+
+    owned = sum(len(b["star_power_ids"]) + len(b["gadget_ids"]) for b in coll)
+    powers = [b.get("power") or 0 for b in coll]
+    trophies = [b.get("trophies") or 0 for b in coll]
+
+    collection = 100 * len(coll) / total_brawlers
+    mastery = 100 * owned / avail
+    efficiency = 100 * sum(powers) / (len(powers) * 11) if powers else 0
+    # Pushing: media de trofeos por brawler, con techo de 1000 por brawler.
+    pushing = 100 * sum(min(t, 1000) for t in trophies) / (len(trophies) * 1000) if trophies else 0
+
+    def clamp(x):
+        return round(max(0, min(100, x)))
+
+    collection, mastery, efficiency, pushing = map(clamp, (collection, mastery, efficiency, pushing))
+    overall = round(0.30 * collection + 0.30 * mastery + 0.20 * efficiency + 0.20 * pushing)
+    tier = next(name for thr, name in
+                ((85, "Élite"), (65, "Avanzado"), (45, "Competente"), (25, "En desarrollo"), (0, "Iniciado"))
+                if overall >= thr)
+    return {"overall": overall, "tier": tier, "collection": collection,
+            "mastery": mastery, "efficiency": efficiency, "pushing": pushing}
 
 
 # ---------------------------------------------------------------------------

@@ -81,3 +81,54 @@ async def get_assets() -> dict:
         if _cache["data"] is None:
             _cache["data"] = {"brawlers": {}, "modes": {}, "maps": {}}
     return _cache["data"]
+
+
+# --- Catálogo completo de brawlers (contenido para el apartado Brawlers) -------
+
+_catalog_cache = {"data": None, "at": 0.0}
+_EMPTY_CATALOG = {"by_id": {}, "totals": {"brawlers": 0, "star_powers": 0, "gadgets": 0}}
+
+
+def _ability(x: dict) -> dict:
+    """Star power o gadget -> {id, name, icon, description}."""
+    return {"id": x.get("id"), "name": x.get("name"),
+            "icon": x.get("imageUrl"), "description": x.get("description")}
+
+
+async def get_brawler_catalog() -> dict:
+    """Catálogo de brawlers de Brawlify indexado por id: descripción, rol, rareza,
+    imagen a cuerpo entero (imageUrl2), retrato, y star powers/gadgets con sus
+    iconos. Incluye `totals` (denominadores para los contadores y el rating).
+    Cacheado como get_assets; ante fallo devuelve lo último o vacío."""
+    now = time.time()
+    if _catalog_cache["data"] is not None and (now - _catalog_cache["at"]) < CACHE_TTL:
+        return _catalog_cache["data"]
+    try:
+        async with httpx.AsyncClient() as client:
+            brawlers = await _fetch(client, "brawlers")
+    except Exception as e:  # noqa: BLE001
+        print(f"[assets] no se pudo cargar el catálogo de brawlers: {e}")
+        return _catalog_cache["data"] or _EMPTY_CATALOG
+
+    by_id, total_sp, total_gd = {}, 0, 0
+    for b in brawlers:
+        bid = b.get("id")
+        if bid is None:
+            continue
+        sps = [_ability(x) for x in (b.get("starPowers") or [])]
+        gds = [_ability(x) for x in (b.get("gadgets") or [])]
+        total_sp += len(sps); total_gd += len(gds)
+        rarity = b.get("rarity") or {}
+        cls = b.get("class") or {}
+        by_id[bid] = {
+            "id": bid, "name": b.get("name"), "description": b.get("description"),
+            "role": cls.get("name"),
+            "rarity": {"name": rarity.get("name"), "color": rarity.get("color")},
+            "image_full": b.get("imageUrl2"), "portrait": b.get("imageUrl"),
+            "star_powers": sps, "gadgets": gds,
+        }
+    data = {"by_id": by_id,
+            "totals": {"brawlers": len(by_id), "star_powers": total_sp, "gadgets": total_gd}}
+    _catalog_cache["data"] = data
+    _catalog_cache["at"] = now
+    return data

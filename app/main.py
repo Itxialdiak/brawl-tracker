@@ -28,7 +28,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import db, brawl_api, coach, assets, auth, bs_maps, detect
+from . import db, brawl_api, coach, assets, auth, bs_maps, detect, brawler_extra
 
 SEED_TAG = os.environ.get("BRAWL_PLAYER_TAG", "").strip()
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL_SECONDS", "180"))
@@ -68,6 +68,7 @@ async def _poll_player(tag: str) -> int:
             await asyncio.to_thread(db.update_player_profile, tag,
                                     prof.get("name"), (prof.get("icon") or {}).get("id"),
                                     (prof.get("club") or {}).get("name"))
+            await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
             _last_profile_refresh[tag] = time.time()
         except Exception as e:  # noqa: BLE001
             print(f"[perfil] no se pudo refrescar {tag}: {e}")
@@ -322,6 +323,7 @@ async def api_add_player(payload: dict = Body(...), user: dict = Depends(auth.re
     club_name = (profile.get("club") or {}).get("name")
     is_new = await asyncio.to_thread(db.add_player, tag, name, icon_id, club_name)
     await asyncio.to_thread(db.follow_player, user["id"], tag)  # lo asocia a este usuario
+    await asyncio.to_thread(db.snapshot_brawlers, tag, profile.get("brawlers"))  # colección inicial
     # Sondeo inmediato para que aparezcan datos al momento.
     try:
         await _poll_player(tag)
@@ -881,6 +883,129 @@ async def api_bs_modes_maps(user: dict = Depends(auth.require_user)):
         return (info or {}).get("icon")
     modes = [{**m, "icon": icon_for(m["name"])} for m in bs_maps.catalog()]
     return {"modes": modes}
+
+
+# --------------------------- Brawlers (apartado tipo Brawlify) ---------------------------
+
+def _rank_band(trophies) -> str:
+    """Banda de rango por trofeos del brawler (icono en el frontend)."""
+    t = trophies or 0
+    if t >= 3000: return "p3"
+    if t >= 2000: return "p2"
+    if t >= 1000: return "p1"
+    if t >= 750:  return "gold"
+    if t >= 500:  return "silver"
+    if t >= 250:  return "bronze"
+    return "wood"
+
+
+@app.get("/api/brawlers")
+async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Rejilla del apartado Brawlers: contadores, rating y todos los brawlers con tu
+    colección fusionada (nivel, rank, loadout poseído y tu win rate)."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    by_id = catalog.get("by_id") or {}
+    totals = catalog.get("totals") or {}
+    # Perfil (cacheado 120 s): stats de cuenta + refresco de la colección al abrir.
+    account = {}
+    try:
+        prof = await _get_player_cached(tag)
+        if prof.get("brawlers"):
+            await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
+        account = {"trophies": prof.get("trophies"), "highest_trophies": prof.get("highestTrophies"),
+                   "victories_3v3": prof.get("3vs3Victories"), "victories_solo": prof.get("soloVictories"),
+                   "victories_duo": prof.get("duoVictories"), "exp_level": prof.get("expLevel")}
+    except Exception as e:  # noqa: BLE001
+        print(f"[brawlers] no se pudo leer el perfil de {tag}: {e}")
+    collection = await asyncio.to_thread(db.get_collection, tag)
+    coll_by_id = {c["brawler_id"]: c for c in collection}
+    wr = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
+    wr_by_name = {(r["label"] or "").upper(): r for r in wr}
+    hc_ids = brawler_extra.hypercharge_ids()
+
+    items = []
+    for bid, cat in by_id.items():
+        c = coll_by_id.get(bid)
+        name = cat.get("name")
+        w = wr_by_name.get((name or "").upper())
+        items.append({
+            "id": bid, "name": name, "role": cat.get("role"), "rarity": cat.get("rarity"),
+            "portrait": cat.get("portrait"),
+            "owned": c is not None,
+            "power": c["power"] if c else None,
+            "rank": c["rank"] if c else None,
+            "trophies": c["trophies"] if c else None,
+            "rank_band": _rank_band(c["trophies"]) if c else None,
+            "owned_star_powers": len(c["star_power_ids"]) if c else 0,
+            "total_star_powers": len(cat.get("star_powers") or []),
+            "owned_gadgets": len(c["gadget_ids"]) if c else 0,
+            "total_gadgets": len(cat.get("gadgets") or []),
+            "has_hypercharge": bid in hc_ids,
+            "your_winrate": w["winrate"] if w else None,
+            "your_battles": w["total"] if w else 0,
+        })
+
+    counts = await asyncio.to_thread(db.collection_counts, tag)
+    rating = await asyncio.to_thread(db.account_rating, tag, totals)
+    p11_hc = sum(1 for c in collection if (c.get("power") or 0) >= 11 and c["brawler_id"] in hc_ids)
+    counters = {
+        "brawlers": {"owned": counts["brawlers"], "total": totals.get("brawlers") or len(by_id)},
+        "star_powers": {"owned": counts["star_powers_owned"], "total": totals.get("star_powers") or 0},
+        "gadgets": {"owned": counts["gadgets_owned"], "total": totals.get("gadgets") or 0},
+        "hypercharges": {"in_game": brawler_extra.hypercharge_total(), "your_p11_available": p11_hc},
+    }
+    return {"counters": counters, "rating": rating, "account": account, "brawlers": items}
+
+
+@app.get("/api/brawler/{brawler_id}")
+async def api_brawler_detail(brawler_id: int, player: str = Query(None),
+                             user: dict = Depends(auth.require_user)):
+    """Ficha de un brawler: catálogo + lo que posees + dataset curado (hipercarga,
+    stats por nivel, builds) + tu win rate con él, global y por modo."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    cat = (catalog.get("by_id") or {}).get(brawler_id)
+    if not cat:
+        return JSONResponse({"error": "Brawler no encontrado en el catálogo."}, status_code=404)
+    collection = await asyncio.to_thread(db.get_collection, tag)
+    c = next((x for x in collection if x["brawler_id"] == brawler_id), None)
+    owned_sp = set(c["star_power_ids"]) if c else set()
+    owned_gd = set(c["gadget_ids"]) if c else set()
+
+    def mark(items, owned):
+        return [{**it, "owned": it.get("id") in owned} for it in items]
+
+    extra = brawler_extra.get(brawler_id)
+    name = cat.get("name")
+    bname = ((c["brawler_name"] if c else name) or name or "").upper()
+    filt = {"player": tag, "brawler": bname}
+    ov = await asyncio.to_thread(db.overview, filt)
+    by_mode = await asyncio.to_thread(db.winrate_by, "mode", filt)
+
+    return {
+        "id": brawler_id, "name": name, "description": cat.get("description"),
+        "role": cat.get("role"), "rarity": cat.get("rarity"),
+        "image_full": cat.get("image_full"), "portrait": cat.get("portrait"),
+        "star_powers": mark(cat.get("star_powers") or [], owned_sp),
+        "gadgets": mark(cat.get("gadgets") or [], owned_gd),
+        "owned": c is not None,
+        "power": c["power"] if c else None,
+        "rank": c["rank"] if c else None,
+        "trophies": c["trophies"] if c else None,
+        "highest_trophies": c["highest_trophies"] if c else None,
+        "rank_band": _rank_band(c["trophies"]) if c else None,
+        "gears_owned": len(c["gear_ids"]) if c else 0,
+        "has_hypercharge": brawler_id in brawler_extra.hypercharge_ids(),
+        "hypercharge": extra.get("hypercharge"),
+        "stats_by_level": extra.get("stats_by_level"),
+        "builds": extra.get("builds") or [],
+        "your": {
+            "winrate": ov.get("winrate"), "battles": ov.get("total"),
+            "by_mode": [{"mode": m["label"], "winrate": m["winrate"], "battles": m["total"]}
+                        for m in by_mode],
+        },
+    }
 
 
 @app.get("/api/battles")

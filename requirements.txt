@@ -3,6 +3,5 @@ uvicorn[standard]
 httpx
 python-dotenv
 anthropic
-itsdangerous
 bcrypt
 itsdangerous>=2.2
