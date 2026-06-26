@@ -44,10 +44,13 @@ def _build(brawlers, gamemodes, maps) -> dict:
 
     mmap = {}
     for g in gamemodes:
-        key = (g.get("scHash") or g.get("hash") or g.get("name") or "").lower()
         url = g.get("imageUrl")
-        if key and url:
-            mmap[key] = {"icon": url, "color": g.get("color")}
+        if not url:
+            continue
+        info = {"icon": url, "color": g.get("color")}
+        for k in (g.get("scHash"), g.get("hash"), g.get("name")):  # también por nombre
+            if k:
+                mmap[str(k).lower()] = info
     # Alias para showdown solo/dúo si la API solo trae "showdown".
     if "showdown" in mmap:
         for k in ("soloshowdown", "duoshowdown"):

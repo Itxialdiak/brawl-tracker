@@ -660,6 +660,17 @@
   .evd-section h4 { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
   .evd-desc { color: var(--text); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
   .evd-muted { color: var(--muted); font-size: 13px; }
+  .mm-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 14px; }
+  .mm-chip { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--text); white-space: nowrap; }
+  .mm-chip img { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; }
+  .mm-map { color: var(--cyan); text-decoration: none; font-size: 15px; font-weight: 600; border-bottom: 1px dashed rgba(63,225,255,.5); white-space: nowrap; }
+  .mm-map:hover { color: #9af0ff; border-bottom-color: var(--cyan); }
+  .mm-sep { color: var(--muted); margin: 0 2px; }
+  .evd-reveal { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .4px; color: var(--gold); background: rgba(245,184,42,.12); border: 1px solid rgba(245,184,42,.4); border-radius: 999px; padding: 2px 10px; }
+  .evd-rmm-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .evd-rmm { display: flex; align-items: center; flex-wrap: nowrap; gap: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 15px; }
+  .evd-rmm-r { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .4px; text-transform: uppercase; color: var(--gold); min-width: 78px; flex: none; }
+  .evd-rmm-edit select { flex: 1 1 0; min-width: 0; margin: 0; padding: 8px 10px; font-size: 14px; }
   .evd-parts { display: flex; flex-direction: column; gap: 6px; }
   .evd-part { display: flex; align-items: center; gap: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
   .evd-part-name { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }
@@ -718,9 +729,14 @@
   .m-mid { flex: 0 0 auto; font-family: var(--display); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px; }
   .m-score { color: var(--muted); } .m-score.win { color: var(--win); }
   .m-vs { color: var(--muted); font-size: 12px; }
+  .m-void { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; opacity: .8; }
+  .m-evi { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--cyan); background: rgba(63,225,255,.12); border: 1px solid rgba(63,225,255,.35); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
   .m-edit { flex: 0 0 auto; background: transparent; border: 1px solid var(--border); color: var(--cyan); border-radius: 7px; padding: 4px 9px; cursor: pointer; font-size: 13px; }
   .m-edit:hover { border-color: var(--cyan); }
-  .m-meta { text-align: center; font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .m-meta { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 6px; font-size: 13px; color: var(--muted); margin-top: 7px; }
+  .m-meta .mm-chip { font-size: 13px; }
+  .m-meta .mm-chip img { width: 22px; height: 22px; }
+  .m-meta .mm-map { font-size: 13px; }
 
   /* Fase 2: cuadro de eliminación directa */
   .em-fixed { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 15px; }
@@ -1580,7 +1596,7 @@
             <option value="double_elim">Doble eliminación</option>
             <option value="free">Liga libre</option>
           </select></div>
-        <div class="ee-field"><label class="ec-lbl">Nº de vueltas (ligas)</label><input type="number" id="ee-rounds" min="1" max="20" placeholder="1" /></div>
+        <div class="ee-field"><label class="ec-lbl">Número de vueltas/rondas</label><input type="number" id="ee-rounds" min="1" max="30" placeholder="1" /><div class="ec-hint">Las vueltas de una liga, o el número de rondas de un torneo (suizo, McMahon, aleatorios).</div></div>
         <div class="ee-field" id="ee-teamsize-wrap" style="display:none"><label class="ec-lbl">Tamaño de equipo (aleatorios)</label><input type="number" id="ee-teamsize" min="1" max="5" value="3" /></div>
       </div>
       <div class="ee-field"><label class="ec-lbl">Normas del formato <span class="ec-mini">(opcional — si lo dejas en blanco se usan las normas estándar del modelo elegido)</span></label>
@@ -1596,14 +1612,24 @@
         <div class="ee-field"><label class="ec-lbl">¿Cómo se deciden?</label>
           <select id="ee-mappol" onchange="eeMapPolChange()">
             <option value="fixed">Modo y mapa fijos</option>
-            <option value="random">Aleatorios por partida</option>
-            <option value="per_match">Los acuerdan los jugadores</option>
+            <option value="random">Aleatorios por ronda</option>
+            <option value="per_match">Los elijo por ronda</option>
           </select></div>
         <div class="ee-field" id="ee-fixed-wrap">
           <label class="ec-lbl">Modo / Mapa fijos</label>
-          <div class="ee-row"><input type="text" id="ee-fixmode" placeholder="Modo (p. ej. Atrapagemas)" /><input type="text" id="ee-fixmap" placeholder="Mapa (p. ej. Mina Dura)" /></div>
+          <div class="ee-row"><select id="ee-fixmode" onchange="modeChanged('ee-fixmode','ee-fixmap')"></select><select id="ee-fixmap" onchange="mapChanged('ee-fixmode','ee-fixmap')"></select></div>
         </div>
       </div>
+      <div class="ee-grid">
+        <div class="ee-field"><label class="ec-lbl">Supervivencia (Showdown)</label>
+          <select id="ee-showdown">
+            <option value="exclude">Excluida (solo modos 3 vs 3)</option>
+            <option value="include">Un modo más</option>
+            <option value="only">Evento solo de Supervivencia</option>
+          </select>
+          <div class="ec-hint" id="ee-showdown-hint"></div></div>
+      </div>
+      <div class="ec-hint" style="margin:-4px 0 10px">El modo y el mapa de cada ronda también puedes fijarlos uno a uno desde la ficha del evento, en la lista de rondas.</div>
       <label class="chk ee-chk"><input type="checkbox" id="ee-mapspublic" checked onchange="eeMapsPublicChange()"><span>Mapas y modos públicos desde la publicación</span></label>
       <div class="ee-grid" id="ee-reveal-wrap" style="display:none">
         <div class="ee-field"><label class="ec-lbl">Revelar el modo el…</label><input type="date" id="ee-revmode" /></div>
@@ -1682,7 +1708,7 @@
 
   <!-- Modal: enfrentamiento / resultado (organizador) -->
   <div class="modal-overlay" id="event-match-modal">
-    <div class="modal-card">
+    <div class="modal-card modal-wide">
       <h3 class="modal-title" id="em-title">Nuevo enfrentamiento</h3>
       <div class="em-fixed" id="em-fixed-wrap" style="display:none"><span id="em-fixed"></span></div>
       <div id="em-roster-wrap" style="display:none">
@@ -1695,26 +1721,29 @@
         <div class="ee-field"><label class="ec-lbl" id="em-a-lbl">Jugador A</label><select id="em-a"></select></div>
         <div class="ee-field"><label class="ec-lbl" id="em-b-lbl">Jugador B</label><select id="em-b"></select></div>
       </div>
-      <div class="ee-grid">
-        <div class="ee-field"><label class="ec-lbl">Modo</label><input type="text" id="em-mode" placeholder="Modo" /></div>
-        <div class="ee-field"><label class="ec-lbl">Mapa</label><input type="text" id="em-map" placeholder="Mapa" /></div>
-      </div>
+      <div id="em-mm-hint" class="ec-hint" style="margin:-2px 0 12px"></div>
       <label class="ec-lbl">Resultado</label>
       <div id="em-res-bo1" class="seg-toggle" style="display:none">
-        <button type="button" data-r="" class="active">Sin jugar</button>
+        <button type="button" data-r="" class="active">Pendiente</button>
         <button type="button" data-r="a">Gana A</button>
         <button type="button" data-r="draw">Empate</button>
         <button type="button" data-r="b">Gana B</button>
+        <button type="button" data-r="void">No jugado</button>
       </div>
       <div id="em-res-multi" style="display:none">
-        <label class="chk ee-chk"><input type="checkbox" id="em-played" onchange="emPlayedChange()"><span>Marcar como jugado</span></label>
-        <div class="ee-row" id="em-score-wrap" style="display:none">
+        <div class="seg-toggle" id="em-multi-seg">
+          <button type="button" data-r="" class="active">Pendiente</button>
+          <button type="button" data-r="score">Marcador</button>
+          <button type="button" data-r="void">No jugado</button>
+        </div>
+        <div class="ee-row" id="em-score-wrap" style="display:none;margin-top:10px">
           <input type="number" id="em-sa" min="0" placeholder="Marcador A" />
           <input type="number" id="em-sb" min="0" placeholder="Marcador B" />
         </div>
       </div>
       <div class="modal-actions ee-actions">
         <button class="danger-ghost" type="button" id="em-delete" style="display:none" onclick="deleteMatch()">Eliminar</button>
+        <button class="ghost" type="button" id="em-detect" style="display:none" onclick="detectMatch(editingMatch && editingMatch.id)">🔎 Detectar</button>
         <div style="flex:1"></div>
         <button class="ghost" type="button" onclick="closeEvModal('event-match-modal')">Cancelar</button>
         <button class="btn" type="button" onclick="submitMatch()">Guardar</button>
@@ -3357,6 +3386,99 @@ const EV_VIS_LABEL = { public: "Público", acceptance: "Con aceptación", privat
 const EV_MATCH_LABEL = { bo1: "A 1 combate", bo3: "Al mejor de 3", bo5: "Al mejor de 5" };
 const EV_STATUS_LABEL = { open: "Inscripción abierta", ongoing: "En curso", finished: "Finalizado" };
 const EV_FORMAT_LABEL = { swiss: "Suizo", mcmahon: "McMahon", roundrobin: "Round Robin", single_elim: "Eliminación directa", double_elim: "Doble eliminación", free: "Liga libre", random_teams: "Equipos aleatorios" };
+/* ----- Modos y mapas de Brawl Stars (desplegables dependientes) ----- */
+let BS_MODES = [];
+async function loadBsModes() {
+  if (BS_MODES.length) return BS_MODES;
+  try { const r = await getJSON("/api/bs/modes-maps"); BS_MODES = r.modes || []; } catch (e) { BS_MODES = []; }
+  return BS_MODES;
+}
+function bsModeIcon(mode) { const m = BS_MODES.find((x) => x.name === mode); return m ? m.icon : null; }
+function bsModeForMap(mp) { const m = BS_MODES.find((x) => (x.maps || []).includes(mp)); return m ? m.name : null; }
+function bsMapsOf(mode) { const m = BS_MODES.find((x) => x.name === mode); return m ? m.maps : []; }
+function mapImageSearch(mp) { return "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent("Brawl Stars mapa " + mp); }
+function fillModeMap(modeId, mapId, curMode, curMap) {
+  const ms = $(modeId), ps = $(mapId);
+  if (!ms || !ps) return;
+  ms.innerHTML = `<option value="">— Modo —</option>` + BS_MODES.map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join("");
+  ms.value = curMode || "";
+  refillMaps(modeId, mapId, curMap);
+}
+function refillMaps(modeId, mapId, curMap) {
+  const ms = $(modeId), ps = $(mapId), mode = ms.value;
+  const maps = mode ? bsMapsOf(mode) : BS_MODES.flatMap((m) => m.maps);
+  const uniq = [...new Set(maps)];
+  ps.innerHTML = `<option value="">— Mapa —</option>` + uniq.map((mp) => `<option value="${esc(mp)}">${esc(mp)}</option>`).join("");
+  ps.value = (curMap && uniq.includes(curMap)) ? curMap : "";
+}
+function modeChanged(modeId, mapId) { refillMaps(modeId, mapId, $(mapId).value); }
+function mapChanged(modeId, mapId) {
+  const mp = $(mapId).value; if (!mp) return;
+  const mode = bsModeForMap(mp);
+  if (mode && $(modeId).value !== mode) { $(modeId).value = mode; refillMaps(modeId, mapId, mp); }
+}
+function bsAllowedModes(eventMode, showdown) {
+  const teams = eventMode === "teams";
+  const core = BS_MODES.filter((m) => m.kind === "core").map((m) => m.name);
+  const duel = teams ? [] : BS_MODES.filter((m) => m.kind === "duel").map((m) => m.name);
+  const sdKinds = teams ? ["sd_trio"] : ["sd_solo", "sd_duo"];
+  const sd = BS_MODES.filter((m) => sdKinds.includes(m.kind)).map((m) => m.name);
+  const base = core.concat(duel);
+  if (showdown === "only") return sd;
+  if (showdown === "exclude") return base;
+  return base.concat(sd);
+}
+function allowedModeSet() {
+  const d = currentEvent || {};
+  return new Set(bsAllowedModes(d.mode, (d.settings || {}).showdown || "exclude"));
+}
+function fillRoundMM(rn, curMode, curMap) {
+  const ms = $("rmm-mode-" + rn), ps = $("rmm-map-" + rn);
+  if (!ms || !ps) return;
+  const allowed = allowedModeSet();
+  const modes = BS_MODES.filter((m) => allowed.has(m.name));
+  ms.innerHTML = `<option value="">— Modo —</option>` + modes.map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join("");
+  ms.value = curMode || "";
+  refillMaps("rmm-mode-" + rn, "rmm-map-" + rn, curMap);
+}
+function roundModeChanged(rn) { refillMaps("rmm-mode-" + rn, "rmm-map-" + rn, ""); saveRoundMM(rn); }
+function roundMapChanged(rn) { mapChanged("rmm-mode-" + rn, "rmm-map-" + rn); saveRoundMM(rn); }
+async function saveRoundMM(rn) {
+  const d = currentEvent;
+  const mode = $("rmm-mode-" + rn).value, mp = $("rmm-map-" + rn).value;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/${rn}/mode-map`, "PUT", { mode, map: mp });
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo guardar la ronda", "err"); return; }
+  (d.matches || []).forEach((m) => { if ((m.round || 1) === rn) { m.mode = mode || null; m.map = mp || null; } });
+  d.settings = d.settings || {}; d.settings.round_maps = d.settings.round_maps || {};
+  d.settings.round_maps[rn] = { mode: mode || null, map: mp || null };
+  wikiToast(`Ronda ${rn}: modo y mapa guardados`, "ok");
+  renderEventDetail(d);
+}
+function mapsRevealed(s, kind) {
+  if (s.maps_public !== false) return true;
+  const dt = kind === "mode" ? s.reveal_mode_date : s.reveal_map_date;
+  return dt ? (new Date(dt) <= new Date()) : false;
+}
+function modeChip(mode) {
+  if (!mode) return "";
+  const ic = bsModeIcon(mode);
+  return `<span class="mm-chip">${ic ? `<img src="${esc(ic)}" alt="" onerror="this.remove()">` : ""}${esc(mode)}</span>`;
+}
+function mapChip(mp) {
+  return mp ? `<a class="mm-map" href="${esc(mapImageSearch(mp))}" target="_blank" rel="noopener" title="Ver imagen del mapa">${esc(mp)}</a>` : "";
+}
+function renderModeMap(mode, mp, s, asBlock) {
+  const showMode = mapsRevealed(s, "mode"), showMap = mapsRevealed(s, "map");
+  if (!showMode && !showMap) {
+    const txt = `<span class="evd-reveal">Por revelar</span>`;
+    return asBlock ? `<p>${txt}</p>` : txt;
+  }
+  const parts = [];
+  if (showMode && mode) parts.push(modeChip(mode));
+  if (showMap && mp) parts.push(mapChip(mp));
+  const inner = parts.length ? parts.join(`<span class="mm-sep">·</span>`) : `<span class="evd-muted">Sin asignar</span>`;
+  return asBlock ? `<p class="mm-line">${inner}</p>` : inner;
+}
 const EV_FORMAT_RULES = {
   swiss: "Sistema suizo: cada ronda empareja a jugadores con puntuación similar. No hay eliminación; se juega un número fijo de rondas y gana quien más puntos sume.",
   mcmahon: "Sistema McMahon: como el suizo, pero con puntos iniciales según el nivel o categoría de cada jugador. Ideal para muchos participantes de niveles dispares.",
@@ -3388,6 +3510,7 @@ function initLeaguesUI() {
   initSegToggle("ec-kind"); initSegToggle("ec-mode");
   initSegToggle("ec-vis", (v) => { $("ec-vis-hint").textContent = VIS_HINTS[v] || ""; });
   initSegToggle("em-res-bo1");
+  initSegToggle("em-multi-seg", emMultiSeg);
   // Cierra cualquier dropdown de filtro al pulsar fuera (dentro no se cierra).
   document.addEventListener("click", (e) => { if (!e.target.closest(".filter-dd")) closeAllFilterDD(); });
   updateFilterCounts();
@@ -3526,6 +3649,7 @@ async function openEvent(eid) {
   try {
     const d = await getJSON("/api/events/" + eid);
     if (d.error || d.detail) { wikiToast(d.error || d.detail, "err"); return; }
+    await loadBsModes();
     currentEvent = d; renderEventDetail(d); openEvModal("event-detail-modal");
   } catch (e) { /* 401 gestionado por getJSON */ }
 }
@@ -3547,14 +3671,32 @@ function renderEventDetail(d) {
   if (d.date_start || d.date_end) stats.push(statBox("Fechas", fmtDateRange(d.date_start, d.date_end)));
 
   let mapsBlock = "";
-  if (s.map_policy === "fixed" && (s.fixed_mode || s.fixed_map)) {
-    mapsBlock = `<div class="evd-section"><h4>Modo y mapa</h4>${s.maps_public !== false
-      ? `<p>${esc(s.fixed_mode || "—")} · ${esc(s.fixed_map || "—")}</p>`
-      : `<p class="evd-muted">Se revelarán más adelante.</p>`}</div>`;
-  } else if (s.map_policy === "random") {
-    mapsBlock = `<div class="evd-section"><h4>Modo y mapa</h4><p class="evd-muted">Aleatorios en cada partida.</p></div>`;
-  } else if (s.map_policy === "per_match") {
-    mapsBlock = `<div class="evd-section"><h4>Modo y mapa</h4><p class="evd-muted">Los acuerdan los jugadores en cada enfrentamiento.</p></div>`;
+  {
+    const ms = d.matches || [];
+    const gen = ms.length ? Math.max.apply(null, ms.map((m) => m.round || 1)) : 0;
+    const cfg = s.rounds || 0;
+    const perRoundN = ["swiss", "mcmahon", "random_teams"].includes(d.format) ? Math.max(cfg, gen) : gen;
+    const head = s.map_policy === "random" ? "Modos y mapas por ronda · aleatorios"
+      : (s.map_policy === "fixed" ? "Modos y mapas por ronda · fijos" : "Modos y mapas por ronda");
+    let summary = "";
+    if (s.map_policy === "random") summary = `<p class="evd-muted">Se asigna un modo y un mapa al azar al generar cada ronda${d.is_owner ? ", o fíjalos tú aquí abajo" : ""}.</p>`;
+    else if (s.map_policy === "per_match") summary = `<p class="evd-muted">${d.is_owner ? "Elige el modo y el mapa de cada ronda aquí abajo." : "Los acuerdan los jugadores en cada enfrentamiento."}</p>`;
+    let rows = "";
+    for (let rn = 1; rn <= perRoundN; rn++) {
+      const rk = (s.round_maps || {})[rn] || (s.round_maps || {})[String(rn)] || {};
+      const fm = ms.find((m) => (m.round || 1) === rn && (m.mode || m.map));
+      const curMode = rk.mode || (fm && fm.mode) || "";
+      const curMap = rk.map || (fm && fm.map) || "";
+      if (d.is_owner) {
+        rows += `<div class="evd-rmm evd-rmm-edit"><span class="evd-rmm-r">Ronda ${rn}</span>
+          <select id="rmm-mode-${rn}" onchange="roundModeChanged(${rn})"></select>
+          <select id="rmm-map-${rn}" onchange="roundMapChanged(${rn})"></select></div>`;
+      } else {
+        rows += `<div class="evd-rmm"><span class="evd-rmm-r">Ronda ${rn}</span> ${renderModeMap(curMode, curMap, s, false)}</div>`;
+      }
+    }
+    const list = perRoundN ? `<div class="evd-rmm-list">${rows}</div>` : (d.is_owner ? "" : `<p class="evd-muted">Aún no hay rondas.</p>`);
+    mapsBlock = `<div class="evd-section"><h4>${head}</h4>${summary}${list}</div>`;
   }
 
   const parts = d.participants_list || [];
@@ -3602,6 +3744,19 @@ function renderEventDetail(d) {
     <div class="evd-section"><h4>Participantes (${parts.length}/${d.max_participants || 12})</h4><div class="evd-parts">${partsHTML}</div></div>
     ${renderTeamsBlock(d)}
     ${renderResultsBlock(d)}`;
+  if (d.is_owner) populateRoundSelectors(d);
+}
+function populateRoundSelectors(d) {
+  const s = d.settings || {}, ms = d.matches || [];
+  const gen = ms.length ? Math.max.apply(null, ms.map((m) => m.round || 1)) : 0;
+  const cfg = s.rounds || 0;
+  const perRoundN = ["swiss", "mcmahon", "random_teams"].includes(d.format) ? Math.max(cfg, gen) : gen;
+  for (let rn = 1; rn <= perRoundN; rn++) {
+    if (!$("rmm-mode-" + rn)) continue;
+    const rk = (s.round_maps || {})[rn] || (s.round_maps || {})[String(rn)] || {};
+    const fm = ms.find((m) => (m.round || 1) === rn && (m.mode || m.map));
+    fillRoundMM(rn, rk.mode || (fm && fm.mode) || "", rk.map || (fm && fm.map) || "");
+  }
 }
 
 /* ----- Fase 1: clasificación y enfrentamientos ----- */
@@ -3712,12 +3867,18 @@ function renderResultsBlock(d) {
       else if (allPlayed) gen = `<button class="btn" onclick="generateMatches()">⚙ Generar ronda ${nextN}</button>`;
       else gen = `<span class="ec-hint" style="align-self:center">Completa los resultados de la ronda actual para generar la siguiente.</span>`;
       const restart = matches.length ? `<button class="ghost" onclick="restartPairings()">↻ Reiniciar<span class="mbar-extra"> rondas</span></button>` : "";
-      ownerBar = `<div class="evd-mbar">${gen}${restart}</div>`;
+      const closeBtn = (matches.length && !allPlayed) ? `<button class="ghost" onclick="closeRound()">⛌ Cerrar ronda<span class="mbar-extra"> actual</span></button>` : "";
+      ownerBar = `<div class="evd-mbar">${gen}${closeBtn}${restart}</div>`;
       if (rnd) ownerBar += `<p class="ec-hint" style="margin:-2px 0 12px">Cada ronda forma equipos al azar de ${(d.settings && d.settings.team_size) || 3} jugadores; los sobrantes descansan esa ronda.</p>`;
     } else if (rrOk) {
       ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button><button class="ghost" onclick="generateMatches()">⚙ Generar cruces<span class="mbar-extra"> (todos contra todos)</span></button></div>`;
     } else {
       ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button></div><div class="ec-hint" style="margin-bottom:14px">El emparejamiento automático para <b>${esc(EV_FORMAT_LABEL[d.format] || d.format)}</b> llegará en una fase posterior; de momento añade los enfrentamientos a mano.</div>`;
+    }
+    // Fase 5: detección automática de resultados cuando hay partidas pendientes
+    if (matches.length && matches.some((m) => m.status !== "played")) {
+      const det = `<button class="ghost" onclick="detectResults()" title="Cruza las partidas pendientes con las amistosas (battlelog) de los participantes y propone el resultado.">🔎 Detectar<span class="mbar-extra"> resultados</span></button>`;
+      ownerBar = ownerBar.includes("evd-mbar") ? ownerBar.replace("</div>", det + "</div>") : `<div class="evd-mbar">${det}</div>`;
     }
   }
   let matchesHTML;
@@ -3755,15 +3916,16 @@ function renderBracket(d) {
 }
 function matchRowHTML(m, d) {
   const teamsMode = d.mode === "teams";
+  const eviBadge = m.evidence_battle_id ? `<span class="m-evi" title="Resultado detectado automáticamente desde una amistosa (battlelog). Puedes editarlo o borrarlo.">🔎 auto</span>` : "";
   if (m.roster_a || m.roster_b) {  // partido de equipos aleatorios (roster por partida)
     const played0 = m.status === "played";
     const nameOf = (tag) => { const p = (d.participants_list || []).find((x) => x.player_tag === tag); return esc(p ? (p.player_name || p.player_tag) : tag); };
     const ra = (m.roster_a || []).map(nameOf).join(" · "), rb = (m.roster_b || []).map(nameOf).join(" · ");
-    const mid0 = played0
-      ? `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a != null ? m.score_a : "✓"}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b != null ? m.score_b : "✓"}</span>`
-      : `<span class="m-vs">vs</span>`;
+    const mid0 = !played0 ? `<span class="m-vs">vs</span>`
+      : (m.winner === "void" ? `<span class="m-void">No jugado</span>`
+        : `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a != null ? m.score_a : "✓"}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b != null ? m.score_b : "✓"}</span>`);
     const edit0 = d.is_owner ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Resultado">✎</button>` : "";
-    const meta0 = [m.mode, m.map].filter(Boolean).join(" · ");
+    const meta0 = (m.mode || m.map) ? renderModeMap(m.mode, m.map, d.settings || {}, false) : "";
     return `<div class="evd-match${played0 ? " played" : ""}">
       <div class="m-line">
         <span class="m-side ${m.winner === "a" ? "win" : ""}">Equipo A</span>
@@ -3771,7 +3933,7 @@ function matchRowHTML(m, d) {
         <span class="m-side b ${m.winner === "b" ? "win" : ""}">Equipo B</span>${edit0}
       </div>
       <div class="m-roster"><b>A:</b>&nbsp;${ra || "—"} &nbsp;·&nbsp; <b>B:</b>&nbsp;${rb || "—"}</div>
-      ${meta0 ? `<div class="m-meta">${esc(meta0)}</div>` : ""}</div>`;
+      ${(meta0 || eviBadge) ? `<div class="m-meta">${meta0}${eviBadge}</div>` : ""}</div>`;
   }
   const aSet = teamsMode ? !!m.a_team : !!m.a_tag, bSet = teamsMode ? !!m.b_team : !!m.b_tag;
   const aName = aSet ? esc(teamsMode ? (m.a_team_name || "Equipo") : (m.a_name || m.a_tag)) : null;
@@ -3784,10 +3946,10 @@ function matchRowHTML(m, d) {
       <span class="m-mid"><span class="m-vs">bye</span></span>
       <span class="m-side b m-tbd">—</span></div></div>`;
   }
-  const mid = played
-    ? `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b}</span>`
-    : `<span class="m-vs">vs</span>`;
-  const meta = [m.mode, m.map].filter(Boolean).join(" · ");
+  const mid = !played ? `<span class="m-vs">vs</span>`
+    : (m.winner === "void" ? `<span class="m-void">No jugado</span>`
+      : `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b}</span>`);
+  const meta = (m.mode || m.map) ? renderModeMap(m.mode, m.map, d.settings || {}, false) : "";
   const edit = (d.is_owner && aSet && bSet) ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Editar / resultado">✎</button>` : "";
   return `<div class="evd-match${played ? " played" : ""}">
     <div class="m-line">
@@ -3795,12 +3957,13 @@ function matchRowHTML(m, d) {
       <span class="m-mid">${mid}</span>
       <span class="m-side b ${m.winner === "b" ? "win" : ""}">${bName || tbd}</span>
       ${edit}
-    </div>${meta ? `<div class="m-meta">${esc(meta)}</div>` : ""}</div>`;
+    </div>${(meta || eviBadge) ? `<div class="m-meta">${meta}${eviBadge}</div>` : ""}</div>`;
 }
-function openMatchModal(mid) {
+async function openMatchModal(mid) {
   const d = currentEvent, teamsMode = d.mode === "teams", elim = d.format === "single_elim";
   editingMatch = mid ? (d.matches || []).find((m) => m.id === mid) : null;
   if (elim && !editingMatch) return;  // el cuadro no admite altas manuales
+  await loadBsModes();
   const roster = !!(editingMatch && (editingMatch.roster_a || editingMatch.roster_b));
   const opts = teamsMode
     ? (d.teams || []).map((t) => `<option value="${t.id}">${esc(t.name || ("Equipo " + t.id))}</option>`).join("")
@@ -3813,6 +3976,7 @@ function openMatchModal(mid) {
   $("em-res-bo1").style.display = isBo1 ? "flex" : "none";
   $("em-res-multi").style.display = isBo1 ? "none" : "block";
   const drawBtn = $("em-res-bo1").querySelector('[data-r="draw"]'); if (drawBtn) drawBtn.style.display = elim ? "none" : "";
+  const voidBtn = $("em-res-bo1").querySelector('[data-r="void"]'); if (voidBtn) voidBtn.style.display = elim ? "none" : "";
   $("em-grid-rab").style.display = (elim || roster) ? "none" : "grid";
   $("em-fixed-wrap").style.display = elim ? "block" : "none";
   $("em-roster-wrap").style.display = roster ? "flex" : "none";
@@ -3833,17 +3997,20 @@ function openMatchModal(mid) {
       $("em-a").value = teamsMode ? m.a_team : m.a_tag;
       $("em-b").value = teamsMode ? m.b_team : m.b_tag;
     }
-    $("em-mode").value = m.mode || ""; $("em-map").value = m.map || "";
+    const mm = [m.mode, m.map].filter(Boolean).join(" · ");
+    $("em-mm-hint").textContent = mm ? `Modo y mapa de la ronda: ${mm} (se cambian arriba, en la lista de rondas).` : "El modo y el mapa se eligen por ronda, arriba en la ficha.";
     setEmResult(isBo1, m);
     $("em-delete").style.display = (elim || roster) ? "none" : "inline-block";
+    const bothSet = teamsMode ? (!!(m.a_team || (m.roster_a || []).length) && !!(m.b_team || (m.roster_b || []).length)) : (!!m.a_tag && !!m.b_tag);
+    $("em-detect").style.display = bothSet ? "inline-block" : "none";
   } else {
     $("em-title").textContent = "Nuevo enfrentamiento";
     const rounds = (d.matches || []).map((m) => m.round || 1);
     $("em-round").value = rounds.length ? Math.max.apply(null, rounds) : 1;
-    $("em-mode").value = fixed ? (s.fixed_mode || "") : "";
-    $("em-map").value = fixed ? (s.fixed_map || "") : "";
+    $("em-mm-hint").textContent = "El modo y el mapa se eligen por ronda, arriba en la ficha.";
     setEmResult(isBo1, null);
     $("em-delete").style.display = "none";
+    $("em-detect").style.display = "none";
   }
   openEvModal("event-match-modal");
 }
@@ -3853,14 +4020,16 @@ function setEmResult(isBo1, m) {
     $("em-res-bo1").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.r === w));
   } else {
     const played = !!(m && m.status === "played");
-    $("em-played").checked = played;
-    $("em-sa").value = m && m.score_a != null ? m.score_a : "";
-    $("em-sb").value = m && m.score_b != null ? m.score_b : "";
-    $("em-score-wrap").style.display = played ? "flex" : "none";
+    const v = m && m.winner === "void" ? "void" : (played ? "score" : "");
+    $("em-multi-seg").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.r === v));
+    $("em-sa").value = m && m.score_a != null && m.winner !== "void" ? m.score_a : "";
+    $("em-sb").value = m && m.score_b != null && m.winner !== "void" ? m.score_b : "";
+    $("em-score-wrap").style.display = v === "score" ? "flex" : "none";
   }
 }
-function emPlayedChange() { $("em-score-wrap").style.display = $("em-played").checked ? "flex" : "none"; }
+function emMultiSeg() { const a = $("em-multi-seg").querySelector("button.active"); $("em-score-wrap").style.display = (a && a.dataset.r === "score") ? "flex" : "none"; }
 function emResultBo1() { const a = $("em-res-bo1").querySelector("button.active"); return a ? a.dataset.r : ""; }
+function emResultMulti() { const a = $("em-multi-seg").querySelector("button.active"); return a ? a.dataset.r : ""; }
 async function submitMatch() {
   const d = currentEvent, teamsMode = d.mode === "teams", elim = d.format === "single_elim", isBo1 = (d.match_type || "bo1") === "bo1";
   const roster = !!(editingMatch && (editingMatch.roster_a || editingMatch.roster_b));
@@ -3869,22 +4038,26 @@ async function submitMatch() {
     const w = emResultBo1();
     if (elim && w === "draw") { wikiToast("En eliminación no puede haber empate", "err"); return; }
     result = w ? { winner: w } : { clear_result: true };
-  } else if ($("em-played").checked) {
-    if ($("em-sa").value === "" || $("em-sb").value === "") { wikiToast("Indica el marcador de ambos lados", "err"); return; }
-    if (elim && Number($("em-sa").value) === Number($("em-sb").value)) { wikiToast("En eliminación no puede haber empate", "err"); return; }
-    result = { score_a: $("em-sa").value, score_b: $("em-sb").value };
   } else {
-    result = { clear_result: true };
+    const v = emResultMulti();
+    if (v === "void") {
+      result = { winner: "void" };
+    } else if (v === "score") {
+      if ($("em-sa").value === "" || $("em-sb").value === "") { wikiToast("Indica el marcador de ambos lados", "err"); return; }
+      if (elim && Number($("em-sa").value) === Number($("em-sb").value)) { wikiToast("En eliminación no puede haber empate", "err"); return; }
+      result = { score_a: $("em-sa").value, score_b: $("em-sb").value };
+    } else {
+      result = { clear_result: true };
+    }
   }
-  if (elim || roster) {  // solo resultado (+ modo/mapa); el cruce está fijado
-    const body = Object.assign({ mode: $("em-mode").value.trim(), map: $("em-map").value.trim() }, result);
-    const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/${editingMatch.id}`, "PUT", body);
+  if (elim || roster) {  // solo resultado; el cruce está fijado y el modo/mapa es por ronda
+    const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/${editingMatch.id}`, "PUT", result);
     if (!ok) { wikiToast(r.error || r.detail || "No se pudo guardar", "err"); return; }
     closeEvModal("event-match-modal"); await openEvent(d.id); return;
   }
   const a = $("em-a").value, b = $("em-b").value;
   if (!a || !b || a === b) { wikiToast("Elige dos " + (teamsMode ? "equipos" : "jugadores") + " distintos", "err"); return; }
-  const base = { round: parseInt($("em-round").value, 10) || 1, mode: $("em-mode").value.trim(), map: $("em-map").value.trim() };
+  const base = { round: parseInt($("em-round").value, 10) || 1 };
   if (teamsMode) { base.a_team = parseInt(a, 10); base.b_team = parseInt(b, 10); } else { base.a_tag = a; base.b_tag = b; }
   if (editingMatch) {
     const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/${editingMatch.id}`, "PUT", Object.assign({}, base, result));
@@ -3930,6 +4103,30 @@ async function restartPairings() {
   if (!ok) { wikiToast(r.error || r.detail || "No se pudo reiniciar", "err"); return; }
   wikiToast(`Ronda ${r.round} emparejada`, "ok"); await openEvent(d.id);
 }
+async function closeRound() {
+  const d = currentEvent;
+  if (!confirm("¿Cerrar la ronda actual? Los enfrentamientos pendientes se marcarán como NO JUGADOS (nulos, 0 puntos para ambos).")) return;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/close-round`, "POST");
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo cerrar la ronda", "err"); return; }
+  wikiToast(r.closed ? `Ronda cerrada · ${r.closed} sin jugar` : "No quedaban pendientes", "ok");
+  await openEvent(d.id);
+}
+async function detectResults() {
+  const d = currentEvent;
+  wikiToast("Buscando en las amistosas de los participantes…", "ok");
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/detect`, "POST", {});
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo detectar", "err"); return; }
+  if (r.detected > 0) wikiToast(`Detectados ${r.detected} de ${r.checked} pendientes. Revísalos por si hay errores.`, "ok");
+  else wikiToast(`No se encontró ninguna amistosa que cruzar (${r.checked} pendientes revisadas).`, "err");
+  await openEvent(d.id);
+}
+async function detectMatch(mid) {
+  const d = currentEvent;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/detect`, "POST", { match_id: mid, force: true });
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo detectar", "err"); return; }
+  if (r.detected > 0) { wikiToast("Resultado detectado desde una amistosa.", "ok"); closeEvModal("event-match-modal"); await openEvent(d.id); }
+  else wikiToast("No se encontró una amistosa para este enfrentamiento (mismos jugadores, en fechas del evento).", "err");
+}
 
 /* ----- Seguir ----- */
 async function followEvent() { const { ok } = await apiSend(`/api/events/${currentEvent.id}/follow`, "POST"); if (ok) { await openEvent(currentEvent.id); loadMyEvents(); } }
@@ -3960,8 +4157,9 @@ async function submitJoin() {
 }
 
 /* ----- Editar (organizador) ----- */
-function openEdit() {
+async function openEdit() {
   const d = currentEvent, s = d.settings || {};
+  await loadBsModes();
   $("ee-name").value = d.name || ""; $("ee-status").value = d.status || "open";
   $("ee-kind").value = d.kind; $("ee-mode").value = d.mode; $("ee-vis").value = d.visibility;
   $("ee-lang").value = d.language || "es"; $("ee-max").value = d.max_participants || 12;
@@ -3971,7 +4169,11 @@ function openEdit() {
   $("ee-pwin").value = (s.points && s.points.win != null) ? s.points.win : 3;
   $("ee-pdraw").value = (s.points && s.points.draw != null) ? s.points.draw : 1;
   $("ee-ploss").value = (s.points && s.points.loss != null) ? s.points.loss : 0;
-  $("ee-mappol").value = s.map_policy || "fixed"; $("ee-fixmode").value = s.fixed_mode || ""; $("ee-fixmap").value = s.fixed_map || "";
+  $("ee-mappol").value = s.map_policy || "fixed"; fillModeMap("ee-fixmode", "ee-fixmap", s.fixed_mode || "", s.fixed_map || "");
+  $("ee-showdown").value = s.showdown || "exclude";
+  $("ee-showdown-hint").textContent = d.mode === "teams"
+    ? "En eventos de equipos (3 vs 3) la Supervivencia se juega en trío."
+    : "En eventos individuales puedes usar Supervivencia solo o dúo.";
   $("ee-mapspublic").checked = s.maps_public !== false;
   $("ee-revmode").value = s.reveal_mode_date || ""; $("ee-revmap").value = s.reveal_map_date || "";
   $("ee-dstart").value = d.date_start || ""; $("ee-dend").value = d.date_end || "";
@@ -4011,13 +4213,13 @@ async function submitEditEvent() {
   const fmt = $("ee-format").value;
   let rules = $("ee-rules").value.trim();
   if (!rules && fmt && EV_FORMAT_RULES[fmt]) rules = EV_FORMAT_RULES[fmt];  // en blanco → normas estándar del modelo
-  const settings = {
+  const settings = Object.assign({}, d.settings || {}, {
     rounds: parseInt($("ee-rounds").value, 10) || null, rules: rules,
     points: { win: num($("ee-pwin").value, 3), draw: num($("ee-pdraw").value, 1), loss: num($("ee-ploss").value, 0) },
-    map_policy: $("ee-mappol").value, fixed_mode: $("ee-fixmode").value.trim(), fixed_map: $("ee-fixmap").value.trim(),
+    map_policy: $("ee-mappol").value, fixed_mode: $("ee-fixmode").value.trim(), fixed_map: $("ee-fixmap").value.trim(), showdown: $("ee-showdown").value,
     maps_public: $("ee-mapspublic").checked, reveal_mode_date: $("ee-revmode").value || null, reveal_map_date: $("ee-revmap").value || null,
     team_size: fmt === "random_teams" ? num($("ee-teamsize").value, 3) : null,
-  };
+  });
   const body = {
     name: $("ee-name").value.trim(), status: $("ee-status").value, kind: $("ee-kind").value, mode: $("ee-mode").value,
     visibility: $("ee-vis").value, language: $("ee-lang").value, max_participants: num($("ee-max").value, 12),

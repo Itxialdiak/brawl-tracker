@@ -28,7 +28,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import db, brawl_api, coach, assets, auth
+from . import db, brawl_api, coach, assets, auth, bs_maps, detect
 
 SEED_TAG = os.environ.get("BRAWL_PLAYER_TAG", "").strip()
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL_SECONDS", "180"))
@@ -462,6 +462,20 @@ async def _get_player_cached(tag: str) -> dict:
     return p
 
 
+_battlelog_cache: dict = {}  # tag -> (timestamp, items)
+
+
+async def _get_battlelog_cached(tag: str) -> list:
+    """Battlelog con caché corta (90 s) para no repetir llamadas en la detección."""
+    now = time.time()
+    c = _battlelog_cache.get(tag)
+    if c and now - c[0] < 90:
+        return c[1]
+    items = await brawl_api.get_battlelog(tag)
+    _battlelog_cache[tag] = (now, items)
+    return items
+
+
 async def _ensure_player_profiles(tags: list) -> None:
     """Obtiene de la API el nombre (e icono/club) de los tags indicados y los guarda
     en `players`, para que los participantes se muestren con su nombre real."""
@@ -812,6 +826,22 @@ async def api_assets(user: dict = Depends(auth.require_user)):
     return await assets.get_assets()
 
 
+@app.get("/api/bs/modes-maps")
+async def api_bs_modes_maps(user: dict = Depends(auth.require_user)):
+    """Catálogo de modos y mapas de Brawl Stars con el icono real de cada modo."""
+    data = await assets.get_assets()
+    mmap = data.get("modes") or {}
+
+    def icon_for(es_name):
+        en = (bs_maps.EN.get(es_name) or es_name).lower()
+        info = mmap.get(en)
+        if not info and "showdown" in en:
+            info = mmap.get("solo showdown") or mmap.get("showdown")
+        return (info or {}).get("icon")
+    modes = [{**m, "icon": icon_for(m["name"])} for m in bs_maps.catalog()]
+    return {"modes": modes}
+
+
 @app.get("/api/battles")
 def api_battles(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
                 brawler: str = Query(None), vs: str = Query(None),
@@ -1049,7 +1079,7 @@ def _unadvance(eid: int, m: dict, teams_mode: bool) -> None:
     db.update_match(nxt["id"], {field: None})
 
 
-def _gen_single_elim(eid: int, ids: list, teams_mode: bool, mode, mp) -> int:
+def _gen_single_elim(eid: int, ids: list, teams_mode: bool, round_mm) -> int:
     """Genera el cuadro completo de eliminación directa: ronda 1 con byes para las
     primeras cabezas de serie, rondas siguientes vacías, y resuelve los byes."""
     import math
@@ -1060,6 +1090,7 @@ def _gen_single_elim(eid: int, ids: list, teams_mode: bool, mode, mp) -> int:
     seq = [ids[s - 1] if s <= n else None for s in order]  # None = bye
     pairs = [(seq[i], seq[i + 1]) for i in range(0, size, 2)]
     created = 0
+    mode, mp = round_mm(1)
     for pos, (a, b) in enumerate(pairs):  # ronda 1
         if teams_mode:
             db.create_match(eid, 1, a_team=a, b_team=b, mode=mode, map=mp, bracket_pos=pos)
@@ -1067,8 +1098,9 @@ def _gen_single_elim(eid: int, ids: list, teams_mode: bool, mode, mp) -> int:
             db.create_match(eid, 1, a_tag=a, b_tag=b, mode=mode, map=mp, bracket_pos=pos)
         created += 1
     for r in range(2, rounds_count + 1):  # rondas siguientes vacías
+        rm, rmap = round_mm(r)
         for pos in range(size >> r):
-            db.create_match(eid, r, mode=mode, map=mp, bracket_pos=pos)
+            db.create_match(eid, r, mode=rm, map=rmap, bracket_pos=pos)
             created += 1
     for m in db.list_matches(eid):  # resolver byes de la ronda 1 y avanzar
         if (m.get("round") or 1) != 1:
@@ -1161,7 +1193,7 @@ async def _snapshot_cups(eid: int, parts: list) -> None:
             await asyncio.to_thread(db.set_participant_seed_cups, eid, tag, cups)
 
 
-def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, mode, mp) -> dict:
+def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, round_mm) -> dict:
     """Genera la SIGUIENTE ronda suiza/McMahon emparejando por puntuación sin repetir rival."""
     matches = db.list_matches(eid)
     if matches and any(m.get("status") != "played" for m in matches):
@@ -1172,6 +1204,7 @@ def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, mode, mp) -> dict:
     if len(keys) < 2:
         return {"error": "Hacen falta al menos 2 participantes."}
     next_round = (max((m.get("round") or 1) for m in matches) + 1) if matches else 1
+    mode, mp = round_mm(next_round)
     standings = _compute_standings(e, matches, parts, teams)
     score = {r["key"]: r["pts"] for r in standings}
     name_of = {r["key"]: str(r["name"]).lower() for r in standings}
@@ -1204,7 +1237,7 @@ def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, mode, mp) -> dict:
     return {"created": created, "round": next_round, "bye": bye_key is not None}
 
 
-def _gen_random_round(eid: int, parts: list, team_size: int, mode, mp) -> dict:
+def _gen_random_round(eid: int, parts: list, team_size: int, round_mm) -> dict:
     """Genera una ronda de EQUIPOS ALEATORIOS (eventos individuales): baraja a los
     participantes, forma equipos de `team_size` y los empareja. Cada partido guarda
     su roster; la clasificación es individual (cada jugador suma según su equipo)."""
@@ -1216,6 +1249,7 @@ def _gen_random_round(eid: int, parts: list, team_size: int, mode, mp) -> dict:
     if len(tags) < 2 * k:
         return {"error": f"Hacen falta al menos {2 * k} jugadores para equipos de {k}."}
     next_round = (max((m.get("round") or 1) for m in matches) + 1) if matches else 1
+    mode, mp = round_mm(next_round)
     random.shuffle(tags)
     teams = [tags[i:i + k] for i in range(0, len(tags), k)]
     teams = [t for t in teams if len(t) == k]  # descarta equipo incompleto
@@ -1253,7 +1287,7 @@ def _compute_standings(e: dict, matches: list, participants: list, teams: list) 
                 rows[tag]["mcmahon"] = ini
     if fmt == "random_teams" and not teams_mode:  # equipos aleatorios → puntuación individual por roster
         for m in matches:
-            if m.get("status") != "played":
+            if m.get("status") != "played" or m.get("winner") == "void":
                 continue
             ros_a, ros_b = (m.get("roster_a") or []), (m.get("roster_b") or [])
             w = m.get("winner")
@@ -1271,7 +1305,7 @@ def _compute_standings(e: dict, matches: list, participants: list, teams: list) 
                     else: r["e"] += 1; r["pts"] += pdr
     else:
         for m in matches:
-            if m.get("status") != "played":
+            if m.get("status") != "played" or m.get("winner") == "void":
                 continue
             ka, kb = (m.get("a_team"), m.get("b_team")) if teams_mode else (m.get("a_tag"), m.get("b_tag"))
             if (ka in rows) and not kb:  # bye → victoria sin rival
@@ -1664,7 +1698,7 @@ def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict =
         if c in body:
             fields[c] = (body[c] or "").strip() or None
     if body.get("clear_result"):
-        fields.update({"status": "pending", "winner": None, "score_a": None, "score_b": None})
+        fields.update({"status": "pending", "winner": None, "score_a": None, "score_b": None, "evidence_battle_id": None})
     elif "winner" in body or "score_a" in body or "score_b" in body:
         def _toint(x):
             try:
@@ -1678,6 +1712,8 @@ def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict =
             sa, sb = (1, 0) if w == "a" else ((0, 1) if w == "b" else (0, 0))
         if w in ("a", "b", "draw"):
             fields.update({"winner": w, "score_a": sa, "score_b": sb, "status": "played"})
+        elif w == "void":  # anulado / no jugado → 0 puntos para ambos
+            fields.update({"winner": "void", "score_a": 0, "score_b": 0, "status": "played"})
     db.update_match(mid, fields)
     # Eliminación directa: propagar (o retirar) el ganador al hueco siguiente del cuadro
     ev = db.get_event(eid) or {}
@@ -1689,6 +1725,103 @@ def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict =
         else:
             _unadvance(eid, m2 or m, teams_mode)
     return {"ok": True}
+
+
+@app.post("/api/events/{eid}/matches/close-pending")
+def api_close_pending(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
+    """Cierra la ronda: marca como ANULADOS (nulos, 0 puntos) los enfrentamientos pendientes."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    n = 0
+    for m in db.list_matches(eid):
+        if m.get("status") != "played":
+            db.update_match(m["id"], {"winner": "void", "score_a": 0, "score_b": 0, "status": "played"})
+            n += 1
+    return {"ok": True, "voided": n}
+
+
+@app.post("/api/events/{eid}/matches/detect")
+async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
+    """Fase 5: cruza las partidas pendientes con los battlelogs amistosos de los
+    participantes y propone resultados (el organizador puede editarlos o borrarlos)."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "No hay token de la API de Brawl Stars configurado."}, status_code=400)
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    force = bool(body.get("force"))  # re-detectar también las ya jugadas
+    only_mid = body.get("match_id")
+    teams_mode = e.get("mode") == "teams"
+    best_of = {"bo1": 1, "bo3": 3, "bo5": 5}.get(e.get("match_type") or "bo1", 1)
+    start = detect.parse_event_date(e.get("date_start"))
+    end = detect.parse_event_date(e.get("date_end"), end=True)
+
+    matches = db.list_matches(eid)
+    if only_mid:
+        matches = [m for m in matches if m["id"] == only_mid]
+    pend = [m for m in matches if (force or m.get("status") != "played")]
+    # un evento de eliminación solo tiene cruce cuando ambos lados están definidos
+    pend = [m for m in pend if (teams_mode and (m.get("a_team") or m.get("roster_a")) and (m.get("b_team") or m.get("roster_b")))
+            or (not teams_mode and m.get("a_tag") and m.get("b_tag"))]
+    if not pend:
+        return {"ok": True, "detected": 0, "checked": 0, "not_found": 0, "no_token": False}
+
+    # rosters de cada equipo (para eventos por equipos)
+    team_players = {}
+    if teams_mode:
+        for p in db.list_participants(eid):
+            if p.get("team_id"):
+                team_players.setdefault(p["team_id"], []).append(p["player_tag"])
+
+    def roster_of(m, side):
+        ros = m.get("roster_a" if side == "a" else "roster_b")
+        if ros:
+            return ros
+        tid = m.get("a_team" if side == "a" else "b_team")
+        return team_players.get(tid, [])
+
+    # tags a consultar (una vez cada uno)
+    tags = set()
+    for m in pend:
+        if teams_mode:
+            tags.update(roster_of(m, "a")); tags.update(roster_of(m, "b"))
+        else:
+            tags.add(m["a_tag"]); tags.add(m["b_tag"])
+    tags = [t for t in tags if t]
+
+    async def fetch(tag):
+        try:
+            return (tag, await _get_battlelog_cached(tag))
+        except Exception:  # noqa: BLE001
+            return (tag, [])
+    logs = await asyncio.gather(*[fetch(t) for t in tags]) if tags else []
+    pool = detect.build_pool(logs)
+
+    detected = 0
+    for m in pend:
+        code = detect.mode_code(m.get("mode"))
+        if teams_mode:
+            res = detect.match_teams(pool, roster_of(m, "a"), roster_of(m, "b"), code, start, end, best_of)
+        else:
+            res = detect.match_individual(pool, m["a_tag"], m["b_tag"], code, start, end, best_of)
+        if not res:
+            continue
+        sa, sb, w = res["score_a"], res["score_b"], res["winner"]
+        await asyncio.to_thread(db.update_match, m["id"], {
+            "winner": w, "score_a": sa, "score_b": sb, "status": "played",
+            "evidence_battle_id": res["evidence"],
+        })
+        detected += 1
+        if e.get("format") == "single_elim" and w in ("a", "b"):
+            m2 = db.get_match(m["id"])
+            if m2:
+                _advance_winner(eid, m2, teams_mode)
+
+    return {"ok": True, "detected": detected, "checked": len(pend),
+            "not_found": len(pend) - detected, "players": len(tags)}
 
 
 @app.delete("/api/events/{eid}/matches/{mid}")
@@ -1713,32 +1846,54 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
     if body.get("replace"):
         db.clear_matches(eid)
     settings = e.get("settings") or {}
-    fixed = settings.get("map_policy") == "fixed"
-    mode = settings.get("fixed_mode") if fixed else None
-    mp = settings.get("fixed_map") if fixed else None
+    policy = settings.get("map_policy")
+    fm = settings.get("fixed_mode") or None
+    fmap = settings.get("fixed_map") or None
+    round_maps = settings.get("round_maps") or {}
+    ev_mode = e["mode"]
+    showdown = settings.get("showdown") or "exclude"
+    _mm = {}
+
+    def round_mm(rn):  # modo/mapa de la ronda rn
+        manual = round_maps.get(str(rn)) or round_maps.get(rn)  # selección manual por ronda
+        if manual and (manual.get("mode") or manual.get("map")):
+            return (manual.get("mode") or None, manual.get("map") or None)
+        if policy == "fixed":
+            return (fm, fmap)
+        if policy == "random":
+            if rn not in _mm:
+                _mm[rn] = bs_maps.random_mode_map(ev_mode, showdown)
+            return _mm[rn]
+        return (None, None)
     teams_mode = e["mode"] == "teams"
     ids = [t["id"] for t in db.list_teams(eid)] if teams_mode else \
           [p["player_tag"] for p in db.list_participants(eid)]
     if len(ids) < 2:
         return JSONResponse({"error": "Hacen falta al menos 2 participantes."}, status_code=400)
+    max_rounds = settings.get("rounds")  # límite de rondas (suizo/McMahon/aleatorios)
+    if fmt in ("swiss", "mcmahon", "random_teams") and max_rounds:
+        existing = db.list_matches(eid)
+        nextr = (max((m.get("round") or 1) for m in existing) + 1) if existing else 1
+        if nextr > int(max_rounds):
+            return JSONResponse({"error": f"El torneo está configurado a {int(max_rounds)} rondas; ya están todas generadas."}, status_code=400)
     if fmt == "single_elim":
-        created = _gen_single_elim(eid, ids, teams_mode, mode, mp)
+        created = _gen_single_elim(eid, ids, teams_mode, round_mm)
         return {"ok": True, "created": created, "format": "single_elim"}
     if fmt in ("swiss", "mcmahon"):
         if not db.list_matches(eid) and not teams_mode:  # ronda 1: snapshot de copas
             await _snapshot_cups(eid, db.list_participants(eid))
-        res = _gen_swiss_round(eid, e, teams_mode, mode, mp)
+        res = _gen_swiss_round(eid, e, teams_mode, round_mm)
         if "error" in res:
             return JSONResponse({"error": res["error"]}, status_code=400)
         return {"ok": True, "format": fmt, **res}
     if fmt == "random_teams":
         ts = body.get("team_size") or settings.get("team_size") or 3
-        res = _gen_random_round(eid, db.list_participants(eid), ts, mode, mp)
+        res = _gen_random_round(eid, db.list_participants(eid), ts, round_mm)
         if "error" in res:
             return JSONResponse({"error": res["error"]}, status_code=400)
         return {"ok": True, "format": "random_teams", **res}
     try:
-        legs = max(1, min(10, int(body.get("legs") or settings.get("rounds") or 1)))
+        legs = max(1, min(20, int(body.get("legs") or settings.get("rounds") or 1)))
     except Exception:  # noqa: BLE001
         legs = 1
     schedule = _round_robin(ids)
@@ -1746,15 +1901,58 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
     for leg in range(legs):
         for jornada in schedule:
             round_no += 1
+            rm, rmap = round_mm(round_no)
             for (a, b) in jornada:
                 if leg % 2 == 1:
                     a, b = b, a
                 if teams_mode:
-                    db.create_match(eid, round_no, a_team=a, b_team=b, mode=mode, map=mp)
+                    db.create_match(eid, round_no, a_team=a, b_team=b, mode=rm, map=rmap)
                 else:
-                    db.create_match(eid, round_no, a_tag=a, b_tag=b, mode=mode, map=mp)
+                    db.create_match(eid, round_no, a_tag=a, b_tag=b, mode=rm, map=rmap)
                 created += 1
     return {"ok": True, "created": created}
+
+
+@app.post("/api/events/{eid}/matches/close-round")
+def api_match_close_round(eid: int, payload: dict = Body(None), user: dict = Depends(auth.require_user)):
+    """Cierra la ronda actual: marca como NO JUGADOS (nulos, 0 pts) los pendientes."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    matches = db.list_matches(eid)
+    if not matches:
+        return {"ok": True, "closed": 0}
+    last = max((m.get("round") or 1) for m in matches)
+    closed = 0
+    for m in matches:
+        if (m.get("round") or 1) == last and m.get("status") != "played":
+            db.update_match(m["id"], {"winner": "void", "score_a": 0, "score_b": 0, "status": "played"})
+            closed += 1
+    return {"ok": True, "closed": closed, "round": last}
+
+
+@app.put("/api/events/{eid}/rounds/{rn}/mode-map")
+def api_round_mode_map(eid: int, rn: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    """Fija el modo y el mapa de una ronda; se aplica a TODAS sus partidas y se guarda
+    para las rondas aún no generadas."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    mode = (body.get("mode") or "").strip() or None
+    mp = (body.get("map") or "").strip() or None
+    settings = e.get("settings") or {}
+    rmaps = settings.get("round_maps") or {}
+    rmaps[str(rn)] = {"mode": mode, "map": mp}
+    settings["round_maps"] = rmaps
+    db.update_event(eid, {"settings": settings})
+    updated = 0
+    for m in db.list_matches(eid):  # aplicar a las partidas ya generadas de esa ronda
+        if (m.get("round") or 1) == rn:
+            db.update_match(m["id"], {"mode": mode, "map": mp})
+            updated += 1
+    return {"ok": True, "round": rn, "updated": updated}
 
 
 @app.get("/")
