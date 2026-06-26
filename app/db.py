@@ -121,6 +121,11 @@ def init_db():
             event_id INTEGER NOT NULL, user_id INTEGER NOT NULL, followed_at TEXT,
             PRIMARY KEY (event_id, user_id)
         );
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            type TEXT, title TEXT, body TEXT, event_id INTEGER, data TEXT,
+            read INTEGER DEFAULT 0, created_at TEXT
+        );
         CREATE TABLE IF NOT EXISTS event_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL, player_tag TEXT NOT NULL, team_name TEXT,
@@ -1583,6 +1588,121 @@ def is_following_event(eid, user_id) -> bool:
     row = conn.execute("SELECT 1 FROM event_follows WHERE event_id=? AND user_id=?", (eid, user_id)).fetchone()
     conn.close()
     return bool(row)
+
+
+# --- destinatarios para notificaciones ---
+def event_follower_ids(eid) -> list:
+    conn = get_conn()
+    rows = conn.execute("SELECT user_id FROM event_follows WHERE event_id=?", (eid,)).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+def event_participant_user_ids(eid) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT DISTINCT user_id FROM event_participants WHERE event_id=? AND user_id IS NOT NULL", (eid,)).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+def users_following_player(tag) -> list:
+    conn = get_conn()
+    rows = conn.execute("SELECT user_id FROM user_players WHERE player_tag=?", (normalize_tag(tag),)).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+# --- notificaciones ---
+def create_notification(user_id, ntype, title, body="", event_id=None, data=None) -> int:
+    conn = get_conn()
+    cur = conn.execute(
+        """INSERT INTO notifications (user_id, type, title, body, event_id, data, read, created_at)
+           VALUES (?,?,?,?,?,?,0,?)""",
+        (user_id, ntype, title, body, event_id,
+         json.dumps(data) if data is not None else None,
+         datetime.now(timezone.utc).isoformat()))
+    conn.commit(); nid = cur.lastrowid; conn.close()
+    return nid
+
+
+def notify_many(user_ids, ntype, title, body="", event_id=None, data=None, exclude=None) -> int:
+    """Crea la MISMA notificación para varios usuarios (deduplicados). Devuelve cuántas."""
+    seen, n = set(), 0
+    ex = set(exclude or [])
+    for uid in user_ids:
+        if uid is None or uid in seen or uid in ex:
+            continue
+        seen.add(uid)
+        create_notification(uid, ntype, title, body, event_id, data)
+        n += 1
+    return n
+
+
+def list_notifications(user_id, limit=60) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC, id DESC LIMIT ?",
+        (user_id, limit)).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        if d.get("data"):
+            try: d["data"] = json.loads(d["data"])
+            except Exception: d["data"] = None
+        d["read"] = bool(d.get("read"))
+        out.append(d)
+    return out
+
+
+def count_unread_notifications(user_id) -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM notifications WHERE user_id=? AND read=0", (user_id,)).fetchone()[0]
+    conn.close()
+    return n
+
+
+def mark_notification_read(user_id, nid) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE notifications SET read=1 WHERE id=? AND user_id=?", (nid, user_id))
+    conn.commit(); conn.close()
+
+
+def mark_all_notifications_read(user_id) -> int:
+    conn = get_conn()
+    cur = conn.execute("UPDATE notifications SET read=1 WHERE user_id=? AND read=0", (user_id,))
+    conn.commit(); n = cur.rowcount; conn.close()
+    return n
+
+
+def delete_notification(user_id, nid) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM notifications WHERE id=? AND user_id=?", (nid, user_id))
+    conn.commit(); conn.close()
+
+
+def delete_all_notifications(user_id) -> int:
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM notifications WHERE user_id=?", (user_id,))
+    conn.commit(); n = cur.rowcount; conn.close()
+    return n
+
+
+def get_player_name(tag) -> str | None:
+    conn = get_conn()
+    row = conn.execute("SELECT name FROM players WHERE tag=?", (normalize_tag(tag),)).fetchone()
+    conn.close()
+    return row[0] if row and row[0] else None
+
+
+def event_ids_with_start() -> list:
+    """Eventos no finalizados que tienen fecha de inicio (para avisos de cercanía/inicio)."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id FROM events WHERE date_start IS NOT NULL AND date_start != '' AND status != 'finished'").fetchall()
+    conn.close()
+    return [r[0] for r in rows]
 
 
 # --- participantes ---

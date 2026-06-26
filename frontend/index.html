@@ -817,6 +817,30 @@
     font-family: var(--display); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .15s; }
   .danger-ghost:hover { background: rgba(255,77,115,.12); }
 
+  /* Notificaciones y ayuda (Fase 6) */
+  .sm { font-size: 12px !important; padding: 5px 11px !important; }
+  .notif-bell { position: relative; background: transparent; border: 1px solid var(--border); border-radius: 9px; padding: 7px 11px; font-size: 15px; cursor: pointer; line-height: 1; transition: border-color .12s; align-self: center; }
+  .notif-bell:hover { border-color: var(--cyan); }
+  .notif-dot { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; background: var(--loss); color: #fff; font-family: var(--display); font-size: 10px; font-weight: 700; border-radius: 999px; box-shadow: 0 0 0 2px var(--bg); }
+  .notif-card { max-width: 540px; width: 100%; }
+  .notif-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+  .notif-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+  .notif-item { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 11px; padding: 11px 13px; }
+  .notif-item.unread { border-color: rgba(63,225,255,.45); background: rgba(63,225,255,.05); }
+  .notif-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .notif-title { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); }
+  .notif-item.unread .notif-title::before { content: "●"; color: var(--cyan); font-size: 10px; margin-right: 6px; vertical-align: middle; }
+  .notif-time { font-size: 11px; color: var(--muted); white-space: nowrap; flex: none; }
+  .notif-body { font-size: 13px; color: var(--text-dim, #c9c6e6); margin: 5px 0 9px; line-height: 1.4; }
+  .notif-acts { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .link-btn.danger { color: var(--loss); }
+  .help-card { max-width: 680px; width: 100%; }
+  .help-body { max-height: 68vh; overflow-y: auto; padding-right: 6px; font-size: 14px; line-height: 1.55; color: var(--text-dim, #c9c6e6); }
+  .help-body h4 { font-family: var(--display); font-size: 14px; letter-spacing: .4px; text-transform: uppercase; color: var(--gold); margin: 16px 0 5px; }
+  .help-body p { margin: 0 0 9px; }
+  .help-body b { color: var(--text); }
+  .help-body i { color: var(--cyan); font-style: normal; }
+
   /* Ficha del evento */
   .ed-poster { height: 170px; border-radius: 14px; margin-bottom: 16px; background: linear-gradient(135deg, var(--bg-elev), #2a1f5e); background-size: cover; background-position: center; border: 1px solid var(--border); }
   .ed-title { font-family: var(--display); font-weight: 700; font-size: clamp(20px,3vw,28px); letter-spacing: .5px; margin-bottom: 8px; }
@@ -972,6 +996,58 @@
         <div class="auth-note" id="reg-note"></div>
         <div class="auth-error" id="reg-error"></div>
         <button class="btn auth-submit" id="reg-btn" onclick="doRegister()">Crear cuenta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notificaciones (Fase 6) -->
+  <div id="notif-modal" class="modal-overlay" onclick="if(event.target===this)closeNotifications()">
+    <div class="modal-card has-close notif-card">
+      <button class="modal-close" onclick="closeNotifications()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title">Notificaciones</h3>
+      <div class="notif-bar">
+        <button class="ghost sm" onclick="markAllNotifs()">Marcar todas como leídas</button>
+        <button class="danger-ghost sm" onclick="deleteAllNotifs()">Eliminar todas</button>
+      </div>
+      <div id="notif-list" class="notif-list"></div>
+    </div>
+  </div>
+
+  <!-- Ayuda de eventos (Fase 6) -->
+  <div id="help-modal" class="modal-overlay" onclick="if(event.target===this)closeEventHelp()">
+    <div class="modal-card has-close help-card">
+      <button class="modal-close" onclick="closeEventHelp()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title">Guía de Torneos y Ligas</h3>
+      <div class="help-body">
+        <p>Aquí puedes crear <b>torneos y ligas</b> de Brawl Stars, gestionar los enfrentamientos y la clasificación, y avisar a los seguidores. Esta guía explica cada parámetro.</p>
+
+        <h4>1 · Crear un evento</h4>
+        <p><b>Nombre:</b> cómo se mostrará el evento. <b>Tipo:</b> liga (varias jornadas) o torneo (rondas eliminatorias o suizas). <b>Modalidad:</b> <i>individual</i> (1 vs 1) o <i>por equipos</i> (los participantes se agrupan en equipos). <b>Visibilidad:</b> <i>pública</i> (aparece en el tablón) u <i>oculta</i> (solo se entra con el enlace). <b>Idioma</b> y <b>plazas máximas</b> (cuántos participantes/equipos admite).</p>
+
+        <h4>2 · Formato (cómo se emparejan)</h4>
+        <p><b>Suizo:</b> cada ronda empareja a quienes llevan una puntuación parecida; no hay eliminados. <b>McMahon:</b> como el suizo pero arrancas con una ventaja inicial según tus copas. <b>Todos contra todos (liga):</b> cada uno juega contra todos los demás. <b>Eliminación directa:</b> cuadro de cruces; quien pierde queda fuera. <b>Equipos aleatorios:</b> cada ronda forma equipos al azar. <b>Libre:</b> tú añades los enfrentamientos a mano.</p>
+
+        <h4>3 · Parámetros de juego</h4>
+        <p><b>Tipo de enfrentamiento:</b> a 1 (bo1), al mejor de 3 (bo3) o de 5 (bo5). <b>Número de vueltas/rondas:</b> las vueltas de la liga o el número de rondas del torneo; en suizo/McMahon/aleatorios también <i>limita</i> cuántas rondas puedes generar. <b>Puntos</b> por victoria, empate y derrota (para la clasificación).</p>
+
+        <h4>4 · Modos y mapas</h4>
+        <p><b>¿Cómo se deciden?</b> <i>Fijos</i> (el mismo modo/mapa siempre), <i>aleatorios por ronda</i> (uno al azar al generar cada ronda) o <i>los elijo por ronda</i>. En cualquier caso, en la ficha del evento puedes fijar el modo y el mapa <b>de cada ronda</b> (se muestran todas las rondas configuradas); lo que elijas se aplica a todas las partidas de esa ronda.</p>
+        <p><b>Supervivencia (Showdown):</b> <i>excluida</i> (solo modos 3 vs 3), <i>un modo más</i> o <i>evento solo de Supervivencia</i>. En eventos por equipos es en trío; en individuales, solo o dúo. <b>Revelar en fecha:</b> si ocultas modos/mapas, puedes fijar la fecha en la que se hacen públicos automáticamente.</p>
+
+        <h4>5 · Participantes y equipos</h4>
+        <p>Con <b>«Añadir jugador»</b> apuntas a uno o varios pegando sus IDs (separados por comas, espacios o saltos de línea). En eventos por equipos, crea los equipos y reparte a los jugadores. El enlace <b>«Copiar enlace»</b> sirve para que otros se apunten o sigan el evento.</p>
+
+        <h4>6 · Rondas y resultados</h4>
+        <p>Pulsa <b>«Generar ronda»</b> para crear los enfrentamientos. En cada uno introduces el resultado: ganador, empate o <b>«No jugado»</b> (nulo: 0 puntos para ambos, no cuenta como jugado). <b>«Cerrar ronda actual»</b> marca como no jugados todos los pendientes de la ronda. La clasificación se calcula sola.</p>
+
+        <h4>7 · Detección automática de resultados</h4>
+        <p>Con <b>«🔎 Detectar resultados»</b>, el sistema mira las <b>partidas amistosas</b> recientes de los participantes y, si encuentra una entre esos jugadores y dentro de las fechas del evento, copia el resultado (queda marcado con <b>«🔎 auto»</b>). Siempre puedes editarlo o borrarlo si hay un error o trampas. Nota: el historial guarda solo las últimas 25 partidas por jugador, así que conviene detectar mientras el torneo es reciente.</p>
+
+        <h4>8 · Avisos y resúmenes</h4>
+        <p>La <b>🔔 campana</b> (arriba) abre tus notificaciones: cuando empieza un evento que sigues, cuando apuntan a un jugador que sigues, etc. Puedes marcarlas como leídas o borrarlas. Como organizador, <b>«📣 Resumen para seguidores»</b> hace que Claude redacte un resumen breve de los resultados y la clasificación y lo envíe como aviso a todos los seguidores y apuntados (una sola consulta).</p>
+
+        <h4>9 · Seguir</h4>
+        <p>Puedes <b>seguir</b> un evento para tenerlo a mano y recibir sus avisos. Si sigues a un jugador y lo apuntan a un evento, te llega una notificación por si quieres seguirlo. (La detección automática te incluye igualmente si eres jugador del encuentro, aunque no sigas el evento.)</p>
       </div>
     </div>
   </div>
@@ -1223,6 +1299,7 @@
       <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
     <div class="toolbar">
+      <button class="notif-bell" id="notif-bell" onclick="openNotifications()" title="Notificaciones" aria-label="Notificaciones">🔔<span class="notif-dot" id="notif-dot" style="display:none">0</span></button>
       <button class="user-pill" id="user-pill" onclick="openAccount()"></button>
       <button class="ghost" id="logout-btn" title="Cerrar sesión">Salir</button>
     </div>
@@ -1458,7 +1535,10 @@
     <!-- Gestor de eventos -->
     <div class="lg-head">
       <h2 class="section-title" style="margin:0">Mis eventos</h2>
-      <button class="btn" id="create-event-btn" onclick="openCreateEvent()">+<span class="add-word"> Crear evento</span></button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="ghost" id="help-event-btn" onclick="openEventHelp()" title="Cómo crear y gestionar eventos">❓<span class="add-word"> Ayuda</span></button>
+        <button class="btn" id="create-event-btn" onclick="openCreateEvent()">+<span class="add-word"> Crear evento</span></button>
+      </div>
     </div>
     <div class="lg-mine-tabs">
       <button class="lgtab active" data-lgtab="all" onclick="filterMine('all')">Todos</button>
@@ -3309,6 +3389,8 @@ function setUser(user) {
   const cs = $("um-country"); if (cs) cs.value = (user && user.country) || "";
   const navAdmin = $("nav-admin");
   if (navAdmin) navAdmin.style.display = (user && user.is_admin) ? "" : "none";
+  const bell = $("notif-bell"); if (bell) bell.style.display = user ? "inline-flex" : "none";
+  if (user) startNotifPolling(); else { clearInterval(_notifTimer); }
 }
 
 function switchAuth(which) {
@@ -3368,6 +3450,70 @@ async function doLogout() {
   showLogin(); switchAuth("login");
 }
 $("logout-btn").addEventListener("click", doLogout);
+
+/* ----- Notificaciones (Fase 6) ----- */
+let _notifTimer = null;
+function notifRelTime(iso) {
+  const t = new Date(iso), now = new Date(), s = Math.floor((now - t) / 1000);
+  if (s < 60) return "ahora";
+  if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `hace ${Math.floor(s / 3600)} h`;
+  if (s < 604800) return `hace ${Math.floor(s / 86400)} d`;
+  return t.toLocaleDateString();
+}
+async function refreshUnread() {
+  try {
+    const r = await getJSON("/api/notifications/unread-count");
+    const dot = $("notif-dot"); if (!dot) return;
+    if (r && r.unread > 0) { dot.textContent = r.unread > 99 ? "99+" : r.unread; dot.style.display = "inline-flex"; }
+    else dot.style.display = "none";
+  } catch (e) {}
+}
+function startNotifPolling() { refreshUnread(); clearInterval(_notifTimer); _notifTimer = setInterval(refreshUnread, 60000); }
+async function openNotifications() {
+  $("notif-modal").classList.add("open");
+  await loadNotifications();
+}
+function closeNotifications() { $("notif-modal").classList.remove("open"); }
+async function loadNotifications() {
+  const box = $("notif-list");
+  box.innerHTML = `<p class="evd-muted" style="padding:10px">Cargando…</p>`;
+  let r;
+  try { r = await getJSON("/api/notifications"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:10px">No se pudieron cargar.</p>`; return; }
+  const items = (r && r.items) || [];
+  if (!items.length) { box.innerHTML = `<p class="evd-muted" style="padding:18px;text-align:center">No tienes notificaciones.</p>`; refreshUnread(); return; }
+  box.innerHTML = items.map((n) => {
+    const acts = [];
+    if (n.type === "player_in_event" && n.event_id) acts.push(`<button class="ghost sm" onclick="notifFollow(${n.event_id}, ${n.id})">Seguir evento</button>`);
+    if (n.event_id) acts.push(`<button class="ghost sm" onclick="notifOpenEvent(${n.event_id}, ${n.id})">Ver evento</button>`);
+    if (!n.read) acts.push(`<button class="link-btn sm" onclick="markNotifRead(${n.id})">Marcar leída</button>`);
+    acts.push(`<button class="link-btn sm danger" onclick="deleteNotif(${n.id})">Eliminar</button>`);
+    return `<div class="notif-item${n.read ? "" : " unread"}">
+      <div class="notif-head"><span class="notif-title">${esc(n.title || "")}</span><span class="notif-time">${notifRelTime(n.created_at)}</span></div>
+      ${n.body ? `<div class="notif-body">${esc(n.body)}</div>` : ""}
+      <div class="notif-acts">${acts.join("")}</div></div>`;
+  }).join("");
+  refreshUnread();
+}
+async function markNotifRead(nid) { await apiSend(`/api/notifications/${nid}/read`, "POST"); await loadNotifications(); }
+async function markAllNotifs() { await apiSend(`/api/notifications/read-all`, "POST"); await loadNotifications(); }
+async function deleteNotif(nid) { await apiSend(`/api/notifications/${nid}`, "DELETE"); await loadNotifications(); }
+async function deleteAllNotifs() {
+  if (!confirm("¿Eliminar todas las notificaciones?")) return;
+  await apiSend(`/api/notifications`, "DELETE"); await loadNotifications();
+}
+async function notifFollow(eid, nid) {
+  const { ok } = await apiSend(`/api/events/${eid}/follow`, "POST");
+  await apiSend(`/api/notifications/${nid}/read`, "POST");
+  if (ok) { wikiToast("Ahora sigues el evento.", "ok"); loadMyEvents && loadMyEvents(); }
+  await loadNotifications();
+}
+async function notifOpenEvent(eid, nid) {
+  await apiSend(`/api/notifications/${nid}/read`, "POST");
+  closeNotifications(); showSection("leagues"); await openEvent(eid); refreshUnread();
+}
+function openEventHelp() { $("help-modal").classList.add("open"); }
+function closeEventHelp() { $("help-modal").classList.remove("open"); }
 
 /* ============================ LIGAS Y TORNEOS ============================ */
 const EV_LANGS = [
@@ -3880,6 +4026,11 @@ function renderResultsBlock(d) {
       const det = `<button class="ghost" onclick="detectResults()" title="Cruza las partidas pendientes con las amistosas (battlelog) de los participantes y propone el resultado.">🔎 Detectar<span class="mbar-extra"> resultados</span></button>`;
       ownerBar = ownerBar.includes("evd-mbar") ? ownerBar.replace("</div>", det + "</div>") : `<div class="evd-mbar">${det}</div>`;
     }
+    // Fase 6: resumen IA para seguidores cuando ya hay resultados
+    if (matches.some((m) => m.status === "played")) {
+      const sm = `<button class="ghost" onclick="sendSummary()" title="Claude redacta un resumen breve de los resultados y la clasificación y lo envía como aviso a seguidores y apuntados.">📣 Resumen<span class="mbar-extra"> para seguidores</span></button>`;
+      ownerBar = ownerBar.includes("evd-mbar") ? ownerBar.replace("</div>", sm + "</div>") : `<div class="evd-mbar">${sm}</div>`;
+    }
   }
   let matchesHTML;
   if (!matches.length) {
@@ -4126,6 +4277,15 @@ async function detectMatch(mid) {
   if (!ok) { wikiToast(r.error || r.detail || "No se pudo detectar", "err"); return; }
   if (r.detected > 0) { wikiToast("Resultado detectado desde una amistosa.", "ok"); closeEvModal("event-match-modal"); await openEvent(d.id); }
   else wikiToast("No se encontró una amistosa para este enfrentamiento (mismos jugadores, en fechas del evento).", "err");
+}
+async function sendSummary() {
+  const d = currentEvent;
+  if (!confirm("Claude redactará un resumen de los resultados y lo enviará como aviso a los seguidores y apuntados del evento. ¿Continuar?")) return;
+  wikiToast("Claude está redactando el resumen…", "ok");
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/summary`, "POST", {});
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo generar el resumen", "err"); return; }
+  wikiToast(`Resumen enviado a ${r.sent} persona(s).`, "ok");
+  alert("Resumen enviado a seguidores y apuntados:\n\n" + (r.text || ""));
 }
 
 /* ----- Seguir ----- */

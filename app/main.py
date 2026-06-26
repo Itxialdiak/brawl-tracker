@@ -106,6 +106,45 @@ async def _poller():
         await asyncio.sleep(POLL_INTERVAL)
 
 
+EVENT_NOTIFY_INTERVAL = 300  # cada 5 min
+SOON_HOURS = 24             # "empieza pronto" dentro de esta ventana
+
+
+def _check_event_starts():
+    """Avisa a seguidores y apuntados de la cercanía y el inicio de cada evento (idempotente)."""
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    for eid in db.event_ids_with_start():
+        e = db.get_event(eid)
+        if not e:
+            continue
+        start = detect.parse_event_date(e.get("date_start"))
+        if not start:
+            continue
+        s = e.get("settings") or {}
+        recipients = db.event_follower_ids(eid) + db.event_participant_user_ids(eid)
+        changed = False
+        if now >= start and not s.get("notified_started"):
+            db.notify_many(recipients, "event_start", f"¡Empieza «{e.get('name')}»!",
+                           "El evento que sigues ha comenzado. ¡Mucha suerte!", event_id=eid)
+            s["notified_started"] = True; s["notified_soon"] = True; changed = True
+        elif now < start and (start - now) <= timedelta(hours=SOON_HOURS) and not s.get("notified_soon"):
+            db.notify_many(recipients, "event_soon", f"«{e.get('name')}» empieza pronto",
+                           "El evento que sigues está a punto de empezar.", event_id=eid)
+            s["notified_soon"] = True; changed = True
+        if changed:
+            db.update_event(eid, {"settings": s})
+
+
+async def _event_notifier():
+    while True:
+        try:
+            await asyncio.to_thread(_check_event_starts)
+        except Exception as e:  # noqa: BLE001
+            print(f"[notify] error: {e}")
+        await asyncio.sleep(EVENT_NOTIFY_INTERVAL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
@@ -145,9 +184,11 @@ async def lifespan(app: FastAPI):
         print(f"Poller activo cada {POLL_INTERVAL}s. Jugadores: {db.active_player_tags() or 'ninguno (añádelos en la web)'}")
     else:
         print("⚠️  Falta BRAWL_API_TOKEN en .env; el poller está parado.")
+    notifier = asyncio.create_task(_event_notifier())  # avisos de cercanía/inicio (Fase 6)
     yield
     if task:
         task.cancel()
+    notifier.cancel()
 
 
 app = FastAPI(title="Brawl Stars Tracker", lifespan=lifespan)
@@ -1528,6 +1569,24 @@ def api_event_req_reject(eid: int, rid: int, user: dict = Depends(auth.require_u
     return {"ok": True}
 
 
+def _notify_followers_player_added(eid: int, e: dict, tags: list) -> None:
+    """Avisa a quienes SIGUEN a un jugador recién apuntado al evento (Fase 6)."""
+    if not tags:
+        return
+    ev_name = e.get("name") or "un evento"
+    owner = e.get("owner_user_id")
+    for tag in tags:
+        followers = db.users_following_player(tag)
+        if not followers:
+            continue
+        pname = db.get_player_name(tag) or tag
+        db.notify_many(
+            followers, "player_in_event",
+            f"{pname} participa en un evento",
+            f"Sigues a {pname}, que se ha apuntado a «{ev_name}». ¿Quieres seguir el evento para no perderte sus partidas?",
+            event_id=eid, data={"player_tag": tag}, exclude=[owner])
+
+
 @app.post("/api/events/{eid}/invite")
 async def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     if db.event_owner(eid) != user["id"]:
@@ -1545,6 +1604,7 @@ async def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Dep
     team_id = db.create_team(eid, team_name, None, None) if (e["mode"] == "teams" and team_name) else None
     db.add_participant(eid, None, tag, team_id, 1)
     await _ensure_player_profiles([tag])  # guarda su nombre para mostrarlo
+    _notify_followers_player_added(eid, e, [tag])
     return {"ok": True}
 
 
@@ -1573,6 +1633,7 @@ async def api_event_invite_bulk(eid: int, payload: dict = Body(...), user: dict 
         db.add_participant(eid, None, nt, team_id, 1)
         added.append(nt)
     await _ensure_player_profiles(added)  # guarda sus nombres para mostrarlos
+    _notify_followers_player_added(eid, e, added)
     return {"ok": True, "added": len(added), "duplicates": dup, "no_space": no_space, "total": len(norm)}
 
 
@@ -1582,6 +1643,107 @@ def api_event_remove_participant(eid: int, pid: int, user: dict = Depends(auth.r
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     db.remove_participant(eid, pid)
     return {"ok": True}
+
+
+# --------------------------- Notificaciones (Fase 6) ---------------------------
+
+@app.get("/api/notifications")
+def api_notifications_list(user: dict = Depends(auth.require_user)):
+    items = db.list_notifications(user["id"])
+    return {"items": items, "unread": db.count_unread_notifications(user["id"])}
+
+
+@app.get("/api/notifications/unread-count")
+def api_notifications_unread(user: dict = Depends(auth.require_user)):
+    return {"unread": db.count_unread_notifications(user["id"])}
+
+
+@app.post("/api/notifications/{nid}/read")
+def api_notification_read(nid: int, user: dict = Depends(auth.require_user)):
+    db.mark_notification_read(user["id"], nid)
+    return {"ok": True, "unread": db.count_unread_notifications(user["id"])}
+
+
+@app.post("/api/notifications/read-all")
+def api_notifications_read_all(user: dict = Depends(auth.require_user)):
+    n = db.mark_all_notifications_read(user["id"])
+    return {"ok": True, "marked": n}
+
+
+@app.delete("/api/notifications/{nid}")
+def api_notification_delete(nid: int, user: dict = Depends(auth.require_user)):
+    db.delete_notification(user["id"], nid)
+    return {"ok": True}
+
+
+@app.delete("/api/notifications")
+def api_notifications_delete_all(user: dict = Depends(auth.require_user)):
+    n = db.delete_all_notifications(user["id"])
+    return {"ok": True, "deleted": n}
+
+
+def _match_names(m, teams_mode, parts):
+    """Nombres de los dos lados de una partida, para el resumen."""
+    def nm(tag):
+        p = next((x for x in parts if x["player_tag"] == tag), None)
+        return (p.get("player_name") if p else None) or tag
+    if m.get("roster_a") or m.get("roster_b"):
+        return ("Equipo A", "Equipo B")
+    if teams_mode:
+        return (m.get("a_team_name") or "Equipo A", m.get("b_team_name") or "Equipo B")
+    return (m.get("a_name") or m.get("a_tag") or "?", m.get("b_name") or m.get("b_tag") or "?")
+
+
+def _summary_context(e, matches, standings, parts):
+    teams_mode = e.get("mode") == "teams"
+    _fmt = {"swiss": "suizo", "mcmahon": "McMahon", "roundrobin": "todos contra todos",
+            "single_elim": "eliminación directa", "random_teams": "equipos aleatorios", "free": "libre"}
+    L = [f"Evento: «{e.get('name')}» · formato {_fmt.get(e.get('format'), e.get('format'))}."]
+    played = [m for m in matches if m.get("status") == "played"]
+    if played:
+        last = max((m.get("round") or 1) for m in played)
+        lr = [m for m in played if (m.get("round") or 1) == last]
+        L.append(f"\nResultados de la ronda {last}:")
+        for m in lr:
+            a, b = _match_names(m, teams_mode, parts)
+            if m.get("winner") == "void":
+                L.append(f"- {a} vs {b}: no jugado")
+            else:
+                L.append(f"- {a} {m.get('score_a')}–{m.get('score_b')} {b}")
+    if standings:
+        L.append("\nClasificación:")
+        for i, r in enumerate(standings[:6], 1):
+            L.append(f"{i}. {r['name']} — {r['pts']} pts (PJ {r['pj']}, G {r['g']}, E {r['e']}, P {r['p']})")
+    return "\n".join(L)
+
+
+@app.post("/api/events/{eid}/summary")
+async def api_event_summary(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
+    """El organizador genera un resumen (una sola llamada a Claude) y se envía como
+    notificación idéntica a seguidores, apuntados y a sí mismo (Fase 6)."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    if not coach.configured():
+        return JSONResponse({"error": "Falta ANTHROPIC_API_KEY para generar el resumen."}, status_code=400)
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    matches = db.list_matches(eid)
+    parts = db.list_participants(eid)
+    teams = db.list_teams(eid)
+    standings = _compute_standings(e, matches, parts, teams)
+    if not any(m.get("status") == "played" for m in matches):
+        return JSONResponse({"error": "Aún no hay resultados que resumir."}, status_code=400)
+    try:
+        text = await coach.generate_event_summary(_summary_context(e, matches, standings, parts))
+    except Exception as ex:  # noqa: BLE001
+        return JSONResponse({"error": f"No se pudo generar el resumen: {ex}"}, status_code=502)
+    if not text:
+        return JSONResponse({"error": "El resumen salió vacío; inténtalo de nuevo."}, status_code=502)
+    # destinatarios: seguidores + apuntados + organizador (deduplicados)
+    recipients = db.event_follower_ids(eid) + db.event_participant_user_ids(eid) + [user["id"]]
+    n = db.notify_many(recipients, "event_summary", f"Resumen · {e.get('name')}", text, event_id=eid)
+    return {"ok": True, "sent": n, "text": text}
 
 
 # --------------------------- Equipos / plantillas (Fase 4) ---------------------------

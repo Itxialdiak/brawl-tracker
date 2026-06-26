@@ -43,6 +43,11 @@ Abre **http://localhost:8000**.
 
 Requiere **Python 3.9 o superior** (recomendado 3.11+).
 
+## 3. Comandos servidor
+conectarse a la aplicación por ssh: ssh -v -i ~/.ssh/id_ed25519 root@167.233.207.224
+levantar servidor local: uvicorn app.main:app --reload --port 8000
+editar proxy caddy: nano /etc/caddy/Caddyfile
+
 ## 3. Añadir jugadores
 
 No hace falta configurar ningún tag en el `.env`. En la web, en la barra
@@ -59,19 +64,6 @@ seguirlo y borra sus datos.
 
 **Deja la app corriendo mientras se juega** para no perder partidas.
 
-## Migrar a un VPS (más adelante)
-
-Con un VPS de IP fija puedes seguir con el proxy (no tocas nada) o apuntar
-directo a la API oficial: en `.env`, comenta `BRAWL_API_BASE` (o ponla en
-`https://api.brawlstars.com/v1`) y da de alta la **IP del VPS** en la key.
-
-## Cuentas de usuario (futuro, cuando sea pública)
-
-Hoy es de un solo dueño: todos los jugadores seguidos se ven sin login. Cuando
-quieras abrirla al público, se añade por encima una tabla de usuarios + login y
-un mapeo "usuario → tags que sigue". Las partidas ya se guardan indexadas por
-tag (dato global y compartido: un mismo tag solo se sondea una vez aunque varios
-usuarios lo sigan), así que esa capa **no obliga a rehacer** lo de ahora.
 
 ## Notas
 

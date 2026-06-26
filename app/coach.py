@@ -157,3 +157,27 @@ def _split_title(text: str, fallback: str) -> tuple[str, str]:
         body = "\n".join(lines[1:]).strip()
         return (name or f"Informe · {fallback}"), body
     return f"Informe · {fallback}", text
+
+
+# --------------------------- Fase 6: resumen de evento para seguidores ---------------------------
+
+async def generate_event_summary(ctx: str) -> str:
+    """Una sola llamada a Claude: un resumen breve (para notificar a los seguidores)
+    de cómo va el evento tras la última ronda/jornada. `ctx` es texto ya preparado."""
+    if not API_KEY:
+        raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env.")
+    try:
+        from anthropic import AsyncAnthropic
+    except ImportError:
+        raise RuntimeError("Falta el paquete 'anthropic'. Ejecuta: pip install -r requirements.txt")
+    client = AsyncAnthropic(api_key=API_KEY)
+    msg = await client.messages.create(
+        model=MODEL, max_tokens=350,
+        system=("Eres el cronista de un torneo de Brawl Stars. Escribe en castellano un resumen "
+                "BREVE (2-4 frases, máximo ~90 palabras) y ameno para avisar a los seguidores de "
+                "cómo va el evento: menciona los resultados más destacados de la última ronda y cómo "
+                "queda la clasificación (líder y poco más). Tono cercano, sin markdown, sin títulos, "
+                "sin listas, solo el texto del aviso. No te inventes datos que no estén en el contexto."),
+        messages=[{"role": "user", "content": ctx}],
+    )
+    return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
