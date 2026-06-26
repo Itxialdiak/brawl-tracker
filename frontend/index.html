@@ -46,7 +46,7 @@
     margin: -28px calc(-1 * clamp(16px,4vw,48px)) 20px;
   }
   .app-banner {
-    width: 50%; margin: 0 auto; height: 200px;
+    width: 50%; margin: 0 auto; height: 230px;
     background: url('/static/media/banner.png') center / 100% 100% no-repeat;
     border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.45);
   }
@@ -308,12 +308,24 @@
   .no-players h3 { color: var(--text); font-family: var(--display); font-weight: 600; margin-bottom: 6px; }
 
   /* Cabecera de jugador */
-  .player-header { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: rise .5s ease both; }
+  .player-header { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: rise .5s ease both; flex-wrap: wrap; }
+  .player-id { min-width: 0; }
   .player-icon { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-elev); object-fit: cover; }
   .player-header .pname { font-family: var(--display); font-weight: 700; font-size: clamp(20px,2.6vw,26px); letter-spacing: .5px; }
   .player-header .ptag { color: var(--cyan); font-family: var(--display); font-size: 13px; }
   .player-header .pclub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
   .player-header .pclub b { color: var(--gold); font-weight: 600; }
+  /* Bloque de estadísticas del jugador (copas máx., victorias) */
+  .pl-stats { margin-left: auto; }
+  .pl-stat-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pl-stat { display: flex; align-items: center; gap: 9px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 8px 13px; }
+  .pl-stat-ic { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: 0 0 22px; }
+  .pl-stat-ic svg { width: 22px; height: 22px; display: block; }
+  .pl-stat-v { font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1.05; }
+  .pl-stat-l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 1px; }
+  .pl-gold .pl-stat-ic, .pl-gold .pl-stat-v { color: var(--gold); }
+  .pl-cyan .pl-stat-ic { color: var(--cyan); }
+  .pl-magenta .pl-stat-ic { color: var(--loss); }
 
   /* Pestañas */
   .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 22px; flex-wrap: wrap; }
@@ -612,7 +624,7 @@
   .lgtab:hover { color: var(--text); }
   .lgtab.active { color: #0a0a1f; background: linear-gradient(100deg, var(--gold), var(--cyan)); border-color: transparent; }
 
-  .event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 14px; }
+  .event-grid { display: grid; grid-template-columns: repeat(auto-fill, 264px); justify-content: start; gap: 14px; }
   .event-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; cursor: pointer;
     transition: transform .15s, border-color .15s, box-shadow .15s; display: flex; flex-direction: column; }
   .event-card:hover { transform: translateY(-3px); border-color: rgba(150,130,255,.45); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
@@ -653,6 +665,32 @@
   .evd-part-name { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }
   .evd-part-tag { color: var(--cyan); font-family: var(--display); font-size: 12px; flex: 0 0 auto; }
   .evd-team { font-size: 11px; color: var(--magenta); border: 1px solid var(--border); border-radius: 12px; padding: 1px 7px; margin-left: 6px; }
+  /* Equipos y plantillas (Fase 4) */
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .team-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
+  .team-card-h { display: flex; align-items: center; gap: 10px; }
+  .team-logo { width: 38px; height: 38px; border-radius: 9px; object-fit: cover; flex: 0 0 auto; border: 1px solid var(--border); }
+  .team-logo-ph { display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--gold); font-family: var(--display); font-weight: 700; font-size: 18px; }
+  .team-card-name { font-family: var(--display); font-weight: 700; font-size: 15px; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .team-card-count { font-size: 11px; color: var(--muted); background: var(--panel); border-radius: 10px; padding: 0 7px; font-family: var(--body); }
+  .team-card-ctrl { display: flex; gap: 2px; flex: 0 0 auto; }
+  .team-card-ctrl .evd-x { color: var(--muted); }
+  .team-mems { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .team-mem { font-size: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 2px 4px 2px 9px; display: inline-flex; align-items: center; gap: 4px; }
+  .team-mem-x { background: transparent; border: none; color: var(--loss); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+  .team-unassigned { margin-top: 12px; border: 1px dashed var(--border); border-radius: 12px; padding: 10px 12px; }
+  .team-unassigned-h { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+  .team-ua-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 13px; }
+  .team-assign-sel { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 12px; max-width: 50%; }
+  .et-logo-preview { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+  /* Partidos con roster (equipos aleatorios) */
+  .m-roster { display: flex; flex-wrap: wrap; gap: 3px 5px; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .m-roster b { color: var(--text); font-weight: 600; }
+  #em-roster-wrap { display: flex; align-items: stretch; gap: 10px; margin-bottom: 14px; }
+  .em-roster { flex: 1; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+  .em-roster-h { font-family: var(--display); font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .em-roster-mem { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+  .em-roster-vs { align-self: center; color: var(--muted); font-family: var(--display); }
   .evd-x { background: transparent; border: none; color: var(--loss); font-size: 14px; cursor: pointer; padding: 2px 6px; flex: 0 0 auto; }
   .evd-req { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: rgba(245,184,42,.06); border: 1px solid rgba(245,184,42,.25); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
   .evd-req-actions { display: flex; gap: 6px; flex: 0 0 auto; }
@@ -683,6 +721,20 @@
   .m-edit { flex: 0 0 auto; background: transparent; border: 1px solid var(--border); color: var(--cyan); border-radius: 7px; padding: 4px 9px; cursor: pointer; font-size: 13px; }
   .m-edit:hover { border-color: var(--cyan); }
   .m-meta { text-align: center; font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* Fase 2: cuadro de eliminación directa */
+  .em-fixed { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 15px; }
+  .brk-wrap { display: flex; gap: 18px; overflow-x: auto; padding-bottom: 10px; align-items: stretch; }
+  .brk-col { flex: 0 0 250px; display: flex; flex-direction: column; justify-content: space-around; gap: 10px; }
+  .brk-round-h { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 2px; text-align: center; }
+  .m-tbd { color: var(--muted); font-style: italic; font-weight: 500; }
+  @media (max-width: 768px) {
+    .brk-wrap { flex-direction: column; overflow-x: visible; gap: 14px; }
+    .brk-col { flex: 1 1 auto; justify-content: flex-start; }
+    .evd-mbar { gap: 8px; }
+    .evd-mbar .btn, .evd-mbar .ghost { flex: 1 1 auto; }
+    .mbar-extra { display: none; }
+  }
 
   .lg-empty { text-align: center; padding: 36px 20px; color: var(--muted); border: 1px dashed var(--border); border-radius: 14px; font-size: 14px; }
   .lg-board { margin-top: 34px; }
@@ -830,6 +882,9 @@
     /* Cabecera de jugador más compacta */
     .player-header { gap: 12px; }
     .player-icon { width: 52px; height: 52px; }
+    .pl-stats { margin-left: 0; width: 100%; }
+    .pl-stat { padding: 7px 11px; gap: 8px; }
+    .pl-stat-v { font-size: 15px; }
 
     /* Paneles y rejillas */
     .panel { padding: 16px 15px; }
@@ -1187,11 +1242,12 @@
   <div id="dashboard">
     <div class="player-header" id="player-header">
       <img class="player-icon" id="player-icon" alt="" style="display:none" />
-      <div>
+      <div class="player-id">
         <div class="pname" id="player-name">—</div>
         <div class="ptag" id="player-tag">—</div>
         <div class="pclub" id="player-club" style="display:none"></div>
       </div>
+      <div class="pl-stats" id="player-stats"></div>
     </div>
 
     <div class="filters">
@@ -1520,10 +1576,12 @@
             <option value="swiss">Suizo</option><option value="mcmahon">McMahon</option>
             <option value="roundrobin">Round Robin (todos contra todos)</option>
             <option value="single_elim">Eliminación directa</option>
+            <option value="random_teams">Equipos aleatorios (individual)</option>
             <option value="double_elim">Doble eliminación</option>
             <option value="free">Liga libre</option>
           </select></div>
         <div class="ee-field"><label class="ec-lbl">Nº de vueltas (ligas)</label><input type="number" id="ee-rounds" min="1" max="20" placeholder="1" /></div>
+        <div class="ee-field" id="ee-teamsize-wrap" style="display:none"><label class="ec-lbl">Tamaño de equipo (aleatorios)</label><input type="number" id="ee-teamsize" min="1" max="5" value="3" /></div>
       </div>
       <div class="ee-field"><label class="ec-lbl">Normas del formato <span class="ec-mini">(opcional — si lo dejas en blanco se usan las normas estándar del modelo elegido)</span></label>
         <textarea id="ee-rules" class="ee-textarea" rows="3" placeholder="Déjalo en blanco para las normas estándar del modelo, o describe las tuyas…"></textarea></div>
@@ -1607,13 +1665,13 @@
   <!-- Modal: invitar/añadir jugador (organizador) -->
   <div class="modal-overlay" id="event-invite-modal">
     <div class="modal-card">
-      <h3 class="modal-title">Añadir jugador</h3>
-      <label class="ec-lbl">Tag del jugador</label>
-      <input type="text" id="einv-tag" placeholder="#TAG del jugador" />
-      <div class="ec-hint">Rellena una plaza con cualquier jugador por su tag.</div>
+      <h3 class="modal-title">Añadir jugadores</h3>
+      <label class="ec-lbl">IDs de jugador</label>
+      <textarea id="einv-tags" class="ee-textarea" rows="3" placeholder="#TAG1, #TAG2, #TAG3…"></textarea>
+      <div class="ec-hint">Pega uno o varios IDs separados por comas, espacios o saltos de línea. Se obtiene el nombre de cada jugador automáticamente.</div>
       <div id="einv-team-wrap" style="display:none">
-        <label class="ec-lbl">Nombre del equipo (opcional)</label>
-        <input type="text" id="einv-team" placeholder="Equipo" />
+        <label class="ec-lbl">Equipo (opcional)</label>
+        <input type="text" id="einv-team" placeholder="Asignar todos a este equipo" />
       </div>
       <div class="modal-actions">
         <button class="ghost" type="button" onclick="closeEvModal('event-invite-modal')">Cancelar</button>
@@ -1626,10 +1684,18 @@
   <div class="modal-overlay" id="event-match-modal">
     <div class="modal-card">
       <h3 class="modal-title" id="em-title">Nuevo enfrentamiento</h3>
-      <div class="ee-grid">
+      <div class="em-fixed" id="em-fixed-wrap" style="display:none"><span id="em-fixed"></span></div>
+      <div id="em-roster-wrap" style="display:none">
+        <div class="em-roster"><div class="em-roster-h">Equipo A</div><div class="em-roster-mem" id="em-roster-a"></div></div>
+        <div class="em-roster-vs">vs</div>
+        <div class="em-roster"><div class="em-roster-h">Equipo B</div><div class="em-roster-mem" id="em-roster-b"></div></div>
+      </div>
+      <div class="ee-grid ee-grid-3" id="em-grid-rab">
         <div class="ee-field"><label class="ec-lbl">Jornada</label><input type="number" id="em-round" min="1" value="1" /></div>
         <div class="ee-field"><label class="ec-lbl" id="em-a-lbl">Jugador A</label><select id="em-a"></select></div>
         <div class="ee-field"><label class="ec-lbl" id="em-b-lbl">Jugador B</label><select id="em-b"></select></div>
+      </div>
+      <div class="ee-grid">
         <div class="ee-field"><label class="ec-lbl">Modo</label><input type="text" id="em-mode" placeholder="Modo" /></div>
         <div class="ee-field"><label class="ec-lbl">Mapa</label><input type="text" id="em-map" placeholder="Mapa" /></div>
       </div>
@@ -1656,7 +1722,25 @@
     </div>
   </div>
 
-  <!-- ===================== SECCIÓN: ADMINISTRACIÓN (solo admins) ===================== -->
+  <div class="modal-overlay" id="event-team-modal">
+    <div class="modal-card">
+      <h3 class="modal-title" id="et-title">Nuevo equipo</h3>
+      <label class="ec-lbl">Nombre del equipo</label>
+      <input type="text" id="et-name" placeholder="Nombre del equipo" />
+      <label class="ec-lbl" style="margin-top:12px">Logo (opcional)</label>
+      <div class="ee-poster-row">
+        <img id="et-logo-preview" class="et-logo-preview" style="display:none" />
+        <label class="ghost ee-upload">Subir logo<input type="file" id="et-logo-file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="uploadTeamLogo(this)"></label>
+        <button type="button" class="ghost" id="et-logo-clear" style="display:none" onclick="clearTeamLogo()">Quitar</button>
+      </div>
+      <div class="modal-actions ee-actions">
+        <div style="flex:1"></div>
+        <button class="ghost" type="button" onclick="closeEvModal('event-team-modal')">Cancelar</button>
+        <button class="btn" type="button" onclick="submitTeam()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <section class="app-section" id="section-admin">
     <div class="admin-tabs">
       <button class="atab active" data-atab="pending" onclick="showAdminTab('pending')">Cambios pendientes <span class="admin-badge" id="admin-tab-badge" style="display:none">0</span></button>
@@ -1893,6 +1977,28 @@ function applyScope() {
   if (b) { n.classList.add("show"); n.textContent = `Viendo solo ${b}: el desglose por modo, mapa y rivales es de ese brawler.`; }
   else { n.classList.remove("show"); n.textContent = ""; }
 }
+const ICON_TROPHY = `<svg viewBox="0 0 576 512" fill="currentColor"><path d="M400 0H176c-26.5 0-48.1 21.8-47.1 48.2c.2 5.3 .4 10.6 .7 15.8H24C10.7 64 0 74.7 0 88c0 92.6 33.5 157 78.5 200.7c44.3 43.1 98.3 64.8 138.1 75.8c23.4 6.5 39.4 26 39.4 45.6c0 20.9-17 37.9-37.9 37.9H192c-17.7 0-32 14.3-32 32s14.3 32 32 32H384c17.7 0 32-14.3 32-32s-14.3-32-32-32H359.9C339 448 322 431 322 410.1c0-19.6 16-39.1 39.4-45.6c39.9-11 93.9-32.7 138.2-75.8C544.5 245 578 180.6 578 88c0-13.3-10.7-24-24-24H446.4c.3-5.2 .5-10.5 .7-15.8C448.1 21.8 426.5 0 400 0zM48.9 112h84.4c9.1 90.1 29.2 150.3 51.9 190.6c-24.9-11-50.8-26.5-73.2-48.3c-32-31.1-58-76-63-142.3zM464.1 254.3c-22.4 21.8-48.3 37.3-73.2 48.3c22.7-40.3 42.8-100.5 51.9-190.6h84.4c-5 66.3-31 111.2-63 142.3z"/></svg>`;
+const ICON_3V3 = `<svg viewBox="0 0 640 512" fill="currentColor"><path d="M144 0a80 80 0 1 1 0 160A80 80 0 1 1 144 0zM512 0a80 80 0 1 1 0 160A80 80 0 1 1 512 0zM0 298.7C0 239.8 47.8 192 106.7 192h42.7c15.9 0 31 3.5 44.6 9.7c-1.3 7.2-1.9 14.7-1.9 22.3c0 38.2 16.8 72.5 43.3 96c-.2 0-.4 0-.7 0H21.3C9.6 320 0 310.4 0 298.7zM405.3 320l-.7 0c26.6-23.5 43.3-57.8 43.3-96c0-7.6-.7-15-1.9-22.3c13.6-6.3 28.7-9.7 44.6-9.7h42.7C592.2 192 640 239.8 640 298.7c0 11.7-9.6 21.3-21.3 21.3H405.3zM224 224a96 96 0 1 1 192 0 96 96 0 1 1 -192 0zM128 485.3C128 411.7 187.7 352 261.3 352H378.7C452.3 352 512 411.7 512 485.3c0 14.7-11.9 26.7-26.7 26.7H154.7c-14.7 0-26.7-11.9-26.7-26.7z"/></svg>`;
+const ICON_SKULL = `<svg viewBox="0 0 512 512" fill="currentColor"><path d="M416 398.9c58.5-41.1 96-104.1 96-174.9C512 100.3 397.4 0 256 0S0 100.3 0 224c0 70.7 37.5 133.8 96 174.9l0 33.1c0 17.7 14.3 32 32 32l32 0 0-32c0-17.7 14.3-32 32-32s32 14.3 32 32l0 32 32 0 0-32c0-17.7 14.3-32 32-32s32 14.3 32 32l0 32 32 0c17.7 0 32-14.3 32-32l0-33.1zM160 256a48 48 0 1 1 0-96 48 48 0 1 1 0 96zm192 0a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg>`;
+function plStatChip(icon, label, value, tone) {
+  return `<div class="pl-stat pl-${tone}"><span class="pl-stat-ic">${icon}</span><div class="pl-stat-tx"><div class="pl-stat-v">${value}</div><div class="pl-stat-l">${label}</div></div></div>`;
+}
+async function loadPlayerStats() {
+  const box = $("player-stats"); if (!box) return;
+  if (!currentPlayer) { box.innerHTML = ""; return; }
+  const tag = currentPlayer;
+  let prof = null;
+  try { prof = await getJSON("/api/player-profile?player=" + encodeURIComponent(tag)); } catch (e) { prof = null; }
+  if (tag !== currentPlayer) return;  // el usuario cambió de jugador mientras cargaba
+  if (!prof || prof.error) { box.innerHTML = ""; return; }
+  myProfile = prof;
+  const n = (v) => v != null ? Number(v).toLocaleString("es-ES") : null;
+  const chips = [];
+  const ht = n(prof.highest_trophies); if (ht != null) chips.push(plStatChip(ICON_TROPHY, "Copas máx.", ht, "gold"));
+  const v3 = n(prof.victories_3v3); if (v3 != null) chips.push(plStatChip(ICON_3V3, "Victorias 3v3", v3, "cyan"));
+  const vs = n(prof.victories_solo); if (vs != null) chips.push(plStatChip(ICON_SKULL, "Supervivencia", vs, "magenta"));
+  box.innerHTML = chips.length ? `<div class="pl-stat-group">${chips.join("")}</div>` : "";
+}
 function updatePlayerHeader() {
   const p = playersById[currentPlayer];
   $("player-name").textContent = p && p.name ? p.name : (currentPlayer || "—");
@@ -1903,6 +2009,8 @@ function updatePlayerHeader() {
   const img = $("player-icon");
   if (p && p.icon_url) { img.src = p.icon_url; img.style.display = ""; img.onerror = () => { img.style.display = "none"; }; }
   else { img.style.display = "none"; }
+  $("player-stats").innerHTML = "";  // limpia mientras carga
+  loadPlayerStats();
 }
 async function loadPlayers() {
   const players = await getJSON("/api/players");
@@ -3248,7 +3356,7 @@ const EV_MODE_LABEL = { individual: "Individual", teams: "Por equipos" };
 const EV_VIS_LABEL = { public: "Público", acceptance: "Con aceptación", private: "Privado" };
 const EV_MATCH_LABEL = { bo1: "A 1 combate", bo3: "Al mejor de 3", bo5: "Al mejor de 5" };
 const EV_STATUS_LABEL = { open: "Inscripción abierta", ongoing: "En curso", finished: "Finalizado" };
-const EV_FORMAT_LABEL = { swiss: "Suizo", mcmahon: "McMahon", roundrobin: "Round Robin", single_elim: "Eliminación directa", double_elim: "Doble eliminación", free: "Liga libre" };
+const EV_FORMAT_LABEL = { swiss: "Suizo", mcmahon: "McMahon", roundrobin: "Round Robin", single_elim: "Eliminación directa", double_elim: "Doble eliminación", free: "Liga libre", random_teams: "Equipos aleatorios" };
 const EV_FORMAT_RULES = {
   swiss: "Sistema suizo: cada ronda empareja a jugadores con puntuación similar. No hay eliminación; se juega un número fijo de rondas y gana quien más puntos sume.",
   mcmahon: "Sistema McMahon: como el suizo, pero con puntos iniciales según el nivel o categoría de cada jugador. Ideal para muchos participantes de niveles dispares.",
@@ -3492,80 +3600,242 @@ function renderEventDetail(d) {
     ${mapsBlock}
     ${reqHTML}
     <div class="evd-section"><h4>Participantes (${parts.length}/${d.max_participants || 12})</h4><div class="evd-parts">${partsHTML}</div></div>
+    ${renderTeamsBlock(d)}
     ${renderResultsBlock(d)}`;
 }
 
 /* ----- Fase 1: clasificación y enfrentamientos ----- */
+function renderTeamsBlock(d) {
+  if (d.mode !== "teams") return "";
+  const teams = d.teams || [], parts = d.participants_list || [];
+  const byTeam = {}; teams.forEach((t) => { byTeam[t.id] = []; });
+  const noTeam = [];
+  parts.forEach((p) => { if (p.team_id && byTeam[p.team_id]) byTeam[p.team_id].push(p); else noTeam.push(p); });
+  const teamOpts = `<option value="">Sin equipo</option>` + teams.map((t) => `<option value="${t.id}">${esc(t.name || ("Equipo " + t.id))}</option>`).join("");
+  const cards = teams.map((t) => {
+    const mem = byTeam[t.id] || [];
+    const logo = t.logo_url
+      ? `<img class="team-logo" src="${esc(t.logo_url)}" alt="">`
+      : `<div class="team-logo team-logo-ph">${esc((t.name || "E").trim().slice(0, 1).toUpperCase())}</div>`;
+    const ctrl = d.is_owner ? `<div class="team-card-ctrl"><button class="evd-x" title="Editar" onclick="openTeamModal(${t.id})">✎</button><button class="evd-x" title="Borrar" onclick="deleteTeam(${t.id})">✕</button></div>` : "";
+    const mems = mem.length
+      ? mem.map((p) => `<span class="team-mem">${esc(p.player_name || p.player_tag)}${d.is_owner ? `<button class="team-mem-x" title="Sacar del equipo" onclick="assignTeam(${p.id}, '')">×</button>` : ""}</span>`).join("")
+      : `<span class="evd-muted" style="font-size:12px">Sin jugadores</span>`;
+    return `<div class="team-card"><div class="team-card-h">${logo}<div class="team-card-name">${esc(t.name || ("Equipo " + t.id))}<span class="team-card-count">${mem.length}</span></div>${ctrl}</div><div class="team-mems">${mems}</div></div>`;
+  }).join("");
+  let unassigned = "";
+  if (d.is_owner && noTeam.length) {
+    unassigned = `<div class="team-unassigned"><div class="team-unassigned-h">Sin equipo (${noTeam.length})</div>${noTeam.map((p) => `<div class="team-ua-row"><span>${esc(p.player_name || p.player_tag)} <span class="evd-part-tag">${esc(p.player_tag)}</span></span><select class="team-assign-sel" onchange="assignTeam(${p.id}, this.value)">${teamOpts}</select></div>`).join("")}</div>`;
+  }
+  const bar = d.is_owner ? `<div class="evd-mbar"><button class="btn" onclick="openTeamModal()">+ Crear equipo</button></div>` : "";
+  const empty = !teams.length ? `<p class="evd-muted">Aún no hay equipos.${d.is_owner ? " Crea equipos y asígnales jugadores." : ""}</p>` : "";
+  return `<div class="evd-section"><h4>Equipos y plantillas (${teams.length})</h4>${bar}${empty}<div class="team-grid">${cards}</div>${unassigned}</div>`;
+}
+let editingTeam = null, teamLogoUrl = null;
+function openTeamModal(tid) {
+  const d = currentEvent;
+  editingTeam = tid ? (d.teams || []).find((t) => t.id === tid) : null;
+  $("et-title").textContent = editingTeam ? "Editar equipo" : "Nuevo equipo";
+  $("et-name").value = editingTeam ? (editingTeam.name || "") : "";
+  teamLogoUrl = editingTeam ? (editingTeam.logo_url || null) : null;
+  renderTeamLogoPreview();
+  openEvModal("event-team-modal");
+}
+function renderTeamLogoPreview() {
+  const img = $("et-logo-preview"), clr = $("et-logo-clear");
+  if (teamLogoUrl) { img.src = teamLogoUrl; img.style.display = ""; clr.style.display = ""; }
+  else { img.style.display = "none"; clr.style.display = "none"; }
+}
+async function uploadTeamLogo(input) {
+  const file = input.files && input.files[0]; input.value = "";
+  if (!file) return;
+  try {
+    const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    const { ok, d } = await apiSend("/api/events/upload-image", "POST", { data: dataUrl, mime: file.type });
+    if (ok && d.url) { teamLogoUrl = d.url; renderTeamLogoPreview(); } else wikiToast((d && d.error) || "No se pudo subir el logo", "err");
+  } catch (e) { wikiToast("No se pudo subir el logo", "err"); }
+}
+function clearTeamLogo() { teamLogoUrl = null; renderTeamLogoPreview(); }
+async function submitTeam() {
+  const d = currentEvent, name = $("et-name").value.trim();
+  if (!name) { wikiToast("Pon un nombre al equipo", "err"); return; }
+  const body = { name, logo_url: teamLogoUrl || "" };
+  const r = editingTeam
+    ? await apiSend(`/api/events/${d.id}/teams/${editingTeam.id}`, "PATCH", body)
+    : await apiSend(`/api/events/${d.id}/teams`, "POST", body);
+  if (!r.ok) { wikiToast((r.d && (r.d.error || r.d.detail)) || "No se pudo guardar", "err"); return; }
+  closeEvModal("event-team-modal"); wikiToast(editingTeam ? "Equipo actualizado" : "Equipo creado", "ok"); await openEvent(d.id);
+}
+async function deleteTeam(tid) {
+  const d = currentEvent;
+  if (!confirm("¿Borrar este equipo? Sus jugadores quedarán sin equipo.")) return;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/teams/${tid}`, "DELETE");
+  if (!ok) { wikiToast((r && r.error) || "No se pudo borrar", "err"); return; }
+  wikiToast("Equipo borrado", "ok"); await openEvent(d.id);
+}
+async function assignTeam(pid, teamId) {
+  const d = currentEvent;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/participants/${pid}/team`, "POST", { team_id: teamId || null });
+  if (!ok) { wikiToast((r && r.error) || "No se pudo asignar", "err"); return; }
+  await openEvent(d.id);
+}
 function renderResultsBlock(d) {
+  if (d.format === "single_elim") return renderBracket(d);
   const teamsMode = d.mode === "teams";
   const matches = d.matches || [], standings = d.standings || [];
+  const rrOk = (!d.format || d.format === "roundrobin" || d.format === "free");
+  const swiss = (d.format === "swiss" || d.format === "mcmahon");
+  const rnd = (d.format === "random_teams");
+  const roundByRound = swiss || rnd;
+  const showCups = swiss && !teamsMode;
+  const noDiff = rnd;  // en equipos aleatorios no hay diferencia de sets individual
+  const roundWord = roundByRound ? "Ronda" : "Jornada";
   let standHTML = "";
   if (standings.length) {
-    standHTML = `<div class="evd-section"><h4>Clasificación</h4>
+    standHTML = `<div class="evd-section"><h4>Clasificación${rnd ? " (individual)" : ""}</h4>
       <div class="table-scroll"><table class="stand-table">
-        <thead><tr><th>#</th><th>${teamsMode ? "Equipo" : "Jugador"}</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Dif</th><th>Pts</th></tr></thead>
+        <thead><tr><th>#</th><th>${teamsMode ? "Equipo" : "Jugador"}</th><th>PJ</th><th>G</th><th>E</th><th>P</th>${noDiff ? "" : "<th>Dif</th>"}${showCups ? "<th>Copas</th>" : ""}<th>Pts</th></tr></thead>
         <tbody>${standings.map((s, i) => `<tr>
           <td>${i + 1}</td><td class="stand-name">${esc(s.name)}</td>
           <td>${s.pj}</td><td>${s.g}</td><td>${s.e}</td><td>${s.p}</td>
-          <td>${s.dif > 0 ? "+" + s.dif : s.dif}</td><td class="stand-pts">${s.pts}</td>
-        </tr>`).join("")}</tbody></table></div></div>`;
+          ${noDiff ? "" : `<td>${s.dif > 0 ? "+" + s.dif : s.dif}</td>`}${showCups ? `<td class="stand-cups">${s.seed_cups != null ? Number(s.seed_cups).toLocaleString("es-ES") : "—"}</td>` : ""}<td class="stand-pts">${s.pts}</td>
+        </tr>`).join("")}</tbody></table></div>
+      ${d.format === "mcmahon" ? `<p class="ec-hint" style="margin-top:8px">McMahon: los puntos incluyen la ventaja inicial por copas (snapshot al emparejar la 1.ª ronda).</p>` : ""}</div>`;
   }
-  const ownerBar = d.is_owner ? `<div class="evd-mbar">
-      <button class="btn" onclick="openMatchModal()">+ Añadir enfrentamiento</button>
-      <button class="ghost" onclick="generateMatches()">⚙ Generar cruces (todos contra todos)</button>
-    </div>` : "";
+  let ownerBar = "";
+  if (d.is_owner) {
+    if (roundByRound) {
+      const allPlayed = matches.length > 0 && matches.every((m) => m.status === "played");
+      const nextN = matches.length ? Math.max.apply(null, matches.map((m) => m.round || 1)) + 1 : 1;
+      let gen;
+      if (!matches.length) gen = `<button class="btn" onclick="generateMatches()">⚙ Generar ronda 1</button>`;
+      else if (allPlayed) gen = `<button class="btn" onclick="generateMatches()">⚙ Generar ronda ${nextN}</button>`;
+      else gen = `<span class="ec-hint" style="align-self:center">Completa los resultados de la ronda actual para generar la siguiente.</span>`;
+      const restart = matches.length ? `<button class="ghost" onclick="restartPairings()">↻ Reiniciar<span class="mbar-extra"> rondas</span></button>` : "";
+      ownerBar = `<div class="evd-mbar">${gen}${restart}</div>`;
+      if (rnd) ownerBar += `<p class="ec-hint" style="margin:-2px 0 12px">Cada ronda forma equipos al azar de ${(d.settings && d.settings.team_size) || 3} jugadores; los sobrantes descansan esa ronda.</p>`;
+    } else if (rrOk) {
+      ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button><button class="ghost" onclick="generateMatches()">⚙ Generar cruces<span class="mbar-extra"> (todos contra todos)</span></button></div>`;
+    } else {
+      ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button></div><div class="ec-hint" style="margin-bottom:14px">El emparejamiento automático para <b>${esc(EV_FORMAT_LABEL[d.format] || d.format)}</b> llegará en una fase posterior; de momento añade los enfrentamientos a mano.</div>`;
+    }
+  }
   let matchesHTML;
   if (!matches.length) {
-    matchesHTML = `<div class="evd-empty-table">Aún no hay enfrentamientos.${d.is_owner ? " Añádelos a mano o genera todos los cruces con los participantes." : " El organizador aún no los ha publicado."}</div>`;
+    const hint = roundByRound ? " Genera la primera ronda con los participantes actuales." : (rrOk ? " Añádelos a mano o genera todos los cruces con los participantes." : " Añádelos a mano.");
+    matchesHTML = `<div class="evd-empty-table">Aún no hay enfrentamientos.${d.is_owner ? hint : " El organizador aún no los ha publicado."}</div>`;
   } else {
     const byRound = {};
     matches.forEach((m) => { (byRound[m.round] = byRound[m.round] || []).push(m); });
     matchesHTML = Object.keys(byRound).sort((a, b) => a - b).map((r) =>
-      `<div class="evd-round"><div class="evd-round-h">Jornada ${r}</div>${byRound[r].map((m) => matchRowHTML(m, d)).join("")}</div>`).join("");
+      `<div class="evd-round"><div class="evd-round-h">${roundWord} ${r}</div>${byRound[r].map((m) => matchRowHTML(m, d)).join("")}</div>`).join("");
   }
   return `${standHTML}<div class="evd-section"><h4>Enfrentamientos</h4>${ownerBar}${matchesHTML}</div>`;
 }
+function bracketRoundLabel(n) {
+  return n === 1 ? "Final" : n === 2 ? "Semifinales" : n === 4 ? "Cuartos de final" : n === 8 ? "Octavos" : n === 16 ? "Dieciseisavos" : ("Ronda de " + n * 2);
+}
+function renderBracket(d) {
+  const matches = d.matches || [];
+  let ownerBar = "";
+  if (d.is_owner) {
+    ownerBar = `<div class="evd-mbar"><button class="btn" onclick="generateMatches()">${matches.length ? "↻ Regenerar<span class='mbar-extra'> cuadro</span>" : "⚙ Generar<span class='mbar-extra'> cuadro de eliminación</span>"}</button></div>`;
+  }
+  if (!matches.length) {
+    return `<div class="evd-section"><h4>Cuadro de eliminación</h4>${ownerBar}
+      <div class="evd-empty-table">Aún no hay cuadro.${d.is_owner ? " Genéralo con los participantes actuales." : " El organizador aún no lo ha generado."}</div></div>`;
+  }
+  const byRound = {};
+  matches.forEach((m) => { (byRound[m.round] = byRound[m.round] || []).push(m); });
+  const cols = Object.keys(byRound).map(Number).sort((a, b) => a - b).map((r) => {
+    const ms = byRound[r].sort((a, b) => (a.bracket_pos || 0) - (b.bracket_pos || 0));
+    return `<div class="brk-col"><div class="brk-round-h">${bracketRoundLabel(ms.length)}</div>${ms.map((m) => matchRowHTML(m, d)).join("")}</div>`;
+  }).join("");
+  return `<div class="evd-section"><h4>Cuadro de eliminación</h4>${ownerBar}<div class="brk-wrap">${cols}</div></div>`;
+}
 function matchRowHTML(m, d) {
   const teamsMode = d.mode === "teams";
-  const aName = teamsMode ? (m.a_team_name || "Equipo") : (m.a_name || m.a_tag || "?");
-  const bName = teamsMode ? (m.b_team_name || "Equipo") : (m.b_name || m.b_tag || "?");
+  if (m.roster_a || m.roster_b) {  // partido de equipos aleatorios (roster por partida)
+    const played0 = m.status === "played";
+    const nameOf = (tag) => { const p = (d.participants_list || []).find((x) => x.player_tag === tag); return esc(p ? (p.player_name || p.player_tag) : tag); };
+    const ra = (m.roster_a || []).map(nameOf).join(" · "), rb = (m.roster_b || []).map(nameOf).join(" · ");
+    const mid0 = played0
+      ? `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a != null ? m.score_a : "✓"}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b != null ? m.score_b : "✓"}</span>`
+      : `<span class="m-vs">vs</span>`;
+    const edit0 = d.is_owner ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Resultado">✎</button>` : "";
+    const meta0 = [m.mode, m.map].filter(Boolean).join(" · ");
+    return `<div class="evd-match${played0 ? " played" : ""}">
+      <div class="m-line">
+        <span class="m-side ${m.winner === "a" ? "win" : ""}">Equipo A</span>
+        <span class="m-mid">${mid0}</span>
+        <span class="m-side b ${m.winner === "b" ? "win" : ""}">Equipo B</span>${edit0}
+      </div>
+      <div class="m-roster"><b>A:</b>&nbsp;${ra || "—"} &nbsp;·&nbsp; <b>B:</b>&nbsp;${rb || "—"}</div>
+      ${meta0 ? `<div class="m-meta">${esc(meta0)}</div>` : ""}</div>`;
+  }
+  const aSet = teamsMode ? !!m.a_team : !!m.a_tag, bSet = teamsMode ? !!m.b_team : !!m.b_tag;
+  const aName = aSet ? esc(teamsMode ? (m.a_team_name || "Equipo") : (m.a_name || m.a_tag)) : null;
+  const bName = bSet ? esc(teamsMode ? (m.b_team_name || "Equipo") : (m.b_name || m.b_tag)) : null;
   const played = m.status === "played";
+  const tbd = `<span class="m-tbd">Por determinar</span>`;
+  if (played && (aSet !== bSet)) {  // bye: jugado con un solo lado presente
+    return `<div class="evd-match"><div class="m-line">
+      <span class="m-side win">${aName || bName}</span>
+      <span class="m-mid"><span class="m-vs">bye</span></span>
+      <span class="m-side b m-tbd">—</span></div></div>`;
+  }
   const mid = played
     ? `<span class="m-score ${m.winner === "a" ? "win" : ""}">${m.score_a}</span>–<span class="m-score ${m.winner === "b" ? "win" : ""}">${m.score_b}</span>`
     : `<span class="m-vs">vs</span>`;
   const meta = [m.mode, m.map].filter(Boolean).join(" · ");
-  const edit = d.is_owner ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Editar / resultado">✎</button>` : "";
+  const edit = (d.is_owner && aSet && bSet) ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Editar / resultado">✎</button>` : "";
   return `<div class="evd-match${played ? " played" : ""}">
     <div class="m-line">
-      <span class="m-side ${m.winner === "a" ? "win" : ""}">${esc(aName)}</span>
+      <span class="m-side ${m.winner === "a" ? "win" : ""}">${aName || tbd}</span>
       <span class="m-mid">${mid}</span>
-      <span class="m-side b ${m.winner === "b" ? "win" : ""}">${esc(bName)}</span>
+      <span class="m-side b ${m.winner === "b" ? "win" : ""}">${bName || tbd}</span>
       ${edit}
     </div>${meta ? `<div class="m-meta">${esc(meta)}</div>` : ""}</div>`;
 }
 function openMatchModal(mid) {
-  const d = currentEvent, teamsMode = d.mode === "teams";
+  const d = currentEvent, teamsMode = d.mode === "teams", elim = d.format === "single_elim";
   editingMatch = mid ? (d.matches || []).find((m) => m.id === mid) : null;
+  if (elim && !editingMatch) return;  // el cuadro no admite altas manuales
+  const roster = !!(editingMatch && (editingMatch.roster_a || editingMatch.roster_b));
   const opts = teamsMode
     ? (d.teams || []).map((t) => `<option value="${t.id}">${esc(t.name || ("Equipo " + t.id))}</option>`).join("")
     : (d.participants_list || []).map((p) => `<option value="${esc(p.player_tag)}">${esc(p.player_name || p.player_tag)} (${esc(p.player_tag)})</option>`).join("");
-  if (!opts) { wikiToast("Primero añade participantes al evento", "err"); return; }
+  if (!elim && !roster && !opts) { wikiToast("Primero añade participantes al evento", "err"); return; }
   $("em-a").innerHTML = opts; $("em-b").innerHTML = opts;
   $("em-a-lbl").textContent = teamsMode ? "Equipo A" : "Jugador A";
   $("em-b-lbl").textContent = teamsMode ? "Equipo B" : "Jugador B";
   const isBo1 = (d.match_type || "bo1") === "bo1";
   $("em-res-bo1").style.display = isBo1 ? "flex" : "none";
   $("em-res-multi").style.display = isBo1 ? "none" : "block";
+  const drawBtn = $("em-res-bo1").querySelector('[data-r="draw"]'); if (drawBtn) drawBtn.style.display = elim ? "none" : "";
+  $("em-grid-rab").style.display = (elim || roster) ? "none" : "grid";
+  $("em-fixed-wrap").style.display = elim ? "block" : "none";
+  $("em-roster-wrap").style.display = roster ? "flex" : "none";
   const s = d.settings || {}, fixed = s.map_policy === "fixed";
   if (editingMatch) {
     const m = editingMatch;
-    $("em-title").textContent = "Editar enfrentamiento";
+    $("em-title").textContent = (elim || roster) ? "Resultado del enfrentamiento" : "Editar enfrentamiento";
     $("em-round").value = m.round || 1;
-    $("em-a").value = teamsMode ? m.a_team : m.a_tag;
-    $("em-b").value = teamsMode ? m.b_team : m.b_tag;
+    if (elim) {
+      const aN = teamsMode ? (m.a_team_name || "?") : (m.a_name || m.a_tag || "?");
+      const bN = teamsMode ? (m.b_team_name || "?") : (m.b_name || m.b_tag || "?");
+      $("em-fixed").textContent = aN + "   vs   " + bN;
+    } else if (roster) {
+      const nameOf = (tag) => { const p = (d.participants_list || []).find((x) => x.player_tag === tag); return esc(p ? (p.player_name || p.player_tag) : tag); };
+      $("em-roster-a").innerHTML = (m.roster_a || []).map((t) => `<span>${nameOf(t)}</span>`).join("") || "<span>—</span>";
+      $("em-roster-b").innerHTML = (m.roster_b || []).map((t) => `<span>${nameOf(t)}</span>`).join("") || "<span>—</span>";
+    } else {
+      $("em-a").value = teamsMode ? m.a_team : m.a_tag;
+      $("em-b").value = teamsMode ? m.b_team : m.b_tag;
+    }
     $("em-mode").value = m.mode || ""; $("em-map").value = m.map || "";
     setEmResult(isBo1, m);
-    $("em-delete").style.display = "inline-block";
+    $("em-delete").style.display = (elim || roster) ? "none" : "inline-block";
   } else {
     $("em-title").textContent = "Nuevo enfrentamiento";
     const rounds = (d.matches || []).map((m) => m.round || 1);
@@ -3592,21 +3862,30 @@ function setEmResult(isBo1, m) {
 function emPlayedChange() { $("em-score-wrap").style.display = $("em-played").checked ? "flex" : "none"; }
 function emResultBo1() { const a = $("em-res-bo1").querySelector("button.active"); return a ? a.dataset.r : ""; }
 async function submitMatch() {
-  const d = currentEvent, teamsMode = d.mode === "teams", isBo1 = (d.match_type || "bo1") === "bo1";
-  const a = $("em-a").value, b = $("em-b").value;
-  if (!a || !b || a === b) { wikiToast("Elige dos " + (teamsMode ? "equipos" : "jugadores") + " distintos", "err"); return; }
-  const base = { round: parseInt($("em-round").value, 10) || 1, mode: $("em-mode").value.trim(), map: $("em-map").value.trim() };
-  if (teamsMode) { base.a_team = parseInt(a, 10); base.b_team = parseInt(b, 10); } else { base.a_tag = a; base.b_tag = b; }
+  const d = currentEvent, teamsMode = d.mode === "teams", elim = d.format === "single_elim", isBo1 = (d.match_type || "bo1") === "bo1";
+  const roster = !!(editingMatch && (editingMatch.roster_a || editingMatch.roster_b));
   let result;
   if (isBo1) {
     const w = emResultBo1();
+    if (elim && w === "draw") { wikiToast("En eliminación no puede haber empate", "err"); return; }
     result = w ? { winner: w } : { clear_result: true };
   } else if ($("em-played").checked) {
     if ($("em-sa").value === "" || $("em-sb").value === "") { wikiToast("Indica el marcador de ambos lados", "err"); return; }
+    if (elim && Number($("em-sa").value) === Number($("em-sb").value)) { wikiToast("En eliminación no puede haber empate", "err"); return; }
     result = { score_a: $("em-sa").value, score_b: $("em-sb").value };
   } else {
     result = { clear_result: true };
   }
+  if (elim || roster) {  // solo resultado (+ modo/mapa); el cruce está fijado
+    const body = Object.assign({ mode: $("em-mode").value.trim(), map: $("em-map").value.trim() }, result);
+    const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/${editingMatch.id}`, "PUT", body);
+    if (!ok) { wikiToast(r.error || r.detail || "No se pudo guardar", "err"); return; }
+    closeEvModal("event-match-modal"); await openEvent(d.id); return;
+  }
+  const a = $("em-a").value, b = $("em-b").value;
+  if (!a || !b || a === b) { wikiToast("Elige dos " + (teamsMode ? "equipos" : "jugadores") + " distintos", "err"); return; }
+  const base = { round: parseInt($("em-round").value, 10) || 1, mode: $("em-mode").value.trim(), map: $("em-map").value.trim() };
+  if (teamsMode) { base.a_team = parseInt(a, 10); base.b_team = parseInt(b, 10); } else { base.a_tag = a; base.b_tag = b; }
   if (editingMatch) {
     const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/${editingMatch.id}`, "PUT", Object.assign({}, base, result));
     if (!ok) { wikiToast(r.error || r.detail || "No se pudo guardar", "err"); return; }
@@ -3624,14 +3903,32 @@ async function deleteMatch() {
   if (ok) { closeEvModal("event-match-modal"); await openEvent(currentEvent.id); }
 }
 async function generateMatches() {
-  const d = currentEvent, has = (d.matches || []).length > 0;
-  const msg = has
-    ? "Esto generará todos los cruces (todos contra todos) y REEMPLAZARÁ los enfrentamientos actuales. ¿Continuar?"
-    : "¿Generar todos los cruces (todos contra todos) con los participantes actuales?";
+  const d = currentEvent, has = (d.matches || []).length > 0, elim = d.format === "single_elim", swiss = (d.format === "swiss" || d.format === "mcmahon"), rnd = (d.format === "random_teams");
+  if (swiss || rnd) {  // suizo/McMahon/aleatorios: generar la SIGUIENTE ronda (no reemplaza)
+    const nextN = has ? Math.max.apply(null, d.matches.map((m) => m.round || 1)) + 1 : 1;
+    const ts = (d.settings && d.settings.team_size) || 3;
+    const msg = rnd
+      ? `¿Generar la ronda ${nextN} con equipos aleatorios de ${ts} jugadores?`
+      : (nextN === 1 ? "¿Emparejar la ronda 1? Se tomará el snapshot de copas de cada cuenta." : `¿Emparejar la ronda ${nextN} según la clasificación actual?`);
+    if (!confirm(msg)) return;
+    const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/generate`, "POST", {});
+    if (!ok) { wikiToast(r.error || r.detail || "No se pudo generar", "err"); return; }
+    const extra = rnd ? (r.benched ? ` (${r.benched} descansan)` : "") : (r.bye ? " (con bye)" : "");
+    wikiToast(`Ronda ${r.round} generada${extra}`, "ok"); await openEvent(d.id); return;
+  }
+  const what = elim ? "el cuadro de eliminación" : "todos los cruces (todos contra todos)";
+  const msg = has ? `Esto generará ${what} y REEMPLAZARÁ lo que haya ahora. ¿Continuar?` : `¿Generar ${what} con los participantes actuales?`;
   if (!confirm(msg)) return;
   const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/generate`, "POST", { replace: has });
   if (!ok) { wikiToast(r.error || r.detail || "No se pudo generar", "err"); return; }
-  wikiToast(`${r.created} enfrentamientos generados`, "ok"); await openEvent(d.id);
+  wikiToast(elim ? "Cuadro generado" : `${r.created} enfrentamientos generados`, "ok"); await openEvent(d.id);
+}
+async function restartPairings() {
+  const d = currentEvent;
+  if (!confirm("Esto borrará TODAS las rondas y resultados y empezará de cero (nuevo snapshot de copas). ¿Continuar?")) return;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/matches/generate`, "POST", { replace: true });
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo reiniciar", "err"); return; }
+  wikiToast(`Ronda ${r.round} emparejada`, "ok"); await openEvent(d.id);
 }
 
 /* ----- Seguir ----- */
@@ -3670,6 +3967,7 @@ function openEdit() {
   $("ee-lang").value = d.language || "es"; $("ee-max").value = d.max_participants || 12;
   $("ee-match").value = d.match_type || "bo1"; $("ee-format").value = d.format || "";
   $("ee-rounds").value = s.rounds || ""; $("ee-rules").value = s.rules || "";
+  $("ee-teamsize").value = s.team_size || 3;
   $("ee-pwin").value = (s.points && s.points.win != null) ? s.points.win : 3;
   $("ee-pdraw").value = (s.points && s.points.draw != null) ? s.points.draw : 1;
   $("ee-ploss").value = (s.points && s.points.loss != null) ? s.points.loss : 0;
@@ -3679,11 +3977,15 @@ function openEdit() {
   $("ee-dstart").value = d.date_start || ""; $("ee-dend").value = d.date_end || "";
   $("ee-desc").value = d.description || ""; evPosterUrl = d.poster_url || null; updatePosterPreview();
   $("ee-pw").value = ""; $("ee-confirm").checked = d.require_confirmation !== 0; $("ee-hidden").checked = !!d.hidden;
-  eeVisChange(); eeMapPolChange(); eeMapsPublicChange();
+  eeVisChange(); eeMapPolChange(); eeMapsPublicChange(); eeFormatChange();
   closeEvModal("event-detail-modal"); openEvModal("event-edit-modal");
 }
 function eeVisChange() { $("ee-private-box").style.display = $("ee-vis").value === "private" ? "block" : "none"; }
-function eeFormatChange() { const f = $("ee-format").value; if (f && EV_FORMAT_RULES[f] && !$("ee-rules").value.trim()) $("ee-rules").value = EV_FORMAT_RULES[f]; }
+function eeFormatChange() {
+  const f = $("ee-format").value;
+  if (f && EV_FORMAT_RULES[f] && !$("ee-rules").value.trim()) $("ee-rules").value = EV_FORMAT_RULES[f];
+  $("ee-teamsize-wrap").style.display = f === "random_teams" ? "" : "none";
+}
 function eeMapPolChange() { $("ee-fixed-wrap").style.display = $("ee-mappol").value === "fixed" ? "block" : "none"; }
 function eeMapsPublicChange() { $("ee-reveal-wrap").style.display = $("ee-mapspublic").checked ? "none" : "grid"; }
 function updatePosterPreview() {
@@ -3714,6 +4016,7 @@ async function submitEditEvent() {
     points: { win: num($("ee-pwin").value, 3), draw: num($("ee-pdraw").value, 1), loss: num($("ee-ploss").value, 0) },
     map_policy: $("ee-mappol").value, fixed_mode: $("ee-fixmode").value.trim(), fixed_map: $("ee-fixmap").value.trim(),
     maps_public: $("ee-mapspublic").checked, reveal_mode_date: $("ee-revmode").value || null, reveal_map_date: $("ee-revmap").value || null,
+    team_size: fmt === "random_teams" ? num($("ee-teamsize").value, 3) : null,
   };
   const body = {
     name: $("ee-name").value.trim(), status: $("ee-status").value, kind: $("ee-kind").value, mode: $("ee-mode").value,
@@ -3739,16 +4042,24 @@ async function deleteEvent() {
 
 /* ----- Invitar / solicitudes / participantes (organizador) ----- */
 function openInvite() {
-  $("einv-tag").value = ""; $("einv-team").value = "";
+  $("einv-tags").value = ""; $("einv-team").value = "";
   $("einv-team-wrap").style.display = currentEvent.mode === "teams" ? "block" : "none";
   openEvModal("event-invite-modal");
 }
 async function submitInvite() {
-  const body = { player_tag: $("einv-tag").value.trim() };
+  const raw = $("einv-tags").value.trim();
+  if (!raw) { wikiToast("Pega al menos un ID de jugador", "err"); return; }
+  const body = { player_tags: raw };
   if (currentEvent.mode === "teams" && $("einv-team").value.trim()) body.team_name = $("einv-team").value.trim();
-  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/invite`, "POST", body);
+  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/participants/bulk`, "POST", body);
   if (!ok) { wikiToast(d.error || d.detail || "No se pudo añadir", "err"); return; }
-  closeEvModal("event-invite-modal"); wikiToast("Jugador añadido", "ok"); await openEvent(currentEvent.id);
+  closeEvModal("event-invite-modal");
+  let msg = d.added === 1 ? "1 jugador añadido" : `${d.added} jugadores añadidos`;
+  const extra = [];
+  if (d.duplicates) extra.push(`${d.duplicates} ya estaban`);
+  if (d.no_space) extra.push(`${d.no_space} sin plaza`);
+  if (extra.length) msg += ` (${extra.join(", ")})`;
+  wikiToast(msg, d.added ? "ok" : "err"); await openEvent(currentEvent.id);
 }
 async function acceptRequest(rid) {
   const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/requests/${rid}/accept`, "POST");

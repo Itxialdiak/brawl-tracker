@@ -110,7 +110,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS event_participants (
             id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
             user_id INTEGER, player_tag TEXT NOT NULL, team_id INTEGER,
-            added_by_owner INTEGER DEFAULT 0, joined_at TEXT,
+            added_by_owner INTEGER DEFAULT 0, joined_at TEXT, seed_cups INTEGER,
             UNIQUE(event_id, player_tag)
         );
         CREATE TABLE IF NOT EXISTS event_teams (
@@ -128,9 +128,9 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS event_matches (
             id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL,
-            round INTEGER DEFAULT 1, a_tag TEXT, b_tag TEXT, a_team INTEGER, b_team INTEGER,
+            round INTEGER DEFAULT 1, bracket_pos INTEGER, a_tag TEXT, b_tag TEXT, a_team INTEGER, b_team INTEGER,
             mode TEXT, map TEXT, status TEXT DEFAULT 'pending',
-            score_a INTEGER, score_b INTEGER, winner TEXT, evidence_battle_id TEXT,
+            score_a INTEGER, score_b INTEGER, winner TEXT, evidence_battle_id TEXT, roster_a TEXT, roster_b TEXT,
             scheduled_at TEXT, created_at TEXT, updated_at TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
@@ -155,6 +155,10 @@ def init_db():
     _ensure_column(cur, "opponents", "trophies", "INTEGER")
     _ensure_column(cur, "allies", "trophies", "INTEGER")
     _ensure_column(cur, "events", "hidden", "INTEGER DEFAULT 0")
+    _ensure_column(cur, "event_matches", "bracket_pos", "INTEGER")
+    _ensure_column(cur, "event_participants", "seed_cups", "INTEGER")
+    _ensure_column(cur, "event_matches", "roster_a", "TEXT")
+    _ensure_column(cur, "event_matches", "roster_b", "TEXT")
     # El usuario itxialdiak es administrador por defecto.
     cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
     conn.commit()
@@ -1585,7 +1589,7 @@ def is_following_event(eid, user_id) -> bool:
 def list_participants(eid) -> list[dict]:
     conn = get_conn()
     rows = conn.execute(
-        """SELECT ep.id, ep.user_id, ep.player_tag, ep.team_id, ep.added_by_owner, ep.joined_at,
+        """SELECT ep.id, ep.user_id, ep.player_tag, ep.team_id, ep.added_by_owner, ep.joined_at, ep.seed_cups,
                   p.name AS player_name, p.icon_id, t.name AS team_name, t.logo_url AS team_logo
            FROM event_participants ep
            LEFT JOIN players p ON p.tag = ep.player_tag
@@ -1624,6 +1628,13 @@ def add_participant(eid, user_id, tag, team_id=None, added_by_owner=0) -> int | 
         pid = None
     conn.close()
     return pid
+
+
+def set_participant_seed_cups(eid, tag, cups) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE event_participants SET seed_cups=? WHERE event_id=? AND player_tag=?",
+                 (cups, eid, normalize_tag(tag)))
+    conn.commit(); conn.close()
 
 
 def remove_participant(eid, participant_id) -> None:
@@ -1703,6 +1714,26 @@ def create_team(eid, name, logo_url=None, captain_user_id=None) -> int:
         (eid, (name or "").strip(), logo_url, captain_user_id, datetime.now(timezone.utc).isoformat()))
     conn.commit(); tid = cur.lastrowid; conn.close()
     return tid
+
+
+def update_team(eid, tid, name=None, logo_url=None) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE event_teams SET name=COALESCE(?,name), logo_url=COALESCE(?,logo_url) WHERE id=? AND event_id=?",
+                 (name, logo_url, tid, eid))
+    conn.commit(); conn.close()
+
+
+def delete_team(eid, tid) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE event_participants SET team_id=NULL WHERE event_id=? AND team_id=?", (eid, tid))
+    conn.execute("DELETE FROM event_teams WHERE id=? AND event_id=?", (tid, eid))
+    conn.commit(); conn.close()
+
+
+def set_participant_team(eid, pid, team_id) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE event_participants SET team_id=? WHERE id=? AND event_id=?", (team_id, pid, eid))
+    conn.commit(); conn.close()
 
 
 # --- listados ---
@@ -1785,7 +1816,15 @@ def list_matches(eid) -> list[dict]:
            LEFT JOIN event_teams tb ON tb.id = m.b_team
            WHERE m.event_id=? ORDER BY m.round, m.id""", (eid,)).fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        for k in ("roster_a", "roster_b"):
+            if d.get(k):
+                try: d[k] = json.loads(d[k])
+                except Exception: d[k] = None
+        out.append(d)
+    return out
 
 
 def get_match(mid) -> dict | None:
@@ -1796,20 +1835,23 @@ def get_match(mid) -> dict | None:
 
 
 def create_match(eid, round=1, a_tag=None, b_tag=None, a_team=None, b_team=None,
-                 mode=None, map=None, scheduled_at=None) -> int:
+                 mode=None, map=None, scheduled_at=None, bracket_pos=None,
+                 roster_a=None, roster_b=None) -> int:
     now = datetime.now(timezone.utc).isoformat()
+    ra = json.dumps(roster_a) if roster_a else None
+    rb = json.dumps(roster_b) if roster_b else None
     conn = get_conn()
     cur = conn.execute(
-        """INSERT INTO event_matches (event_id, round, a_tag, b_tag, a_team, b_team,
-              mode, map, status, scheduled_at, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?, 'pending', ?, ?, ?)""",
-        (eid, round or 1, a_tag, b_tag, a_team, b_team, mode, map, scheduled_at, now, now))
+        """INSERT INTO event_matches (event_id, round, bracket_pos, a_tag, b_tag, a_team, b_team,
+              mode, map, status, roster_a, roster_b, scheduled_at, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?, 'pending', ?,?, ?, ?, ?)""",
+        (eid, round or 1, bracket_pos, a_tag, b_tag, a_team, b_team, mode, map, ra, rb, scheduled_at, now, now))
     conn.commit(); mid = cur.lastrowid; conn.close()
     return mid
 
 
 def update_match(mid, fields: dict) -> None:
-    cols = ["round", "a_tag", "b_tag", "a_team", "b_team", "mode", "map", "status",
+    cols = ["round", "bracket_pos", "a_tag", "b_tag", "a_team", "b_team", "mode", "map", "status",
             "score_a", "score_b", "winner", "evidence_battle_id", "scheduled_at"]
     sets, vals = [], []
     for c in cols:

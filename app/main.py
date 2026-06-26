@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import json
+import random
 import re
 import time
 import base64
@@ -385,7 +386,7 @@ async def api_player_profile(player: str = Query(None), user: dict = Depends(aut
     if not brawl_api.TOKEN:
         return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
     try:
-        prof = await brawl_api.get_player(tag)
+        prof = await _get_player_cached(tag)
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"error": f"No se pudo leer el perfil: {e}"}, status_code=502)
     brawlers = sorted(
@@ -395,6 +396,10 @@ async def api_player_profile(player: str = Query(None), user: dict = Depends(aut
     club = prof.get("club") or {}
     return {
         "tag": tag, "name": prof.get("name"), "trophies": prof.get("trophies"),
+        "highest_trophies": prof.get("highestTrophies"),
+        "victories_3v3": prof.get("3vs3Victories"),
+        "victories_solo": prof.get("soloVictories"),
+        "victories_duo": prof.get("duoVictories"),
         "club": {"tag": club.get("tag"), "name": club.get("name")} if club.get("tag") else None,
         "brawlers": brawlers,
     }
@@ -443,6 +448,37 @@ async def api_club(tag: str = Query(None), user: dict = Depends(auth.require_use
 # --------------------------- Rankings personalizados (liguillas) ---------------------------
 
 _profile_cache: dict = {}  # tag -> (timestamp, data)
+_player_obj_cache: dict = {}  # tag -> (timestamp, objeto crudo de la API)
+
+
+async def _get_player_cached(tag: str) -> dict:
+    """get_player con caché corta para no repetir llamadas (cabecera + rankings)."""
+    now = time.time()
+    c = _player_obj_cache.get(tag)
+    if c and now - c[0] < 120:
+        return c[1]
+    p = await brawl_api.get_player(tag)
+    _player_obj_cache[tag] = (now, p)
+    return p
+
+
+async def _ensure_player_profiles(tags: list) -> None:
+    """Obtiene de la API el nombre (e icono/club) de los tags indicados y los guarda
+    en `players`, para que los participantes se muestren con su nombre real."""
+    if not tags or not brawl_api.TOKEN:
+        return
+
+    async def one(tag):
+        try:
+            p = await _get_player_cached(tag)
+            name = p.get("name")
+            if name:
+                await asyncio.to_thread(db.add_player, tag, name,
+                                        (p.get("icon") or {}).get("id"),
+                                        (p.get("club") or {}).get("name"))
+        except Exception:  # noqa: BLE001
+            pass
+    await asyncio.gather(*[one(t) for t in tags])
 
 
 def _parse_player_tags(value) -> list:
@@ -966,42 +1002,304 @@ def _round_robin(ids: list):
     return rounds
 
 
+def _seed_order(n: int) -> list:
+    """Orden de siembra estándar de un cuadro de tamaño n (potencia de 2).
+    Coloca el 1 y el 2 en extremos opuestos, etc. Devuelve semillas 1..n."""
+    if n <= 1:
+        return [1]
+    prev = _seed_order(n // 2)
+    out = []
+    for s in prev:
+        out.append(s); out.append(n + 1 - s)
+    return out
+
+
+def _advance_winner(eid: int, m: dict, teams_mode: bool) -> None:
+    """Lleva al ganador de un partido del cuadro a su hueco de la ronda siguiente."""
+    pos = m.get("bracket_pos")
+    if pos is None:
+        return
+    w = m.get("winner")
+    if w not in ("a", "b"):
+        return
+    win_id = (m.get("a_team") if w == "a" else m.get("b_team")) if teams_mode \
+        else (m.get("a_tag") if w == "a" else m.get("b_tag"))
+    r = (m.get("round") or 1)
+    nxt = next((x for x in db.list_matches(eid)
+                if (x.get("round") == r + 1 and x.get("bracket_pos") == pos // 2)), None)
+    if not nxt:
+        return
+    slot = "a" if pos % 2 == 0 else "b"
+    field = (slot + "_team") if teams_mode else (slot + "_tag")
+    db.update_match(nxt["id"], {field: win_id})
+
+
+def _unadvance(eid: int, m: dict, teams_mode: bool) -> None:
+    """Quita la aportación de un partido del hueco siguiente (al borrar su resultado)."""
+    pos = m.get("bracket_pos")
+    if pos is None:
+        return
+    r = (m.get("round") or 1)
+    nxt = next((x for x in db.list_matches(eid)
+                if (x.get("round") == r + 1 and x.get("bracket_pos") == pos // 2)), None)
+    if not nxt:
+        return
+    slot = "a" if pos % 2 == 0 else "b"
+    field = (slot + "_team") if teams_mode else (slot + "_tag")
+    db.update_match(nxt["id"], {field: None})
+
+
+def _gen_single_elim(eid: int, ids: list, teams_mode: bool, mode, mp) -> int:
+    """Genera el cuadro completo de eliminación directa: ronda 1 con byes para las
+    primeras cabezas de serie, rondas siguientes vacías, y resuelve los byes."""
+    import math
+    n = len(ids)
+    rounds_count = max(1, math.ceil(math.log2(n)))
+    size = 1 << rounds_count
+    order = _seed_order(size)
+    seq = [ids[s - 1] if s <= n else None for s in order]  # None = bye
+    pairs = [(seq[i], seq[i + 1]) for i in range(0, size, 2)]
+    created = 0
+    for pos, (a, b) in enumerate(pairs):  # ronda 1
+        if teams_mode:
+            db.create_match(eid, 1, a_team=a, b_team=b, mode=mode, map=mp, bracket_pos=pos)
+        else:
+            db.create_match(eid, 1, a_tag=a, b_tag=b, mode=mode, map=mp, bracket_pos=pos)
+        created += 1
+    for r in range(2, rounds_count + 1):  # rondas siguientes vacías
+        for pos in range(size >> r):
+            db.create_match(eid, r, mode=mode, map=mp, bracket_pos=pos)
+            created += 1
+    for m in db.list_matches(eid):  # resolver byes de la ronda 1 y avanzar
+        if (m.get("round") or 1) != 1:
+            continue
+        a = m.get("a_team") if teams_mode else m.get("a_tag")
+        b = m.get("b_team") if teams_mode else m.get("b_tag")
+        if bool(a) != bool(b):  # exactamente uno presente → bye
+            db.update_match(m["id"], {"winner": "a" if a else "b", "status": "played"})
+            _advance_winner(eid, db.get_match(m["id"]), teams_mode)
+    return created
+
+
+# --------------------------- Suizo / McMahon (Fase 3) ---------------------------
+
+def _mcmahon_initial(participants: list, pw: int) -> dict:
+    """Puntos iniciales de McMahon por bandas de copas (snapshot). Solo individual.
+    Reparte a los jugadores en hasta 4 bandas por copas; cada banda por encima
+    de la inferior parte con el equivalente a una victoria más."""
+    seeded = [(p["player_tag"], p.get("seed_cups") or 0) for p in participants]
+    if not seeded:
+        return {}
+    order = sorted(seeded, key=lambda x: x[1])  # ascendente por copas
+    n = len(order)
+    bands = min(4, max(1, n // 2))
+    out = {}
+    for i, (tag, _c) in enumerate(order):
+        band = (i * bands) // n  # 0 = menos copas … bands-1 = más copas
+        out[tag] = band * pw
+    return out
+
+
+def _played_pairs(matches: list, teams_mode: bool) -> set:
+    s = set()
+    for m in matches:
+        a = m.get("a_team") if teams_mode else m.get("a_tag")
+        b = m.get("b_team") if teams_mode else m.get("b_tag")
+        if a and b:
+            s.add(frozenset((a, b)))
+    return s
+
+
+def _had_bye(matches: list, key, teams_mode: bool) -> bool:
+    for m in matches:
+        a = m.get("a_team") if teams_mode else m.get("a_tag")
+        b = m.get("b_team") if teams_mode else m.get("b_tag")
+        if (a == key and not b) or (b == key and not a):
+            return True
+    return False
+
+
+def _pair_swiss(order: list, played: set):
+    """Emparejamiento sin repetir rival (backtracking). Devuelve lista de (a,b) o None."""
+    if not order:
+        return []
+    a = order[0]
+    for i in range(1, len(order)):
+        b = order[i]
+        if frozenset((a, b)) in played:
+            continue
+        sub = _pair_swiss(order[1:i] + order[i + 1:], played)
+        if sub is not None:
+            return [(a, b)] + sub
+    return None
+
+
+def _pair_greedy_avoid(order: list, played: set) -> list:
+    """Plan B: empareja al primero con el primer rival no repetido (o repite si no hay)."""
+    order = list(order)
+    pairs = []
+    while order:
+        a = order.pop(0)
+        idx = next((i for i, b in enumerate(order) if frozenset((a, b)) not in played), None)
+        if idx is None:
+            idx = 0
+        pairs.append((a, order.pop(idx)))
+    return pairs
+
+
+async def _snapshot_cups(eid: int, parts: list) -> None:
+    """Guarda el snapshot de copas totales de cada cuenta (semilla suizo/McMahon)."""
+    async def one(tag):
+        try:
+            p = await _get_player_cached(tag)
+            return tag, p.get("trophies")
+        except Exception:  # noqa: BLE001
+            return tag, None
+    results = await asyncio.gather(*[one(p["player_tag"]) for p in parts]) if parts else []
+    for tag, cups in results:
+        if cups is not None:
+            await asyncio.to_thread(db.set_participant_seed_cups, eid, tag, cups)
+
+
+def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, mode, mp) -> dict:
+    """Genera la SIGUIENTE ronda suiza/McMahon emparejando por puntuación sin repetir rival."""
+    matches = db.list_matches(eid)
+    if matches and any(m.get("status") != "played" for m in matches):
+        return {"error": "Termina la ronda actual (todos los resultados) antes de emparejar la siguiente."}
+    parts = db.list_participants(eid)
+    teams = db.list_teams(eid)
+    keys = [t["id"] for t in teams] if teams_mode else [p["player_tag"] for p in parts]
+    if len(keys) < 2:
+        return {"error": "Hacen falta al menos 2 participantes."}
+    next_round = (max((m.get("round") or 1) for m in matches) + 1) if matches else 1
+    standings = _compute_standings(e, matches, parts, teams)
+    score = {r["key"]: r["pts"] for r in standings}
+    name_of = {r["key"]: str(r["name"]).lower() for r in standings}
+    seed = {t["id"]: 0 for t in teams} if teams_mode else {p["player_tag"]: (p.get("seed_cups") or 0) for p in parts}
+    played = _played_pairs(matches, teams_mode)
+    order = sorted(keys, key=lambda k: (-score.get(k, 0), -seed.get(k, 0), name_of.get(k, "")))
+    bye_key = None
+    if len(order) % 2 == 1:
+        for k in reversed(order):  # bye al de menos puntos que no lo haya tenido
+            if not _had_bye(matches, k, teams_mode):
+                bye_key = k
+                break
+        bye_key = bye_key if bye_key is not None else order[-1]
+        order = [k for k in order if k != bye_key]
+    pairs = (_pair_swiss(order, played) if len(order) <= 16 else None)
+    if pairs is None:
+        pairs = _pair_greedy_avoid(order, played)
+    created = 0
+    for (a, b) in pairs:
+        if teams_mode:
+            db.create_match(eid, next_round, a_team=a, b_team=b, mode=mode, map=mp)
+        else:
+            db.create_match(eid, next_round, a_tag=a, b_tag=b, mode=mode, map=mp)
+        created += 1
+    if bye_key is not None:  # el bye = partido jugado de un solo lado (victoria)
+        mid = (db.create_match(eid, next_round, a_team=bye_key, mode=mode, map=mp) if teams_mode
+               else db.create_match(eid, next_round, a_tag=bye_key, mode=mode, map=mp))
+        db.update_match(mid, {"winner": "a", "status": "played"})
+        created += 1
+    return {"created": created, "round": next_round, "bye": bye_key is not None}
+
+
+def _gen_random_round(eid: int, parts: list, team_size: int, mode, mp) -> dict:
+    """Genera una ronda de EQUIPOS ALEATORIOS (eventos individuales): baraja a los
+    participantes, forma equipos de `team_size` y los empareja. Cada partido guarda
+    su roster; la clasificación es individual (cada jugador suma según su equipo)."""
+    matches = db.list_matches(eid)
+    if matches and any(m.get("status") != "played" for m in matches):
+        return {"error": "Termina la ronda actual (todos los resultados) antes de generar la siguiente."}
+    k = max(1, int(team_size or 3))
+    tags = [p["player_tag"] for p in parts]
+    if len(tags) < 2 * k:
+        return {"error": f"Hacen falta al menos {2 * k} jugadores para equipos de {k}."}
+    next_round = (max((m.get("round") or 1) for m in matches) + 1) if matches else 1
+    random.shuffle(tags)
+    teams = [tags[i:i + k] for i in range(0, len(tags), k)]
+    teams = [t for t in teams if len(t) == k]  # descarta equipo incompleto
+    created = 0
+    i = 0
+    while i + 1 < len(teams):
+        db.create_match(eid, next_round, mode=mode, map=mp, roster_a=teams[i], roster_b=teams[i + 1])
+        created += 1
+        i += 2
+    benched = len(tags) - created * 2 * k
+    return {"created": created, "round": next_round, "benched": benched, "team_size": k}
+
+
 def _compute_standings(e: dict, matches: list, participants: list, teams: list) -> list:
-    """Clasificación a partir de los enfrentamientos jugados, con los puntos del evento."""
+    """Clasificación a partir de los enfrentamientos jugados, con los puntos del evento.
+    En McMahon suma los puntos iniciales por copas; en suizo/McMahon desempata por copas."""
     pts = (e.get("settings") or {}).get("points") or {}
     pw, pdr, pl = pts.get("win", 3), pts.get("draw", 1), pts.get("loss", 0)
     teams_mode = e["mode"] == "teams"
+    fmt = e.get("format") or ""
     rows = {}
     if teams_mode:
         for t in teams:
             rows[t["id"]] = {"key": t["id"], "name": t.get("name") or "Equipo", "logo": t.get("logo_url"),
-                             "pj": 0, "g": 0, "e": 0, "p": 0, "sf": 0, "sa": 0, "pts": 0}
+                             "seed_cups": None, "pj": 0, "g": 0, "e": 0, "p": 0, "sf": 0, "sa": 0, "pts": 0}
     else:
         for p in participants:
             rows[p["player_tag"]] = {"key": p["player_tag"], "name": p.get("player_name") or p["player_tag"],
-                                     "tag": p["player_tag"], "icon_id": p.get("icon_id"),
+                                     "tag": p["player_tag"], "icon_id": p.get("icon_id"), "seed_cups": p.get("seed_cups"),
                                      "pj": 0, "g": 0, "e": 0, "p": 0, "sf": 0, "sa": 0, "pts": 0}
-    for m in matches:
-        if m.get("status") != "played":
-            continue
-        ka, kb = (m.get("a_team"), m.get("b_team")) if teams_mode else (m.get("a_tag"), m.get("b_tag"))
-        if ka not in rows or kb not in rows:
-            continue
-        sa, sb = m.get("score_a") or 0, m.get("score_b") or 0
-        ra, rb = rows[ka], rows[kb]
-        ra["pj"] += 1; rb["pj"] += 1
-        ra["sf"] += sa; ra["sa"] += sb; rb["sf"] += sb; rb["sa"] += sa
-        w = m.get("winner")
-        if w == "a":
-            ra["g"] += 1; rb["p"] += 1; ra["pts"] += pw; rb["pts"] += pl
-        elif w == "b":
-            rb["g"] += 1; ra["p"] += 1; rb["pts"] += pw; ra["pts"] += pl
-        else:
-            ra["e"] += 1; rb["e"] += 1; ra["pts"] += pdr; rb["pts"] += pdr
+    if fmt == "mcmahon" and not teams_mode:  # ventaja inicial por copas
+        for tag, ini in _mcmahon_initial(participants, pw).items():
+            if tag in rows:
+                rows[tag]["pts"] += ini
+                rows[tag]["mcmahon"] = ini
+    if fmt == "random_teams" and not teams_mode:  # equipos aleatorios → puntuación individual por roster
+        for m in matches:
+            if m.get("status") != "played":
+                continue
+            ros_a, ros_b = (m.get("roster_a") or []), (m.get("roster_b") or [])
+            w = m.get("winner")
+            for tag in ros_a:
+                if tag in rows:
+                    r = rows[tag]; r["pj"] += 1
+                    if w == "a": r["g"] += 1; r["pts"] += pw
+                    elif w == "b": r["p"] += 1; r["pts"] += pl
+                    else: r["e"] += 1; r["pts"] += pdr
+            for tag in ros_b:
+                if tag in rows:
+                    r = rows[tag]; r["pj"] += 1
+                    if w == "b": r["g"] += 1; r["pts"] += pw
+                    elif w == "a": r["p"] += 1; r["pts"] += pl
+                    else: r["e"] += 1; r["pts"] += pdr
+    else:
+        for m in matches:
+            if m.get("status") != "played":
+                continue
+            ka, kb = (m.get("a_team"), m.get("b_team")) if teams_mode else (m.get("a_tag"), m.get("b_tag"))
+            if (ka in rows) and not kb:  # bye → victoria sin rival
+                r = rows[ka]; r["pj"] += 1; r["g"] += 1; r["pts"] += pw; continue
+            if (kb in rows) and not ka:
+                r = rows[kb]; r["pj"] += 1; r["g"] += 1; r["pts"] += pw; continue
+            if ka not in rows or kb not in rows:
+                continue
+            sa, sb = m.get("score_a") or 0, m.get("score_b") or 0
+            ra, rb = rows[ka], rows[kb]
+            ra["pj"] += 1; rb["pj"] += 1
+            ra["sf"] += sa; ra["sa"] += sb; rb["sf"] += sb; rb["sa"] += sa
+            w = m.get("winner")
+            if w == "a":
+                ra["g"] += 1; rb["p"] += 1; ra["pts"] += pw; rb["pts"] += pl
+            elif w == "b":
+                rb["g"] += 1; ra["p"] += 1; rb["pts"] += pw; ra["pts"] += pl
+            else:
+                ra["e"] += 1; rb["e"] += 1; ra["pts"] += pdr; rb["pts"] += pdr
     out = list(rows.values())
     for r in out:
         r["dif"] = r["sf"] - r["sa"]
-    out.sort(key=lambda r: (-r["pts"], -r["dif"], -r["sf"], str(r["name"]).lower()))
+    if fmt == "random_teams":  # individual: por puntos y victorias
+        out.sort(key=lambda r: (-r["pts"], -r["g"], str(r["name"]).lower()))
+    elif fmt in ("swiss", "mcmahon"):  # desempate final por copas (snapshot)
+        out.sort(key=lambda r: (-r["pts"], -r["dif"], -r["sf"], -(r.get("seed_cups") or 0), str(r["name"]).lower()))
+    else:
+        out.sort(key=lambda r: (-r["pts"], -r["dif"], -r["sf"], str(r["name"]).lower()))
     return out
 
 
@@ -1034,7 +1332,7 @@ def api_events_board(types: str = Query(""), langs: str = Query(""),
 
 
 @app.get("/api/events/{eid}")
-def api_event_detail(eid: int, user: dict = Depends(auth.require_user)):
+async def api_event_detail(eid: int, user: dict = Depends(auth.require_user)):
     e = db.get_event(eid)
     if not e:
         return JSONResponse({"error": "No existe ese evento."}, status_code=404)
@@ -1044,6 +1342,10 @@ def api_event_detail(eid: int, user: dict = Depends(auth.require_user)):
     e["participants"], e["followers"] = counts["participants"], counts["followers"]
     is_owner = e["owner_user_id"] == user["id"]
     parts = db.list_participants(eid)
+    missing = [p["player_tag"] for p in parts if not p.get("player_name")]
+    if missing:  # rellena nombres desde la API (solo la 1.ª vez; luego quedan en players)
+        await _ensure_player_profiles(missing)
+        parts = db.list_participants(eid)
     e["relation"] = "owner" if is_owner else (
         "participant" if any(p.get("user_id") == user["id"] for p in parts) else (
             "follower" if db.is_following_event(eid, user["id"]) else "none"))
@@ -1193,7 +1495,7 @@ def api_event_req_reject(eid: int, rid: int, user: dict = Depends(auth.require_u
 
 
 @app.post("/api/events/{eid}/invite")
-def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+async def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     if db.event_owner(eid) != user["id"]:
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
@@ -1208,7 +1510,36 @@ def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Depends(a
     team_name = ((payload or {}).get("team_name") or "").strip() or None
     team_id = db.create_team(eid, team_name, None, None) if (e["mode"] == "teams" and team_name) else None
     db.add_participant(eid, None, tag, team_id, 1)
+    await _ensure_player_profiles([tag])  # guarda su nombre para mostrarlo
     return {"ok": True}
+
+
+@app.post("/api/events/{eid}/participants/bulk")
+async def api_event_invite_bulk(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    tags = _parse_player_tags((payload or {}).get("player_tags"))
+    seen, norm = set(), []
+    for t in tags:
+        nt = db.normalize_tag(t)
+        if nt and nt not in seen:
+            seen.add(nt); norm.append(nt)
+    if not norm:
+        return JSONResponse({"error": "Pega al menos un ID de jugador."}, status_code=400)
+    cap = e.get("max_participants") or 12
+    team_name = ((payload or {}).get("team_name") or "").strip() or None
+    team_id = db.create_team(eid, team_name, None, None) if (e["mode"] == "teams" and team_name) else None
+    added, dup, no_space = [], 0, 0
+    for nt in norm:
+        if db.tag_in_event(eid, nt):
+            dup += 1; continue
+        if db.participant_count(eid) >= cap:
+            no_space += 1; continue
+        db.add_participant(eid, None, nt, team_id, 1)
+        added.append(nt)
+    await _ensure_player_profiles(added)  # guarda sus nombres para mostrarlos
+    return {"ok": True, "added": len(added), "duplicates": dup, "no_space": no_space, "total": len(norm)}
 
 
 @app.delete("/api/events/{eid}/participants/{pid}")
@@ -1216,6 +1547,49 @@ def api_event_remove_participant(eid: int, pid: int, user: dict = Depends(auth.r
     if db.event_owner(eid) != user["id"]:
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     db.remove_participant(eid, pid)
+    return {"ok": True}
+
+
+# --------------------------- Equipos / plantillas (Fase 4) ---------------------------
+
+@app.post("/api/events/{eid}/teams")
+def api_team_create(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    name = ((payload or {}).get("name") or "").strip()
+    if not name:
+        return JSONResponse({"error": "Pon un nombre al equipo."}, status_code=400)
+    logo = ((payload or {}).get("logo_url") or "").strip() or None
+    tid = db.create_team(eid, name, logo, None)
+    return {"ok": True, "id": tid}
+
+
+@app.patch("/api/events/{eid}/teams/{tid}")
+def api_team_update(eid: int, tid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    body = payload or {}
+    name = (body.get("name") or "").strip() or None
+    logo = body.get("logo_url")
+    logo = logo.strip() if isinstance(logo, str) and logo.strip() else None
+    db.update_team(eid, tid, name, logo)
+    return {"ok": True}
+
+
+@app.delete("/api/events/{eid}/teams/{tid}")
+def api_team_delete(eid: int, tid: int, user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    db.delete_team(eid, tid)
+    return {"ok": True}
+
+
+@app.post("/api/events/{eid}/participants/{pid}/team")
+def api_participant_set_team(eid: int, pid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    tid = (payload or {}).get("team_id")
+    db.set_participant_team(eid, pid, int(tid) if tid else None)
     return {"ok": True}
 
 
@@ -1305,6 +1679,15 @@ def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict =
         if w in ("a", "b", "draw"):
             fields.update({"winner": w, "score_a": sa, "score_b": sb, "status": "played"})
     db.update_match(mid, fields)
+    # Eliminación directa: propagar (o retirar) el ganador al hueco siguiente del cuadro
+    ev = db.get_event(eid) or {}
+    if ev.get("format") == "single_elim":
+        teams_mode = ev.get("mode") == "teams"
+        m2 = db.get_match(mid)
+        if m2 and m2.get("status") == "played" and m2.get("winner") in ("a", "b"):
+            _advance_winner(eid, m2, teams_mode)
+        else:
+            _unadvance(eid, m2 or m, teams_mode)
     return {"ok": True}
 
 
@@ -1317,20 +1700,19 @@ def api_match_delete(eid: int, mid: int, user: dict = Depends(auth.require_user)
 
 
 @app.post("/api/events/{eid}/matches/generate")
-def api_match_generate(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     if db.event_owner(eid) != user["id"]:
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
         return JSONResponse({"error": "No existe ese evento."}, status_code=404)
     body = payload or {}
+    fmt = e.get("format") or ""
+    if fmt not in ("", "roundrobin", "free", "single_elim", "swiss", "mcmahon", "random_teams"):
+        return JSONResponse({"error": "El emparejamiento automático para este formato aún no está disponible. Puedes añadir los enfrentamientos a mano."}, status_code=400)
     if body.get("replace"):
         db.clear_matches(eid)
     settings = e.get("settings") or {}
-    try:
-        legs = max(1, min(10, int(body.get("legs") or settings.get("rounds") or 1)))
-    except Exception:  # noqa: BLE001
-        legs = 1
     fixed = settings.get("map_policy") == "fixed"
     mode = settings.get("fixed_mode") if fixed else None
     mp = settings.get("fixed_map") if fixed else None
@@ -1339,6 +1721,26 @@ def api_match_generate(eid: int, payload: dict = Body(...), user: dict = Depends
           [p["player_tag"] for p in db.list_participants(eid)]
     if len(ids) < 2:
         return JSONResponse({"error": "Hacen falta al menos 2 participantes."}, status_code=400)
+    if fmt == "single_elim":
+        created = _gen_single_elim(eid, ids, teams_mode, mode, mp)
+        return {"ok": True, "created": created, "format": "single_elim"}
+    if fmt in ("swiss", "mcmahon"):
+        if not db.list_matches(eid) and not teams_mode:  # ronda 1: snapshot de copas
+            await _snapshot_cups(eid, db.list_participants(eid))
+        res = _gen_swiss_round(eid, e, teams_mode, mode, mp)
+        if "error" in res:
+            return JSONResponse({"error": res["error"]}, status_code=400)
+        return {"ok": True, "format": fmt, **res}
+    if fmt == "random_teams":
+        ts = body.get("team_size") or settings.get("team_size") or 3
+        res = _gen_random_round(eid, db.list_participants(eid), ts, mode, mp)
+        if "error" in res:
+            return JSONResponse({"error": res["error"]}, status_code=400)
+        return {"ok": True, "format": "random_teams", **res}
+    try:
+        legs = max(1, min(10, int(body.get("legs") or settings.get("rounds") or 1)))
+    except Exception:  # noqa: BLE001
+        legs = 1
     schedule = _round_robin(ids)
     created, round_no = 0, 0
     for leg in range(legs):
