@@ -82,6 +82,22 @@ def init_db():
             user_id INTEGER NOT NULL, ranking_id INTEGER NOT NULL, added_at TEXT,
             PRIMARY KEY (user_id, ranking_id)
         );
+        CREATE TABLE IF NOT EXISTS wiki_nodes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL,
+            parent_id INTEGER, title TEXT NOT NULL, body TEXT,
+            sort_order REAL NOT NULL DEFAULT 0, updated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS wiki_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, author_user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL, node_id INTEGER, payload TEXT,
+            summary TEXT, justification TEXT, status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT, reviewed_at TEXT, reviewer_user_id INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS wiki_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, node_id INTEGER, type TEXT,
+            title TEXT, body TEXT, parent_id INTEGER,
+            change_kind TEXT, by_user_id INTEGER, changed_at TEXT
+        );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
@@ -98,11 +114,15 @@ def init_db():
     _ensure_column(cur, "players", "club_name", "TEXT")
     _ensure_column(cur, "users", "country", "TEXT")
     _ensure_column(cur, "users", "ranking_order", "TEXT")
+    _ensure_column(cur, "users", "is_admin", "INTEGER DEFAULT 0")
     _ensure_column(cur, "battles", "my_trophies", "INTEGER")
     _ensure_column(cur, "opponents", "trophies", "INTEGER")
     _ensure_column(cur, "allies", "trophies", "INTEGER")
+    # El usuario itxialdiak es administrador por defecto.
+    cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
     conn.commit()
     conn.close()
+    seed_wiki_if_empty()
 
 
 # ---------------------------------------------------------------------------
@@ -363,6 +383,271 @@ def get_rankings_order(user_id: int):
         except Exception:  # noqa: BLE001
             return None
     return None
+
+
+# --------------------------- Wiki / Guía de estrategia ---------------------------
+
+WIKI_SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "wiki_seed.json")
+
+
+def seed_wiki_if_empty() -> None:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) c FROM wiki_nodes").fetchone()["c"]
+    if n > 0:
+        conn.close(); return
+    try:
+        seed = json.load(open(WIKI_SEED_PATH, encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        conn.close(); return
+    now = datetime.now(timezone.utc).isoformat()
+    order = 0
+    for node in seed:
+        order += 1
+        if node.get("type") == "separator":
+            conn.execute(
+                "INSERT INTO wiki_nodes (type,parent_id,title,body,sort_order,updated_at) "
+                "VALUES ('separator',NULL,?,NULL,?,?)", (node["title"], order, now))
+        else:
+            cur = conn.execute(
+                "INSERT INTO wiki_nodes (type,parent_id,title,body,sort_order,updated_at) "
+                "VALUES ('section',NULL,?,?,?,?)", (node["title"], node.get("body", ""), order, now))
+            sid = cur.lastrowid
+            so = 0
+            for sub in node.get("subs", []):
+                so += 1
+                conn.execute(
+                    "INSERT INTO wiki_nodes (type,parent_id,title,body,sort_order,updated_at) "
+                    "VALUES ('subsection',?,?,?,?,?)", (sid, sub["title"], sub.get("body", ""), so, now))
+    conn.commit(); conn.close()
+
+
+def get_wiki_tree() -> list:
+    conn = get_conn()
+    tops = conn.execute(
+        "SELECT id,type,title FROM wiki_nodes WHERE parent_id IS NULL ORDER BY sort_order, id").fetchall()
+    result, secnum = [], 0
+    for t in tops:
+        d = {"id": t["id"], "type": t["type"], "title": t["title"]}
+        if t["type"] == "section":
+            secnum += 1
+            d["number"] = secnum
+            subs = conn.execute(
+                "SELECT id,title FROM wiki_nodes WHERE parent_id=? ORDER BY sort_order, id", (t["id"],)).fetchall()
+            d["subs"] = [{"id": s["id"], "title": s["title"], "number": f"{secnum}.{i + 1}"}
+                         for i, s in enumerate(subs)]
+        result.append(d)
+    conn.close()
+    return result
+
+
+def get_wiki_node(nid: int) -> dict | None:
+    conn = get_conn()
+    r = conn.execute("SELECT * FROM wiki_nodes WHERE id=?", (nid,)).fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+
+def _wiki_subsections(section_id: int) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM wiki_nodes WHERE parent_id=? ORDER BY sort_order, id", (section_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def _wiki_max_order(parent_id) -> float:
+    conn = get_conn()
+    if parent_id is None:
+        r = conn.execute("SELECT MAX(sort_order) m FROM wiki_nodes WHERE parent_id IS NULL").fetchone()
+    else:
+        r = conn.execute("SELECT MAX(sort_order) m FROM wiki_nodes WHERE parent_id=?", (parent_id,)).fetchone()
+    conn.close()
+    return r["m"] or 0
+
+
+def wiki_create_node(ntype: str, parent_id, title: str, body) -> int:
+    conn = get_conn()
+    order = _wiki_max_order(parent_id) + 1
+    cur = conn.execute(
+        "INSERT INTO wiki_nodes (type,parent_id,title,body,sort_order,updated_at) VALUES (?,?,?,?,?,?)",
+        (ntype, parent_id, title, body, order, datetime.now(timezone.utc).isoformat()))
+    nid = cur.lastrowid
+    conn.commit(); conn.close()
+    return nid
+
+
+def wiki_update_node(nid: int, title: str, body) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE wiki_nodes SET title=?, body=?, updated_at=? WHERE id=?",
+                 (title, body, datetime.now(timezone.utc).isoformat(), nid))
+    conn.commit(); conn.close()
+
+
+def wiki_delete_node(nid: int) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM wiki_nodes WHERE id=?", (nid,))
+    conn.commit(); conn.close()
+
+
+def wiki_reorder(top_ids: list, subs_map: dict) -> None:
+    conn = get_conn()
+    for i, nid in enumerate(top_ids or []):
+        conn.execute("UPDATE wiki_nodes SET sort_order=? WHERE id=? AND parent_id IS NULL", (i + 1, nid))
+    for sec_id, sub_ids in (subs_map or {}).items():
+        for i, sub_id in enumerate(sub_ids):
+            conn.execute("UPDATE wiki_nodes SET sort_order=?, parent_id=? WHERE id=?", (i + 1, int(sec_id), sub_id))
+    conn.commit(); conn.close()
+
+
+def _wiki_snapshot(node: dict, change_kind: str, by_user_id) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO wiki_history (node_id,type,title,body,parent_id,change_kind,by_user_id,changed_at) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (node["id"], node["type"], node["title"], node.get("body"), node.get("parent_id"),
+         change_kind, by_user_id, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def create_proposal(author_user_id, kind, node_id, payload, summary, justification) -> int:
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO wiki_proposals (author_user_id,kind,node_id,payload,summary,justification,status,created_at) "
+        "VALUES (?,?,?,?,?,?, 'pending', ?)",
+        (author_user_id, kind, node_id, json.dumps(payload or {}),
+         (summary or "")[:300], (justification or "")[:3000], datetime.now(timezone.utc).isoformat()))
+    pid = cur.lastrowid
+    conn.commit(); conn.close()
+    return pid
+
+
+def _proposal_row(r) -> dict:
+    d = dict(r)
+    try:
+        d["payload"] = json.loads(d.get("payload") or "{}")
+    except Exception:  # noqa: BLE001
+        d["payload"] = {}
+    return d
+
+
+def list_proposals(status: str | None = None) -> list:
+    conn = get_conn()
+    if status:
+        rows = conn.execute(
+            "SELECT p.*, u.username FROM wiki_proposals p LEFT JOIN users u ON u.id=p.author_user_id "
+            "WHERE p.status=? ORDER BY p.created_at DESC", (status,)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT p.*, u.username FROM wiki_proposals p LEFT JOIN users u ON u.id=p.author_user_id "
+            "ORDER BY p.created_at DESC").fetchall()
+    conn.close()
+    return [_proposal_row(r) for r in rows]
+
+
+def get_proposal(pid: int) -> dict | None:
+    conn = get_conn()
+    r = conn.execute(
+        "SELECT p.*, u.username FROM wiki_proposals p LEFT JOIN users u ON u.id=p.author_user_id "
+        "WHERE p.id=?", (pid,)).fetchone()
+    conn.close()
+    return _proposal_row(r) if r else None
+
+
+def count_pending_proposals() -> int:
+    conn = get_conn()
+    c = conn.execute("SELECT COUNT(*) c FROM wiki_proposals WHERE status='pending'").fetchone()["c"]
+    conn.close()
+    return c
+
+
+def set_proposal_status(pid: int, status: str, reviewer_id) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE wiki_proposals SET status=?, reviewed_at=?, reviewer_user_id=? WHERE id=?",
+                 (status, datetime.now(timezone.utc).isoformat(), reviewer_id, pid))
+    conn.commit(); conn.close()
+
+
+def apply_proposal(pid: int, reviewer_id) -> bool:
+    p = get_proposal(pid)
+    if not p or p["status"] != "pending":
+        return False
+    kind, payload = p["kind"], p["payload"]
+    if kind == "edit":
+        node = get_wiki_node(p["node_id"])
+        if node:
+            _wiki_snapshot(node, "edit", p["author_user_id"])
+            wiki_update_node(p["node_id"], payload.get("title", node["title"]), payload.get("body", node.get("body")))
+    elif kind == "create_section":
+        wiki_create_node("section", None, payload.get("title", "Sección"), payload.get("body", ""))
+    elif kind == "create_subsection":
+        wiki_create_node("subsection", payload.get("parent_id"), payload.get("title", "Subsección"), payload.get("body", ""))
+    elif kind == "create_separator":
+        wiki_create_node("separator", None, payload.get("title", "Separador"), None)
+    elif kind == "delete":
+        node = get_wiki_node(p["node_id"])
+        if node:
+            for sub in _wiki_subsections(p["node_id"]):
+                _wiki_snapshot(sub, "delete", p["author_user_id"]); wiki_delete_node(sub["id"])
+            _wiki_snapshot(node, "delete", p["author_user_id"]); wiki_delete_node(p["node_id"])
+    elif kind == "reorder":
+        wiki_reorder(payload.get("top", []), payload.get("subs", {}))
+    set_proposal_status(pid, "approved", reviewer_id)
+    return True
+
+
+def list_wiki_history(limit: int = 200) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT h.*, u.username, n.title AS current_title FROM wiki_history h "
+        "LEFT JOIN users u ON u.id=h.by_user_id LEFT JOIN wiki_nodes n ON n.id=h.node_id "
+        "ORDER BY h.changed_at DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_wiki_history_entry(hid: int) -> dict | None:
+    conn = get_conn()
+    r = conn.execute("SELECT * FROM wiki_history WHERE id=?", (hid,)).fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+
+def revert_wiki_version(hid: int, by_user_id) -> bool:
+    h = get_wiki_history_entry(hid)
+    if not h:
+        return False
+    node = get_wiki_node(h["node_id"])
+    if node:
+        _wiki_snapshot(node, "revert", by_user_id)
+        wiki_update_node(h["node_id"], h["title"], h["body"])
+    else:
+        wiki_create_node(h["type"], h["parent_id"], h["title"], h["body"])
+    return True
+
+
+# --------------------------- Administración de usuarios ---------------------------
+
+def list_users() -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, username, is_admin, country, created_at FROM users ORDER BY username").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_user(uid: int) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM user_players WHERE user_id=?", (uid,))
+    conn.execute("DELETE FROM user_custom_rankings WHERE user_id=?", (uid,))
+    conn.execute("DELETE FROM custom_rankings WHERE owner_user_id=?", (uid,))
+    conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    conn.commit(); conn.close()
+
+
+def set_user_admin(uid: int, is_admin: bool) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE users SET is_admin=? WHERE id=?", (1 if is_admin else 0, uid))
+    conn.commit(); conn.close()
 
 
 def follow_player(user_id: int, tag: str) -> None:

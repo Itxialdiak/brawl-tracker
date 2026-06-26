@@ -92,6 +92,183 @@
   .section-placeholder p { color: var(--muted); max-width: 640px; margin: 0 auto; line-height: 1.65; font-size: 14px; }
   .status b { color: var(--text); font-weight: 500; }
 
+  /* ===================== WIKI / GUÍA DE ESTRATEGIA ===================== */
+  .snav-admin { color: var(--cyan) !important; }
+  .admin-badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; font-size: 11px; font-weight: 700;
+    line-height: 17px; text-align: center; background: var(--loss); color: #fff; border-radius: 9px; vertical-align: middle; }
+
+  .wiki-layout { display: flex; gap: 20px; align-items: flex-start; }
+  .wiki-nav { flex: 0 0 290px; position: sticky; top: 14px; max-height: calc(100vh - 28px); overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; backdrop-filter: blur(7px); }
+  .wiki-nav-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    font-family: var(--display); text-transform: uppercase; letter-spacing: 1px; font-size: 13px; color: var(--muted); }
+  .wk-mini { font-size: 11px; background: transparent; color: var(--cyan); border: 1px solid var(--border); border-radius: 8px;
+    padding: 4px 8px; cursor: pointer; transition: background .12s; }
+  .wk-mini:hover { background: rgba(63,225,255,0.1); }
+  .wk-mini.on { background: var(--cyan); color: #08121a; border-color: var(--cyan); }
+
+  .wk-sep { font-family: var(--display); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--gold);
+    padding: 14px 6px 6px; border-top: 1px solid var(--border); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .wk-sep:first-child { border-top: none; margin-top: 0; padding-top: 4px; }
+  .wk-sep .wk-grip { color: var(--muted); cursor: grab; opacity: 0; }
+
+  .wk-item { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 9px; cursor: pointer;
+    color: var(--text); font-size: 13.5px; transition: background .12s; position: relative; }
+  .wk-item:hover { background: rgba(150,130,255,0.1); }
+  .wk-item.active { background: linear-gradient(100deg, rgba(198,79,240,0.22), rgba(63,225,255,0.16)); color: #fff;
+    box-shadow: inset 0 0 0 1px var(--border); }
+  .wk-item .wk-num { font-family: var(--display); font-size: 11px; color: var(--cyan); flex: 0 0 auto; min-width: 16px; }
+  .wk-item.active .wk-num { color: var(--gold); }
+  .wk-item .wk-label { flex: 1; line-height: 1.25; }
+  .wk-item .wk-grip { color: var(--muted); cursor: grab; opacity: 0; flex: 0 0 auto; }
+  .wiki-nav.reorder .wk-grip { opacity: .8; }
+  .wiki-nav.reorder .wk-item, .wiki-nav.reorder .wk-sep { cursor: default; }
+  .wk-subs { margin: 2px 0 4px 16px; border-left: 1px solid var(--border); padding-left: 4px; }
+  .wk-subs .wk-item { font-size: 12.5px; color: var(--muted); padding: 5px 9px; }
+  .wk-subs .wk-item:hover, .wk-subs .wk-item.active { color: var(--text); }
+  .wk-item.dragging { opacity: .4; }
+  .wk-item.drag-over { box-shadow: inset 0 2px 0 var(--cyan); }
+
+  .wiki-nav-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .wk-add { font-size: 12px; text-align: left; background: transparent; color: var(--muted); border: 1px dashed var(--border);
+    border-radius: 9px; padding: 8px 10px; cursor: pointer; transition: all .12s; }
+  .wk-add:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(63,225,255,0.06); }
+
+  .wiki-main { flex: 1; min-width: 0; }
+  .wiki-reorder-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: rgba(63,225,255,0.08); border: 1px solid var(--cyan); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+    font-size: 12.5px; color: var(--text); }
+  .wiki-content { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 26px 30px;
+    backdrop-filter: blur(7px); min-height: 320px; }
+  .wiki-welcome { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .wiki-welcome .ph-icon { font-size: 46px; margin-bottom: 12px; }
+  .wiki-welcome h2 { font-family: var(--display); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; color: var(--text); }
+  .wiki-welcome p { max-width: 600px; margin: 0 auto; line-height: 1.6; font-size: 14px; }
+
+  .wc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+  .wc-eyebrow { font-family: var(--display); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--cyan); }
+  .wc-title { font-family: var(--display); font-size: clamp(21px,2.6vw,29px); font-weight: 700; line-height: 1.15; color: #fff; }
+  .wc-tools { display: flex; gap: 8px; flex: 0 0 auto; }
+  .wc-tools button { font-size: 12px; padding: 7px 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--border);
+    background: transparent; color: var(--text); transition: all .12s; }
+  .wc-tools .wc-edit:hover { border-color: var(--cyan); color: var(--cyan); }
+  .wc-tools .wc-del:hover { border-color: var(--loss); color: var(--loss); }
+  .wc-divider { height: 1px; background: var(--border); margin: 14px 0 18px; }
+
+  /* Cuerpo de la wiki: tipografía, cuadros y tablas */
+  .wiki-body { color: var(--text); font-size: 14.5px; line-height: 1.7; }
+  .wiki-body p { margin: 0 0 13px; }
+  .wiki-body h2, .wiki-body h3 { font-family: var(--display); color: #fff; margin: 22px 0 11px; letter-spacing: .4px; }
+  .wiki-body h2 { font-size: 19px; } .wiki-body h3 { font-size: 16.5px; color: var(--cyan); }
+  .wiki-body ul, .wiki-body ol { margin: 0 0 13px; padding-left: 22px; }
+  .wiki-body li { margin: 4px 0; }
+  .wiki-body strong { color: #fff; }
+  .wiki-body a { color: var(--cyan); }
+  .wiki-body hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  .wiki-body table { border-collapse: collapse; width: 100%; margin: 8px 0 18px; font-size: 13.5px; }
+  .wiki-body table.wk-data th { background: linear-gradient(100deg, rgba(198,79,240,0.22), rgba(91,84,255,0.18));
+    color: #fff; font-family: var(--display); text-transform: uppercase; font-size: 11.5px; letter-spacing: .6px;
+    text-align: left; padding: 9px 12px; border: 1px solid var(--border); }
+  .wiki-body table.wk-data td { padding: 9px 12px; border: 1px solid var(--border); vertical-align: top; }
+  .wiki-body table.wk-data tr:nth-child(even) td { background: rgba(150,130,255,0.05); }
+  .wiki-body table.wk-data tr:hover td { background: rgba(63,225,255,0.06); }
+
+  /* Cuadros resaltados (tablas sin cabecera) */
+  .wiki-body table.wk-callout { border: 1px solid rgba(245,184,42,0.4); border-left: 3px solid var(--gold);
+    background: rgba(245,184,42,0.06); border-radius: 10px; overflow: hidden; }
+  .wiki-body table.wk-callout col { width: auto !important; }
+  .wiki-body table.wk-callout td { padding: 10px 14px; border: none; vertical-align: top; }
+  .wiki-body table.wk-callout tr:first-child td { color: #fff; font-weight: 600; }
+  .wiki-body table.wk-callout td:first-child:empty { display: none; }
+  .wiki-body .colgroup, .wiki-body colgroup { display: none; }
+
+  .we-editor { min-height: 220px; max-height: 46vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; background: rgba(10,10,31,0.5); outline: none; }
+  .we-editor:focus { border-color: var(--cyan); }
+  .we-toolbar { display: flex; gap: 5px; margin: 4px 0 6px; flex-wrap: wrap; }
+  .we-toolbar button { font-size: 12px; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border);
+    background: transparent; color: var(--text); cursor: pointer; }
+  .we-toolbar button:hover { border-color: var(--cyan); color: var(--cyan); }
+  .we-divider { font-family: var(--display); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold);
+    border-top: 1px solid var(--border); margin: 20px 0 12px; padding-top: 12px; }
+  .modal-wide { max-width: 720px; width: 94vw; }
+  .modal-xwide { max-width: 1040px; width: 96vw; }
+
+  /* ===================== PANEL DE ADMINISTRACIÓN ===================== */
+  .admin-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .atab { font-family: var(--display); font-size: 12.5px; letter-spacing: .6px; text-transform: uppercase; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 11px; padding: 9px 15px; transition: all .12s; }
+  .atab:hover { color: var(--text); }
+  .atab.active { color: #fff; background: linear-gradient(100deg, rgba(198,79,240,0.3), rgba(63,225,255,0.22)); border-color: var(--magenta); }
+  .admin-panel { display: none; }
+  .admin-panel.active { display: block; }
+  .admin-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .admin-panel-head h3 { font-family: var(--display); text-transform: uppercase; letter-spacing: .8px; font-size: 17px; }
+  .admin-hint { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .admin-empty { color: var(--muted); text-align: center; padding: 40px; background: var(--panel); border: 1px dashed var(--border); border-radius: 14px; }
+
+  .prop-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+    display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .prop-main { flex: 1; min-width: 220px; }
+  .prop-kind { display: inline-block; font-family: var(--display); font-size: 10.5px; letter-spacing: .6px; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 7px; margin-bottom: 7px; }
+  .pk-edit { background: rgba(63,225,255,0.18); color: var(--cyan); }
+  .pk-create { background: rgba(54,224,160,0.18); color: var(--win); }
+  .pk-delete { background: rgba(255,77,115,0.18); color: var(--loss); }
+  .pk-reorder { background: rgba(245,184,42,0.18); color: var(--gold); }
+  .prop-summary { font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .prop-meta { font-size: 12px; color: var(--muted); }
+  .prop-meta b { color: var(--text); font-weight: 600; }
+  .prop-actions { display: flex; gap: 7px; align-items: center; flex: 0 0 auto; }
+
+  .rv-meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .rv-meta b { color: var(--text); }
+  .rv-just { background: rgba(245,184,42,0.07); border-left: 3px solid var(--gold); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 16px; font-size: 13.5px; color: var(--text); }
+  .rv-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rv-col { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; max-height: 50vh; overflow-y: auto; background: rgba(10,10,31,0.4); }
+  .rv-col.before { opacity: .82; }
+  .rv-col.after { border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(63,225,255,0.25); }
+  .rv-col-h { font-family: var(--display); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .rv-col.before .rv-col-h { color: var(--muted); } .rv-col.after .rv-col-h { color: var(--cyan); }
+  .rv-col h4 { font-size: 16px; color: #fff; margin: 0 0 8px; font-family: var(--display); }
+  .rv-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .ghost.danger:hover { color: var(--loss); border-color: var(--loss); }
+
+  .user-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 16px; margin-bottom: 9px; flex-wrap: wrap; }
+  .user-name { font-weight: 600; color: #fff; flex: 1; min-width: 120px; }
+  .user-name .you { font-size: 11px; color: var(--cyan); font-weight: 500; margin-left: 6px; }
+  .badge-admin { font-family: var(--display); font-size: 10px; letter-spacing: .5px; text-transform: uppercase;
+    background: rgba(63,225,255,0.18); color: var(--cyan); padding: 2px 8px; border-radius: 6px; margin-left: 8px; }
+  .user-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+  .user-actions button { font-size: 11.5px; padding: 6px 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text); cursor: pointer; transition: all .12s; }
+  .user-actions button:hover { border-color: var(--cyan); color: var(--cyan); }
+  .user-actions button.danger:hover { border-color: var(--loss); color: var(--loss); }
+  .uc-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin: 12px 0 4px; cursor: pointer; }
+  .uc-check input { width: auto; }
+
+  .hist-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 11px; padding: 11px 15px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hist-main { flex: 1; min-width: 200px; font-size: 13px; }
+  .hist-main b { color: #fff; }
+  .hist-when { font-size: 11.5px; color: var(--muted); }
+
+  @media (max-width: 820px) {
+    .wiki-layout { flex-direction: column; }
+    .wiki-nav { position: static; flex-basis: auto; width: 100%; max-height: 340px; }
+    .rv-diff { grid-template-columns: 1fr; }
+  }
+
+  #wiki-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); z-index: 1300;
+    background: var(--bg-elev); border: 1px solid var(--border); color: var(--text); padding: 12px 20px; border-radius: 12px;
+    font-size: 13.5px; box-shadow: 0 12px 40px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
+  #wiki-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #wiki-toast.ok { border-color: var(--win); }
+  #wiki-toast.err { border-color: var(--loss); }
+
   button.btn { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .8px; text-transform: uppercase; cursor: pointer; color: #0a0d13; background: linear-gradient(100deg, var(--gold), #ffb627); border: none; border-radius: 10px; padding: 11px 18px; box-shadow: 0 6px 20px rgba(255,200,61,0.22); transition: transform .12s, box-shadow .12s, opacity .12s; }
   button.btn:hover { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(255,200,61,0.32); }
   button.btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -573,6 +750,104 @@
     </div>
   </div>
 
+  <!-- Ventana editar / crear nodo de wiki -->
+  <div id="wiki-edit-modal" class="modal-overlay" onclick="if(event.target===this)closeWikiEdit()">
+    <div class="modal-card has-close modal-wide">
+      <button class="modal-close" onclick="closeWikiEdit()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title" id="we-title">Editar</div>
+      <div class="modal-sub" id="we-sub">Tus cambios se enviarán a revisión y se publicarán cuando un administrador los apruebe.</div>
+
+      <div id="we-parent-row" style="display:none">
+        <div class="field-label">Sección a la que pertenece</div>
+        <select id="we-parent"></select>
+      </div>
+
+      <div class="field-label">Título</div>
+      <input type="text" id="we-name" maxlength="120" placeholder="Título del apartado" />
+
+      <div id="we-body-row">
+        <div class="field-label">Contenido</div>
+        <div class="we-toolbar">
+          <button type="button" onmousedown="fmt(event,'bold')" title="Negrita"><b>N</b></button>
+          <button type="button" onmousedown="fmt(event,'italic')" title="Cursiva"><i>C</i></button>
+          <button type="button" onmousedown="fmt(event,'insertUnorderedList')" title="Lista">• Lista</button>
+          <button type="button" onmousedown="insertBox(event)" title="Cuadro resaltado">▭ Cuadro</button>
+          <button type="button" onmousedown="insertTable(event)" title="Tabla de datos">▦ Tabla</button>
+        </div>
+        <div class="we-editor wiki-body" id="we-body" contenteditable="true"></div>
+        <div class="field-hint">Puedes dar formato con los botones de arriba. Se conservan los cuadros y tablas existentes.</div>
+      </div>
+
+      <div class="we-divider">Para enviar a revisión</div>
+      <div class="field-label">¿En qué consiste el cambio?</div>
+      <input type="text" id="we-summary" maxlength="200" placeholder="Ej. Corrijo el ejemplo de Mortis y añado un caso" />
+      <div class="field-label">Justificación</div>
+      <textarea id="we-justify" rows="3" placeholder="¿Por qué mejora la guía? Da contexto al administrador."></textarea>
+
+      <button class="btn modal-btn" id="we-save" onclick="submitWikiEdit()">Enviar a revisión</button>
+      <div class="modal-msg err" id="we-err"></div>
+    </div>
+  </div>
+
+  <!-- Ventana justificar (borrar / reordenar) -->
+  <div id="wiki-justify-modal" class="modal-overlay" onclick="if(event.target===this)closeJustify()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeJustify()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title" id="wj-title">Enviar a revisión</div>
+      <div class="modal-sub" id="wj-sub"></div>
+      <div class="field-label">¿En qué consiste el cambio?</div>
+      <input type="text" id="wj-summary" maxlength="200" placeholder="Resumen breve" />
+      <div class="field-label">Justificación</div>
+      <textarea id="wj-justify" rows="3" placeholder="¿Por qué?"></textarea>
+      <button class="btn modal-btn" id="wj-save" onclick="submitJustify()">Enviar a revisión</button>
+      <div class="modal-msg err" id="wj-err"></div>
+    </div>
+  </div>
+
+  <!-- Ventana revisar propuesta (admin) -->
+  <div id="review-modal" class="modal-overlay" onclick="if(event.target===this)closeReview()">
+    <div class="modal-card has-close modal-xwide">
+      <button class="modal-close" onclick="closeReview()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title" id="rv-title">Revisar cambio</div>
+      <div class="rv-meta" id="rv-meta"></div>
+      <div class="rv-just" id="rv-just"></div>
+      <div class="rv-diff" id="rv-diff"></div>
+      <div class="rv-actions">
+        <button class="ghost danger" onclick="reviewReject()">✕ Rechazar</button>
+        <button class="btn" onclick="reviewApprove()">✓ Aprobar y publicar</button>
+      </div>
+      <div class="modal-msg err" id="rv-err"></div>
+    </div>
+  </div>
+
+  <!-- Ventana crear usuario (admin) -->
+  <div id="user-create-modal" class="modal-overlay" onclick="if(event.target===this)closeCreateUser()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeCreateUser()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Crear usuario</div>
+      <div class="field-label">Nombre de usuario</div>
+      <input type="text" id="uc-name" maxlength="40" placeholder="usuario" />
+      <div class="field-label">Contraseña</div>
+      <input type="text" id="uc-pass" maxlength="100" placeholder="mínimo 6 caracteres" />
+      <label class="uc-check"><input type="checkbox" id="uc-admin" /> Darle permisos de administrador</label>
+      <button class="btn modal-btn" onclick="submitCreateUser()">Crear</button>
+      <div class="modal-msg err" id="uc-err"></div>
+    </div>
+  </div>
+
+  <!-- Ventana resetear contraseña (admin) -->
+  <div id="user-pw-modal" class="modal-overlay" onclick="if(event.target===this)closeUserPw()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeUserPw()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Resetear contraseña</div>
+      <div class="modal-sub" id="upw-sub"></div>
+      <div class="field-label">Nueva contraseña</div>
+      <input type="text" id="upw-pass" maxlength="100" placeholder="mínimo 6 caracteres" />
+      <button class="btn modal-btn" onclick="submitUserPw()">Cambiar contraseña</button>
+      <div class="modal-msg err" id="upw-err"></div>
+    </div>
+  </div>
+
   <div class="app-banner-bar">
     <div class="app-banner" role="img" aria-label="BrawlSensei"></div>
   </div>
@@ -584,6 +859,7 @@
       <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawlytics</button>
       <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
       <button class="snav" data-section="leagues" onclick="showSection('leagues')">Torneos y Ligas</button>
+      <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
     <div class="toolbar">
       <button class="user-pill" id="user-pill" onclick="openAccount()"></button>
@@ -781,13 +1057,37 @@
   </div>
   </section>
 
-  <!-- ===================== SECCIÓN: GUÍA DE ESTRATEGIA (wiki, futura) ===================== -->
+  <!-- ===================== SECCIÓN: GUÍA DE ESTRATEGIA (wiki) ===================== -->
   <section class="app-section" id="section-guide">
-    <div class="section-placeholder">
-      <div class="ph-icon">📖</div>
-      <h2>Guía de Estrategia</h2>
-      <div class="ph-badge">Próximamente</div>
-      <p>Una wiki colaborativa de estrategia para Brawl Stars: conceptos, mecánicas y consejos aportados por la comunidad. Cualquiera podrá proponer ediciones, que pasarán por un control de cambios y se publicarán solo cuando un administrador las apruebe.</p>
+    <div class="wiki-layout">
+      <aside class="wiki-nav" id="wiki-nav">
+        <div class="wiki-nav-head">
+          <span>Índice</span>
+          <button class="wk-mini" id="wiki-reorder-btn" onclick="toggleReorder()" title="Reordenar el índice">⇅ Reordenar</button>
+        </div>
+        <div id="wiki-nav-list"><div class="wk-loading">Cargando…</div></div>
+        <div class="wiki-nav-actions">
+          <button class="wk-add" onclick="openCreateNode('section')">＋ Sección</button>
+          <button class="wk-add" onclick="openCreateNode('subsection')">＋ Subsección</button>
+          <button class="wk-add" onclick="openCreateNode('separator')">＋ Separador</button>
+        </div>
+      </aside>
+      <div class="wiki-main">
+        <div class="wiki-reorder-bar" id="wiki-reorder-bar" style="display:none">
+          <span>Modo reordenar: arrastra los elementos del índice. Las subsecciones se arrastran dentro de su sección.</span>
+          <div>
+            <button class="ghost" onclick="cancelReorder()">Cancelar</button>
+            <button class="btn" onclick="submitReorder()">Guardar orden</button>
+          </div>
+        </div>
+        <article class="wiki-content" id="wiki-content">
+          <div class="wiki-welcome">
+            <div class="ph-icon">📖</div>
+            <h2>Guía de Estrategia</h2>
+            <p>Selecciona un apartado en el índice para empezar. Esta guía es colaborativa: puedes editar cualquier entrada o crear secciones, subsecciones y separadores. Tus cambios se envían a revisión y se publican cuando un administrador los aprueba.</p>
+          </div>
+        </article>
+      </div>
     </div>
   </section>
 
@@ -798,6 +1098,37 @@
       <h2>Torneos y Ligas</h2>
       <div class="ph-badge">Próximamente</div>
       <p>Organiza y gestiona ligas y torneos amateur: crea una competición con equipos, genera los enfrentamientos automáticamente según el formato elegido, registra los resultados ronda a ronda y comparte la clasificación para que otros la sigan en directo.</p>
+    </div>
+  </section>
+
+  <!-- ===================== SECCIÓN: ADMINISTRACIÓN (solo admins) ===================== -->
+  <section class="app-section" id="section-admin">
+    <div class="admin-tabs">
+      <button class="atab active" data-atab="pending" onclick="showAdminTab('pending')">Cambios pendientes <span class="admin-badge" id="admin-tab-badge" style="display:none">0</span></button>
+      <button class="atab" data-atab="users" onclick="showAdminTab('users')">Usuarios</button>
+      <button class="atab" data-atab="history" onclick="showAdminTab('history')">Historial</button>
+    </div>
+
+    <div class="admin-panel active" id="admin-pending">
+      <div class="admin-panel-head">
+        <h3>Cambios pendientes de aprobación</h3>
+        <button class="btn" id="approve-all-btn" onclick="approveAll()" style="display:none">✓ Aprobar todos</button>
+      </div>
+      <div id="pending-list"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
+    <div class="admin-panel" id="admin-users">
+      <div class="admin-panel-head">
+        <h3>Usuarios</h3>
+        <button class="btn" onclick="openCreateUser()">＋ Crear usuario</button>
+      </div>
+      <div id="users-list"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
+    <div class="admin-panel" id="admin-history">
+      <div class="admin-panel-head"><h3>Historial de cambios de la wiki</h3></div>
+      <p class="admin-hint">Cada vez que se aprueba un cambio se guarda la versión anterior. Si se ha perdido información, puedes restaurarla.</p>
+      <div id="history-list"><div class="wk-loading">Cargando…</div></div>
     </div>
   </section>
 
@@ -1500,6 +1831,8 @@ function showSection(name) {
   document.querySelectorAll(".app-section").forEach((s) => s.classList.toggle("active", s.id === "section-" + name));
   document.querySelectorAll(".snav").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  if (name === "guide") loadWikiTree();
+  if (name === "admin") { loadAdminPending(); }
 }
 
 /* ---------- Pestañas ---------- */
@@ -1513,6 +1846,457 @@ function switchTab(name) {
   if (name === "coach") { showCoachListView(); loadReports(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+/* ============================ WIKI / GUÍA DE ESTRATEGIA ============================ */
+let wikiTree = [], wikiActiveId = null, wikiIsAdmin = false, reorderMode = false;
+let weMode = null, weEditId = null;       // editor de nodos
+let justifyCtx = null;                     // contexto para borrar/reordenar
+
+async function apiSend(url, method, body) {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, d };
+}
+function wikiToast(msg, kind) {
+  let t = document.getElementById("wiki-toast");
+  if (!t) { t = document.createElement("div"); t.id = "wiki-toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.className = "show " + (kind || "");
+  clearTimeout(t._t); t._t = setTimeout(() => { t.className = ""; }, 3400);
+}
+
+async function loadWikiTree(keepActive) {
+  try {
+    const d = await getJSON("/api/wiki/tree");
+    wikiTree = d.tree || []; wikiIsAdmin = !!d.is_admin;
+    buildWikiNav();
+    updatePendingBadge(d.pending || 0);
+    if (!keepActive && wikiActiveId == null) {
+      const first = wikiTree.find((n) => n.type === "section");
+      if (first) loadWikiNode(first.id);
+    }
+  } catch (e) { $("wiki-nav-list").innerHTML = '<div class="wk-loading">No se pudo cargar.</div>'; }
+}
+
+function buildWikiNav() {
+  const wrap = $("wiki-nav-list");
+  if (!wikiTree.length) { wrap.innerHTML = '<div class="wk-loading">Aún no hay contenido.</div>'; return; }
+  let h = "";
+  wikiTree.forEach((n) => {
+    if (n.type === "separator") {
+      h += `<div class="wk-sep wk-top" data-id="${n.id}" data-type="separator"><span class="wk-grip">⠿</span>${esc(n.title)}</div>`;
+    } else {
+      h += `<div class="wk-group wk-top" data-id="${n.id}">
+        <div class="wk-item ${n.id === wikiActiveId ? "active" : ""}" data-id="${n.id}" data-type="section" onclick="onNavClick(event,${n.id})">
+          <span class="wk-grip">⠿</span><span class="wk-num">${n.number}</span><span class="wk-label">${esc(n.title)}</span></div>
+        <div class="wk-subs" data-parent="${n.id}">`;
+      (n.subs || []).forEach((s) => {
+        h += `<div class="wk-item wk-sub ${s.id === wikiActiveId ? "active" : ""}" data-id="${s.id}" data-type="subsection" onclick="onNavClick(event,${s.id})">
+          <span class="wk-grip">⠿</span><span class="wk-num">${s.number}</span><span class="wk-label">${esc(s.title)}</span></div>`;
+      });
+      h += `</div></div>`;
+    }
+  });
+  wrap.innerHTML = h;
+  if (reorderMode) enableDnD();
+}
+
+function onNavClick(e, id) { if (reorderMode) return; loadWikiNode(id); }
+
+function findNavMeta(id) {
+  for (const n of wikiTree) {
+    if (n.id === id) return { number: n.number, type: n.type, title: n.title };
+    for (const s of (n.subs || [])) if (s.id === id) return { number: s.number, type: "subsection", title: s.title };
+  }
+  return null;
+}
+
+async function loadWikiNode(id) {
+  wikiActiveId = id; buildWikiNav();
+  const cont = $("wiki-content");
+  try {
+    const n = await getJSON("/api/wiki/node/" + id);
+    renderWikiNode(n);
+  } catch (e) { cont.innerHTML = '<div class="wiki-welcome"><p>No se pudo cargar el apartado.</p></div>'; }
+}
+
+function renderWikiNode(n) {
+  const meta = findNavMeta(n.id);
+  const eyebrow = n.type === "separator" ? "Separador"
+    : (n.type === "subsection" ? "Subsección " + (meta ? meta.number : "")
+      : "Apartado " + (meta ? meta.number : ""));
+  $("wiki-content").innerHTML =
+    `<div class="wc-head">
+       <div><div class="wc-eyebrow">${esc(eyebrow)}</div><div class="wc-title">${esc(n.title)}</div></div>
+       <div class="wc-tools">
+         <button class="wc-edit" onclick="openEditNode(${n.id})">✎ Editar</button>
+         <button class="wc-del" onclick="openDeleteNode(${n.id})">🗑 Eliminar</button>
+       </div>
+     </div>
+     <div class="wc-divider"></div>
+     <div class="wiki-body">${n.body || '<p style="color:var(--muted)">(Sin contenido todavía. Pulsa «Editar» para añadirlo.)</p>'}</div>`;
+}
+
+/* ---------- Editor de nodos (editar / crear) ---------- */
+function fillParentSelect(selected) {
+  const sel = $("we-parent"); sel.innerHTML = "";
+  wikiTree.filter((n) => n.type === "section").forEach((n) => {
+    const o = document.createElement("option");
+    o.value = n.id; o.textContent = n.number + ". " + n.title;
+    if (selected && n.id === selected) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+function openEditNode(id) {
+  getJSON("/api/wiki/node/" + id).then((n) => {
+    weMode = "edit"; weEditId = id;
+    $("we-title").textContent = "Editar: " + n.title;
+    $("we-sub").textContent = "Tus cambios se enviarán a revisión y se publicarán cuando un administrador los apruebe.";
+    $("we-parent-row").style.display = "none";
+    $("we-name").value = n.title;
+    const isSep = n.type === "separator";
+    $("we-body-row").style.display = isSep ? "none" : "";
+    $("we-body").innerHTML = isSep ? "" : (n.body || "");
+    $("we-summary").value = ""; $("we-justify").value = ""; $("we-err").textContent = "";
+    $("wiki-edit-modal").classList.add("open"); $("we-name").focus();
+  });
+}
+function openCreateNode(type) {
+  weMode = "create_" + type; weEditId = null;
+  const titles = { section: "Nueva sección", subsection: "Nueva subsección", separator: "Nuevo separador" };
+  $("we-title").textContent = titles[type];
+  const subs = { section: "Se añadirá como última sección del índice. Pasa por revisión.",
+                 subsection: "Indica a qué sección pertenece. Pasa por revisión.",
+                 separator: "Un separador organiza un bloque temático. Pasa por revisión." };
+  $("we-sub").textContent = subs[type];
+  $("we-parent-row").style.display = type === "subsection" ? "" : "none";
+  if (type === "subsection") fillParentSelect(wikiActiveId);
+  $("we-body-row").style.display = type === "separator" ? "none" : "";
+  $("we-name").value = ""; $("we-body").innerHTML = "";
+  $("we-summary").value = ""; $("we-justify").value = ""; $("we-err").textContent = "";
+  $("wiki-edit-modal").classList.add("open"); $("we-name").focus();
+}
+function closeWikiEdit() { $("wiki-edit-modal").classList.remove("open"); }
+
+async function submitWikiEdit() {
+  const err = $("we-err"); err.textContent = "";
+  const title = $("we-name").value.trim();
+  const summary = $("we-summary").value.trim();
+  const justification = $("we-justify").value.trim();
+  if (!title) { err.textContent = "Ponle un título."; return; }
+  if (!summary) { err.textContent = "Describe brevemente el cambio."; return; }
+  if (!justification) { err.textContent = "Justifica el cambio."; return; }
+  let kind, node_id = null, data = {};
+  if (weMode === "edit") { kind = "edit"; node_id = weEditId; data = { title, body: $("we-body").innerHTML }; }
+  else if (weMode === "create_section") { kind = "create_section"; data = { title, body: $("we-body").innerHTML }; }
+  else if (weMode === "create_subsection") {
+    kind = "create_subsection";
+    data = { title, body: $("we-body").innerHTML, parent_id: parseInt($("we-parent").value, 10) };
+  } else if (weMode === "create_separator") { kind = "create_separator"; data = { title }; }
+  const btn = $("we-save"); btn.disabled = true;
+  const { ok, d } = await apiSend("/api/wiki/proposals", "POST", { kind, node_id, data, summary, justification });
+  btn.disabled = false;
+  if (!ok) { err.textContent = d.error || d.detail || "No se pudo enviar."; return; }
+  closeWikiEdit();
+  wikiToast("Cambio enviado a revisión ✓", "ok");
+  if (wikiIsAdmin) loadWikiTree(true);
+}
+
+/* ---------- Borrar (con justificación) ---------- */
+function openDeleteNode(id) {
+  const meta = findNavMeta(id);
+  justifyCtx = { kind: "delete", node_id: id };
+  $("wj-title").textContent = "Eliminar apartado";
+  $("wj-sub").textContent = "Propones eliminar «" + (meta ? meta.title : "este apartado") + "»"
+    + (meta && meta.type === "section" ? " y todas sus subsecciones." : ".") + " Pasa por revisión.";
+  $("wj-summary").value = ""; $("wj-justify").value = ""; $("wj-err").textContent = "";
+  $("wiki-justify-modal").classList.add("open"); $("wj-summary").focus();
+}
+function closeJustify() { $("wiki-justify-modal").classList.remove("open"); }
+async function submitJustify() {
+  const err = $("wj-err"); err.textContent = "";
+  const summary = $("wj-summary").value.trim(), justification = $("wj-justify").value.trim();
+  if (!summary) { err.textContent = "Describe brevemente el cambio."; return; }
+  if (!justification) { err.textContent = "Justifica el cambio."; return; }
+  if (!justifyCtx) return;
+  const body = { kind: justifyCtx.kind, summary, justification, data: justifyCtx.payload || {} };
+  if (justifyCtx.node_id) body.node_id = justifyCtx.node_id;
+  const { ok, d } = await apiSend("/api/wiki/proposals", "POST", body);
+  if (!ok) { err.textContent = d.error || d.detail || "No se pudo enviar."; return; }
+  closeJustify();
+  if (justifyCtx.kind === "reorder") cancelReorder();
+  justifyCtx = null;
+  wikiToast("Cambio enviado a revisión ✓", "ok");
+  if (wikiIsAdmin) loadWikiTree(true);
+}
+
+/* ---------- Reordenar (drag & drop, pasa por revisión) ---------- */
+function toggleReorder() { reorderMode ? cancelReorder() : startReorder(); }
+function startReorder() {
+  reorderMode = true;
+  $("wiki-nav").classList.add("reorder");
+  $("wiki-reorder-btn").classList.add("on");
+  $("wiki-reorder-bar").style.display = "flex";
+  buildWikiNav();
+}
+function cancelReorder() {
+  reorderMode = false;
+  $("wiki-nav").classList.remove("reorder");
+  $("wiki-reorder-btn").classList.remove("on");
+  $("wiki-reorder-bar").style.display = "none";
+  loadWikiTree(true);
+}
+let dragEl = null;
+function enableDnD() {
+  const nav = $("wiki-nav-list");
+  nav.querySelectorAll(":scope > .wk-top").forEach((el) => {
+    el.setAttribute("draggable", "true");
+    el.addEventListener("dragstart", (e) => { if (e.target.closest(".wk-sub")) return; dragEl = el; el.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+    el.addEventListener("dragend", dndEnd);
+  });
+  nav.addEventListener("dragover", (e) => dndOver(e, nav, ":scope > .wk-top"));
+  nav.querySelectorAll(".wk-subs").forEach((c) => {
+    c.querySelectorAll(":scope > .wk-sub").forEach((el) => {
+      el.setAttribute("draggable", "true");
+      el.addEventListener("dragstart", (e) => { e.stopPropagation(); dragEl = el; el.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+      el.addEventListener("dragend", dndEnd);
+    });
+    c.addEventListener("dragover", (e) => { e.stopPropagation(); dndOver(e, c, ":scope > .wk-sub"); });
+  });
+}
+function dndEnd() { if (dragEl) dragEl.classList.remove("dragging"); dragEl = null; }
+function dndOver(e, container, sel) {
+  if (!dragEl || dragEl.parentElement !== container) return;
+  e.preventDefault();
+  const items = [...container.querySelectorAll(sel)].filter((x) => x !== dragEl);
+  let after = null;
+  for (const it of items) {
+    const box = it.getBoundingClientRect();
+    if (e.clientY < box.top + box.height / 2) { after = it; break; }
+  }
+  if (after == null) container.appendChild(dragEl);
+  else container.insertBefore(dragEl, after);
+}
+async function submitReorder() {
+  const nav = $("wiki-nav-list");
+  const top = [...nav.querySelectorAll(":scope > .wk-top")].map((el) => parseInt(el.dataset.id, 10));
+  const subs = {};
+  nav.querySelectorAll(".wk-subs").forEach((c) => {
+    subs[c.dataset.parent] = [...c.querySelectorAll(":scope > .wk-sub")].map((el) => parseInt(el.dataset.id, 10));
+  });
+  justifyCtx = { kind: "reorder", payload: { top, subs } };
+  $("wj-title").textContent = "Reordenar el índice";
+  $("wj-sub").textContent = "Propones una nueva organización del índice. Pasa por revisión.";
+  $("wj-summary").value = "Reordenación del índice"; $("wj-justify").value = ""; $("wj-err").textContent = "";
+  $("wiki-justify-modal").classList.add("open"); $("wj-justify").focus();
+}
+
+/* ---------- Mini-editor de formato ---------- */
+function fmt(e, cmd) { e.preventDefault(); document.execCommand(cmd, false, null); $("we-body").focus(); }
+function insertBox(e) {
+  e.preventDefault(); $("we-body").focus();
+  document.execCommand("insertHTML", false,
+    '<table class="wk-callout"><tbody><tr><td>Título del cuadro</td></tr><tr><td>Contenido del cuadro…</td></tr></tbody></table><p><br></p>');
+}
+function insertTable(e) {
+  e.preventDefault(); $("we-body").focus();
+  document.execCommand("insertHTML", false,
+    '<table class="wk-data"><thead><tr><th>Columna 1</th><th>Columna 2</th></tr></thead><tbody><tr><td>—</td><td>—</td></tr><tr><td>—</td><td>—</td></tr></tbody></table><p><br></p>');
+}
+
+/* ============================ ADMINISTRACIÓN ============================ */
+function updatePendingBadge(n) {
+  const b1 = $("admin-pending-badge"), b2 = $("admin-tab-badge");
+  [b1, b2].forEach((b) => { if (b) { b.textContent = n; b.style.display = n > 0 ? "" : "none"; } });
+  const all = $("approve-all-btn"); if (all) all.style.display = n > 0 ? "" : "none";
+}
+function showAdminTab(name) {
+  document.querySelectorAll(".atab").forEach((t) => t.classList.toggle("active", t.dataset.atab === name));
+  document.querySelectorAll(".admin-panel").forEach((p) => p.classList.toggle("active", p.id === "admin-" + name));
+  if (name === "pending") loadAdminPending();
+  if (name === "users") loadAdminUsers();
+  if (name === "history") loadAdminHistory();
+}
+
+const KIND_LABEL = { edit: ["Edición", "pk-edit"], create_section: ["Nueva sección", "pk-create"],
+  create_subsection: ["Nueva subsección", "pk-create"], create_separator: ["Nuevo separador", "pk-create"],
+  delete: ["Eliminación", "pk-delete"], reorder: ["Reordenación", "pk-reorder"] };
+
+async function loadAdminPending() {
+  const wrap = $("pending-list");
+  try {
+    const d = await getJSON("/api/admin/proposals?status=pending");
+    const list = d.proposals || [];
+    updatePendingBadge(list.length);
+    if (!list.length) { wrap.innerHTML = '<div class="admin-empty">No hay cambios pendientes. 🎉</div>'; return; }
+    wrap.innerHTML = list.map((p) => {
+      const [lab, cls] = KIND_LABEL[p.kind] || ["Cambio", ""];
+      const when = new Date(p.created_at).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+      return `<div class="prop-card">
+        <div class="prop-main">
+          <span class="prop-kind ${cls}">${lab}</span>
+          <div class="prop-summary">${esc(p.summary || "(sin resumen)")}</div>
+          <div class="prop-meta">por <b>${esc(p.username || "—")}</b> · ${when}</div>
+        </div>
+        <div class="prop-actions">
+          <button class="user-actions" onclick="openReview(${p.id})" style="border:1px solid var(--border);background:transparent;color:var(--cyan);padding:7px 13px;border-radius:9px;cursor:pointer">Revisar</button>
+        </div></div>`;
+    }).join("");
+  } catch (e) {
+    if (String(e.message) === "401") return;
+    wrap.innerHTML = '<div class="admin-empty">No se pudo cargar (¿tienes permisos de administrador?).</div>';
+  }
+}
+
+let reviewId = null;
+async function openReview(pid) {
+  reviewId = pid;
+  try {
+    const d = await getJSON("/api/admin/proposals/" + pid);
+    const p = d.proposal, cur = d.current, parent = d.parent;
+    const [lab] = KIND_LABEL[p.kind] || ["Cambio"];
+    $("rv-title").textContent = lab;
+    $("rv-meta").innerHTML = `Propuesto por <b>${esc(p.username || "—")}</b> · ${new Date(p.created_at).toLocaleString("es-ES")}`;
+    $("rv-just").innerHTML = `<b>Resumen:</b> ${esc(p.summary || "—")}<br><b>Justificación:</b> ${esc(p.justification || "—")}`;
+    $("rv-diff").innerHTML = renderDiff(p, cur, parent);
+    $("rv-err").textContent = "";
+    $("review-modal").classList.add("open");
+  } catch (e) { wikiToast("No se pudo abrir la propuesta", "err"); }
+}
+function closeReview() { $("review-modal").classList.remove("open"); reviewId = null; }
+
+function diffCol(side, header, title, bodyHtml) {
+  return `<div class="rv-col ${side}"><div class="rv-col-h">${header}</div>${title ? "<h4>" + esc(title) + "</h4>" : ""}<div class="wiki-body">${bodyHtml || ""}</div></div>`;
+}
+function renderDiff(p, cur, parent) {
+  const pl = p.payload || {};
+  if (p.kind === "edit") {
+    return diffCol("before", "Versión actual (pública)", cur ? cur.title : "", cur ? cur.body : "")
+         + diffCol("after", "Propuesta", pl.title, pl.body);
+  }
+  if (p.kind === "create_section" || p.kind === "create_subsection") {
+    const ctx = p.kind === "create_subsection" && parent ? "<p style='color:var(--muted)'>En la sección «" + esc(parent.title) + "».</p>" : "";
+    return diffCol("before", "Ahora", "", "<p style='color:var(--muted)'>Este apartado todavía no existe.</p>")
+         + diffCol("after", "Se creará", pl.title, ctx + (pl.body || ""));
+  }
+  if (p.kind === "create_separator") {
+    return diffCol("before", "Ahora", "", "<p style='color:var(--muted)'>No existe.</p>")
+         + diffCol("after", "Se creará (separador)", pl.title, "");
+  }
+  if (p.kind === "delete") {
+    return diffCol("before", "Versión actual (se eliminará)", cur ? cur.title : "", cur ? cur.body : "")
+         + diffCol("after", "Después", "", "<p style='color:var(--loss)'>El apartado se eliminará.</p>");
+  }
+  if (p.kind === "reorder") {
+    const byId = {}; wikiTree.forEach((n) => { byId[n.id] = n.title; (n.subs || []).forEach((s) => byId[s.id] = s.title); });
+    const newOrder = (pl.top || []).map((id) => "<li>" + esc(byId[id] || ("#" + id)) + "</li>").join("");
+    return diffCol("before", "Orden actual", "", "<p style='color:var(--muted)'>El orden actual del índice.</p>")
+         + diffCol("after", "Nuevo orden propuesto", "", "<ol>" + newOrder + "</ol>");
+  }
+  return diffCol("after", "Cambio", "", "");
+}
+
+async function reviewApprove() {
+  if (!reviewId) return;
+  const { ok, d } = await apiSend("/api/admin/proposals/" + reviewId + "/approve", "POST");
+  if (!ok) { $("rv-err").textContent = d.error || "No se pudo aprobar."; return; }
+  closeReview(); wikiToast("Cambio aprobado y publicado ✓", "ok");
+  loadAdminPending(); loadWikiTree(true);
+}
+async function reviewReject() {
+  if (!reviewId) return;
+  const { ok, d } = await apiSend("/api/admin/proposals/" + reviewId + "/reject", "POST");
+  if (!ok) { $("rv-err").textContent = d.error || "No se pudo rechazar."; return; }
+  closeReview(); wikiToast("Cambio rechazado", "");
+  loadAdminPending();
+}
+async function approveAll() {
+  if (!confirm("¿Aprobar TODOS los cambios pendientes? Se publicarán en orden.")) return;
+  const { ok, d } = await apiSend("/api/admin/proposals/approve-all", "POST");
+  if (ok) { wikiToast("Aprobados " + (d.approved || 0) + " cambios ✓", "ok"); loadAdminPending(); loadWikiTree(true); }
+}
+
+/* ---------- Usuarios ---------- */
+async function loadAdminUsers() {
+  const wrap = $("users-list");
+  try {
+    const d = await getJSON("/api/admin/users");
+    wrap.innerHTML = (d.users || []).map((u) => {
+      const me = currentUser && u.id === currentUser.id;
+      return `<div class="user-row">
+        <div class="user-name">${esc(u.username)}${u.is_admin ? '<span class="badge-admin">admin</span>' : ""}${me ? '<span class="you">(tú)</span>' : ""}</div>
+        <div class="user-actions">
+          <button onclick="toggleUserAdmin(${u.id}, ${u.is_admin ? 0 : 1})" ${me && u.is_admin ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>${u.is_admin ? "Quitar admin" : "Hacer admin"}</button>
+          <button onclick="openUserPw(${u.id}, '${esc(u.username)}')">Resetear contraseña</button>
+          <button class="danger" onclick="deleteUser(${u.id}, '${esc(u.username)}')" ${me ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>Borrar</button>
+        </div></div>`;
+    }).join("");
+  } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
+}
+async function toggleUserAdmin(uid, val) {
+  const { ok, d } = await apiSend("/api/admin/users/" + uid + "/admin", "POST", { is_admin: !!val });
+  if (!ok) { wikiToast(d.error || "No se pudo cambiar", "err"); return; }
+  loadAdminUsers();
+}
+async function deleteUser(uid, name) {
+  if (!confirm("¿Borrar al usuario «" + name + "»? Esta acción es permanente.")) return;
+  const { ok, d } = await apiSend("/api/admin/users/" + uid, "DELETE");
+  if (!ok) { wikiToast(d.error || "No se pudo borrar", "err"); return; }
+  wikiToast("Usuario borrado", ""); loadAdminUsers();
+}
+let pwUserId = null;
+function openUserPw(uid, name) {
+  pwUserId = uid; $("upw-sub").textContent = "Nueva contraseña para «" + name + "».";
+  $("upw-pass").value = ""; $("upw-err").textContent = "";
+  $("user-pw-modal").classList.add("open"); $("upw-pass").focus();
+}
+function closeUserPw() { $("user-pw-modal").classList.remove("open"); }
+async function submitUserPw() {
+  const pw = $("upw-pass").value;
+  if (pw.length < 6) { $("upw-err").textContent = "Mínimo 6 caracteres."; return; }
+  const { ok, d } = await apiSend("/api/admin/users/" + pwUserId + "/password", "POST", { password: pw });
+  if (!ok) { $("upw-err").textContent = d.error || "No se pudo."; return; }
+  closeUserPw(); wikiToast("Contraseña actualizada ✓", "ok");
+}
+function openCreateUser() {
+  $("uc-name").value = ""; $("uc-pass").value = ""; $("uc-admin").checked = false; $("uc-err").textContent = "";
+  $("user-create-modal").classList.add("open"); $("uc-name").focus();
+}
+function closeCreateUser() { $("user-create-modal").classList.remove("open"); }
+async function submitCreateUser() {
+  const username = $("uc-name").value.trim(), password = $("uc-pass").value, is_admin = $("uc-admin").checked;
+  const err = $("uc-err"); err.textContent = "";
+  if (username.length < 3) { err.textContent = "Usuario inválido (mínimo 3 caracteres)."; return; }
+  if (password.length < 6) { err.textContent = "Contraseña mínima de 6 caracteres."; return; }
+  const { ok, d } = await apiSend("/api/admin/users", "POST", { username, password, is_admin });
+  if (!ok) { err.textContent = d.error || d.detail || "No se pudo crear."; return; }
+  closeCreateUser(); wikiToast("Usuario creado ✓", "ok"); loadAdminUsers();
+}
+
+/* ---------- Historial ---------- */
+async function loadAdminHistory() {
+  const wrap = $("history-list");
+  try {
+    const d = await getJSON("/api/admin/history");
+    const list = d.history || [];
+    if (!list.length) { wrap.innerHTML = '<div class="admin-empty">Aún no hay historial de cambios.</div>'; return; }
+    wrap.innerHTML = list.map((h) => {
+      const when = new Date(h.changed_at).toLocaleString("es-ES");
+      const ck = { edit: "editado", delete: "eliminado", revert: "restaurado" }[h.change_kind] || h.change_kind;
+      return `<div class="hist-row">
+        <div class="hist-main"><b>${esc(h.title)}</b> · versión guardada antes de ser ${esc(ck)}
+          <div class="hist-when">por ${esc(h.username || "—")} · ${when}</div></div>
+        <div class="user-actions"><button onclick="revertHistory(${h.id}, '${esc(h.title)}')">↩ Restaurar esta versión</button></div>
+      </div>`;
+    }).join("");
+  } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
+}
+async function revertHistory(hid, title) {
+  if (!confirm("¿Restaurar la versión guardada de «" + title + "»? Sustituirá el contenido actual (se guardará el actual en el historial).")) return;
+  const { ok } = await apiSend("/api/admin/history/" + hid + "/revert", "POST");
+  if (ok) { wikiToast("Versión restaurada ✓", "ok"); loadAdminHistory(); loadWikiTree(true); }
+}
+
 
 /* ---------- Eventos ---------- */
 $("player-select").addEventListener("change", async () => {
@@ -1778,6 +2562,8 @@ function setUser(user) {
   currentUser = user || null;
   $("user-pill").textContent = user && user.username ? "@" + user.username : "";
   const cs = $("um-country"); if (cs) cs.value = (user && user.country) || "";
+  const navAdmin = $("nav-admin");
+  if (navAdmin) navAdmin.style.display = (user && user.is_admin) ? "" : "none";
 }
 
 function switchAuth(which) {

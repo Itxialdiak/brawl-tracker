@@ -84,3 +84,13 @@ def require_user(request: Request) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="No has iniciado sesión.")
     return user
+
+
+def require_admin(request: Request) -> dict:
+    """Dependencia: exige sesión válida y rol de administrador; si no, 401/403."""
+    user = current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="No has iniciado sesión.")
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Necesitas permisos de administrador.")
+    return user
