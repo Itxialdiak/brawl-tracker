@@ -407,6 +407,20 @@ def api_filters(player: str = Query(None), user: dict = Depends(auth.require_use
     return db.distinct_values(player)
 
 
+# La rotación oficial mezcla eventos de Copas y de Competitivo (Ranked). Los de
+# Competitivo van en un bloque sincronizado de varios días (los de Copas rotan a
+# diario) y son de uno de estos modos; así los separamos para mostrarlos aparte.
+_RANKED_MODES = {"gemGrab", "brawlBall", "heist", "knockout", "hotZone", "bounty"}
+
+
+def _slot_hours(start: str | None, end: str | None) -> float:
+    try:
+        f = "%Y%m%dT%H%M%S"
+        return (datetime.strptime(end[:15], f) - datetime.strptime(start[:15], f)).total_seconds() / 3600
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 _rotation_cache = {"at": 0.0, "data": None}
 
 
@@ -428,8 +442,12 @@ async def api_rotation(player: str = Query(None), user: dict = Depends(auth.requ
             map_ = evt.get("map") or it.get("map")
             if not map_:
                 continue
-            events.append({"mode": evt.get("mode") or it.get("mode"), "map": map_,
-                           "startTime": it.get("startTime"), "endTime": it.get("endTime")})
+            mode = evt.get("mode") or it.get("mode")
+            start, end = it.get("startTime"), it.get("endTime")
+            ranked = mode in _RANKED_MODES and _slot_hours(start, end) >= 36
+            events.append({"mode": mode, "map": map_,
+                           "startTime": start, "endTime": end,
+                           "category": "ranked" if ranked else "trophy"})
         _rotation_cache.update(at=now, data=events)
     analysis = await asyncio.to_thread(db.rotation_analysis, tag, _rotation_cache["data"])
     return {"events": analysis}
@@ -953,8 +971,13 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         w = wr_by_name.get((name or "").upper())
         owned_sp = set(c["star_power_ids"]) if c else set()
         owned_gd = set(c["gadget_ids"]) if c else set()
+        ex = brawler_extra.get(bid)
+        role = ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role")
         items.append({
-            "id": bid, "name": name, "role": cat.get("role"), "rarity": cat.get("rarity"),
+            "id": bid, "name": name, "role": role,
+            "role_secondary": brawler_extra.role_secondary(name),
+            "hypercharge_icon": (ex.get("hypercharge") or {}).get("icon"),
+            "rarity": cat.get("rarity"),
             "portrait": cat.get("portrait"),
             "owned": c is not None,
             "power": c["power"] if c else None,
@@ -1041,12 +1064,23 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
     ov = await asyncio.to_thread(db.overview, filt)
     by_mode = await asyncio.to_thread(db.winrate_by, "mode", filt)
     skin = {"id": c.get("skin_id"), "name": c.get("skin_name")} if (c and c.get("skin_id")) else None
+    image_full = extra.get("body_image") or cat.get("image_full")
+    if skin and skin.get("name"):
+        from . import wiki
+        skin_url = await wiki.resolve_skin_image(name, skin["name"])
+        if skin_url:
+            image_full = skin_url       # muestra la skin equipada si la encontramos
+            skin["image"] = skin_url
 
     return {
         "id": brawler_id, "name": name,
         "description": extra.get("description_es") or cat.get("description"),
-        "role": cat.get("role"), "rarity": cat.get("rarity"),
-        "image_full": extra.get("body_image") or cat.get("image_full"), "portrait": cat.get("portrait"),
+        "role": extra.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role"),
+        "role_secondary": brawler_extra.role_secondary(name),
+        "rarity": cat.get("rarity"),
+        "image_full": image_full, "portrait": cat.get("portrait"),
+        "attack": extra.get("attack"),
+        "passive": extra.get("passive"),
         "super": extra.get("super"),
         "star_powers": merge_abilities(cat.get("star_powers"), owned_sp, extra.get("star_powers_es")),
         "gadgets": merge_abilities(cat.get("gadgets"), owned_gd, extra.get("gadgets_es")),

@@ -63,3 +63,33 @@ def hypercharge_total() -> int:
     (`hypercharges_in_game`) si está puesto; si no, cuenta las registradas."""
     explicit = meta().get("hypercharges_in_game")
     return explicit if isinstance(explicit, int) else len(hypercharge_ids())
+
+
+# --- Roles secundarios curados (data/roles_secondary.json) -------------------
+
+_ROLES_PATH = os.path.join(os.path.dirname(__file__), "data", "roles_secondary.json")
+_roles_cache: dict = {"data": None, "mtime": None}
+
+
+def _load_roles() -> dict:
+    try:
+        mtime = os.path.getmtime(_ROLES_PATH)
+    except OSError:
+        return {}
+    if _roles_cache["data"] is None or mtime != _roles_cache["mtime"]:
+        try:
+            with open(_ROLES_PATH, encoding="utf-8") as f:
+                _roles_cache["data"] = json.load(f)
+            _roles_cache["mtime"] = mtime
+        except Exception:  # noqa: BLE001
+            return _roles_cache["data"] or {}
+    return _roles_cache["data"] or {}
+
+
+def role_secondary(name: str) -> str | None:
+    return (_load_roles().get("secondary") or {}).get(name)
+
+
+def role_primary_fallback(name: str) -> str | None:
+    """Rol primario para brawlers que la wiki aún no clasifica (Clase=None)."""
+    return (_load_roles().get("primary_fallback") or {}).get(name)

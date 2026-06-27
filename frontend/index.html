@@ -449,6 +449,9 @@
   /* Analíticas: "Qué jugar ahora" */
   .rotation-block { margin-bottom: 26px; }
   .rotation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .rot-cat-label { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .3px; color: var(--text); margin: 24px 0 12px; }
+  .rot-cat-label:first-child { margin-top: 0; }
+  .rot-cat-label span { font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); letter-spacing: 0; }
   .rot-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; transition: transform .15s, border-color .15s, box-shadow .15s; }
   .rot-card.good { border-color: rgba(65,224,138,.45); }
   .rot-card.bad { border-color: rgba(255,93,108,.4); }
@@ -1029,6 +1032,16 @@
   .br-loadout .lo.hcic { display:inline-grid; place-items:center; font-size:13px; line-height:1; background:linear-gradient(135deg,#c98bff,#7a35d5); color:#fff; box-shadow:inset 0 1px 1px rgba(255,255,255,.3); }
   .br-loadout .lo.hcic.off { background:var(--bg-elev); border:1px solid var(--border); color:var(--muted); opacity:.5; filter:none; box-shadow:none; }
   .br-card .prestige-pip { width:17px; height:17px; border-radius:50%; background:linear-gradient(135deg,#c98bff,#7a35d5); color:#fff; font-family:var(--display); font-weight:700; font-size:10px; display:inline-grid; place-items:center; box-shadow:0 1px 3px rgba(0,0,0,.45); }
+  .br-card .role2 { font-size:10px; color:var(--cyan); text-transform:none; letter-spacing:.2px; margin-top:1px; }
+  .br-d-role .role2 { color:var(--cyan); text-transform:none; font-size:13px; }
+  .por.band-wood { border:3px solid #8a5a2f; } .por.band-bronze { border:3px solid #c87a35; }
+  .por.band-silver { border:3px solid #aeb8c4; } .por.band-gold { border:3px solid #f5b82a; box-shadow:0 0 10px rgba(245,184,42,.3); }
+  .por.band-p1 { border:3px solid #4a8be0; box-shadow:0 0 10px rgba(74,139,224,.35); } .por.band-p2 { border:3px solid #a35fe0; box-shadow:0 0 10px rgba(163,95,224,.4); }
+  .por.band-p3 { border:3px solid #e05fa0; box-shadow:0 0 12px rgba(224,95,160,.45); }
+  .br-roles { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px; }
+  .br-role-chip { font-family:var(--display); font-weight:600; font-size:11.5px; letter-spacing:.3px; color:var(--muted); background:var(--panel); border:1px solid var(--border); border-radius:20px; padding:6px 13px; cursor:pointer; transition:color .15s,background .15s,border-color .15s; }
+  .br-role-chip:hover { color:var(--text); }
+  .br-role-chip.active { color:var(--bg); background:var(--cyan); border-color:var(--cyan); }
 
   /* Badge de rango por banda de trofeos */
   .rank-badge { width:16px; height:16px; border-radius:5px; display:inline-block; position:relative; flex-shrink:0; box-shadow:inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.35); transform:rotate(45deg); }
@@ -1045,6 +1058,7 @@
   .br-d-img { background:linear-gradient(160deg,var(--bg-elev),#241c52); border:1px solid var(--border); border-radius:18px; padding:10px; text-align:center; position:relative; overflow:hidden; min-height:300px; display:grid; place-items:center; }
   .br-d-img img { width:100%; max-height:440px; object-fit:contain; }
   .br-d-rarity { position:absolute; top:12px; left:12px; font-family:var(--display); font-weight:700; font-size:11px; letter-spacing:.5px; text-transform:uppercase; padding:3px 9px; border-radius:6px; }
+  .br-d-skin { position:absolute; bottom:12px; left:12px; right:12px; text-align:center; font-family:var(--display); font-weight:700; font-size:11px; letter-spacing:.4px; text-transform:uppercase; padding:5px 9px; border-radius:7px; background:rgba(10,10,31,.78); color:var(--cyan); }
   .br-d-info h1 { font-family:var(--display); font-weight:700; font-size:34px; letter-spacing:.5px; line-height:1.05; }
   .br-d-role { color:var(--muted); text-transform:uppercase; letter-spacing:.8px; font-size:12px; margin-bottom:12px; }
   .br-d-desc { color:var(--text); opacity:.9; line-height:1.5; font-size:14px; margin-bottom:16px; }
@@ -1554,8 +1568,8 @@
       <p class="hint" style="margin-bottom:18px">Qué jugar ahora según tu win rate, y con qué brawler rindes mejor en cada modo.</p>
       <div class="rotation-block" id="rotation-block" style="display:none">
         <h2 class="section-title" style="font-size:16px">Qué jugar ahora</h2>
-        <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
-        <div class="rotation-grid" id="rotation-grid"></div>
+        <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, separados en <b>Copas</b> y <b>Competitivo</b> y ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
+        <div id="rotation-grid"></div>
       </div>
       <div class="grid">
         <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
@@ -1655,6 +1669,7 @@
             <button class="br-sort" data-sort="name">Nombre</button>
           </div>
         </div>
+        <div class="br-roles" id="br-roles"></div>
         <div class="br-grid" id="br-grid"></div>
       </div>
       <div id="brawler-detail-view" style="display:none">
@@ -2335,7 +2350,9 @@ async function loadPlayerStats() {
   const chips = [];
   const ht = n(prof.highest_trophies); if (ht != null) chips.push(plStatChip(ICON_TROPHY, "Copas máx.", ht, "gold"));
   const v3 = n(prof.victories_3v3); if (v3 != null) chips.push(plStatChip(ICON_3V3, "Victorias 3v3", v3, "cyan"));
-  const vs = n(prof.victories_solo); if (vs != null) chips.push(plStatChip(ICON_SKULL, "Supervivencia", vs, "magenta"));
+  // Supervivencia = solo + dúo + trío (la API no expone trío, así que agrega las que da).
+  const supParts = [prof.victories_solo, prof.victories_duo, prof.victories_trio].filter((v) => v != null);
+  if (supParts.length) chips.push(plStatChip(ICON_SKULL, "Supervivencia", n(supParts.reduce((a, b) => a + Number(b), 0)), "magenta"));
   box.innerHTML = chips.length ? `<div class="pl-stat-group">${chips.join("")}</div>` : "";
 }
 function updatePlayerHeader() {
@@ -2411,7 +2428,14 @@ async function loadRotation() {
   catch (e) { block.style.display = "none"; return; }
   const events = (data && data.events) || [];
   if (!events.length) { block.style.display = "none"; return; }
-  grid.innerHTML = events.map(renderRotCard).join("");
+  const trophy = events.filter((e) => e.category !== "ranked");
+  const ranked = events.filter((e) => e.category === "ranked");
+  const section = (label, sub, list) => list.length
+    ? `<div class="rot-cat-label">${label}<span>${sub}</span></div><div class="rotation-grid">${list.map(renderRotCard).join("")}</div>`
+    : "";
+  grid.innerHTML =
+    section("🏆 Copas", "Modos y mapas que dan trofeos ahora mismo", trophy) +
+    section("⚔️ Competitivo", "Pool de mapas del modo Competitivo (Ranked)", ranked);
   block.style.display = "";
 }
 function renderRotCard(e) {
@@ -2898,7 +2922,7 @@ function switchTab(name) {
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 
 /* ============================ BRAWLERS (apartado tipo Brawlify) ============================ */
-let brawlersData = null, brawlersPlayer = null, brSort = "trophies", brSearch = "", statLevelSel = 11;
+let brawlersData = null, brawlersPlayer = null, brSort = "trophies", brSearch = "", brRole = null, statLevelSel = 11;
 const RANK_LABELS = { wood: "Madera", bronze: "Bronce", silver: "Plata", gold: "Oro", p1: "Prestigio 1", p2: "Prestigio 2", p3: "Prestigio 3" };
 const RARITY_ORDER = { "Common": 0, "Rare": 1, "Super Rare": 2, "Epic": 3, "Mythic": 4, "Legendary": 5, "Ultra Legendary": 6 };
 
@@ -2907,7 +2931,7 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrGrid(); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrRoles(); renderBrGrid(); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
@@ -2915,7 +2939,7 @@ async function loadBrawlers() {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrGrid();
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrRoles(); renderBrGrid();
 }
 
 function renderBrCounters() {
@@ -3012,16 +3036,30 @@ function renderBrGrid() {
   let list = brawlersData.brawlers.slice();
   const q = brSearch.trim().toUpperCase();
   if (q) list = list.filter((b) => (b.name || "").toUpperCase().includes(q));
+  if (brRole) list = list.filter((b) => b.role === brRole || b.role_secondary === brRole);
   list.sort(brComparator);
   $("br-grid").innerHTML = list.length
     ? list.map(renderBrawlerCard).join("")
     : `<div class="empty" style="grid-column:1/-1">Sin resultados.</div>`;
 }
+function renderBrRoles() {
+  const el = $("br-roles");
+  if (!el || !brawlersData) return;
+  const roles = new Set();
+  brawlersData.brawlers.forEach((b) => { if (b.role) roles.add(b.role); if (b.role_secondary) roles.add(b.role_secondary); });
+  el.innerHTML = [...roles].sort((a, b) => a.localeCompare(b))
+    .map((r) => `<button class="br-role-chip ${brRole === r ? "active" : ""}" data-role="${esc(r)}">${esc(r)}</button>`).join("");
+  el.querySelectorAll(".br-role-chip").forEach((c) => c.addEventListener("click", () => {
+    brRole = brRole === c.dataset.role ? null : c.dataset.role;
+    renderBrRoles(); renderBrGrid();
+  }));
+}
 
 function renderBrawlerCard(b) {
+  const band = b.owned && b.rank_band ? "band-" + b.rank_band : "";
   const por = b.portrait
-    ? `<img class="por" src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
-    : `<div class="por"></div>`;
+    ? `<img class="por ${band}" src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+    : `<div class="por ${band}"></div>`;
   const pw = b.owned ? `<div class="pw">${b.power}</div>` : "";
   const badge = b.owned ? rankBadge(b.rank_band) : "";
   const prestige = b.owned && b.prestige ? `<span class="prestige-pip" title="Prestigio ${b.prestige}">${b.prestige}</span>` : "";
@@ -3031,14 +3069,20 @@ function renderBrawlerCard(b) {
   if (b.owned) {
     const ic = (a) => a.icon ? `<img class="lo ${a.owned ? "" : "off"}" src="${a.icon}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
     let items = (b.star_powers || []).map(ic).join("") + (b.gadgets || []).map(ic).join("");
-    if (b.has_hypercharge) items += `<span class="lo hcic ${b.owns_hypercharge ? "" : "off"}" title="Hipercarga${b.owns_hypercharge ? " · la tienes" : " · no la tienes"}">⚡</span>`;
+    if (b.has_hypercharge) {
+      const cls = b.owns_hypercharge ? "" : "off";
+      items += b.hypercharge_icon
+        ? `<img class="lo ${cls}" src="${b.hypercharge_icon}" alt="HC" loading="lazy" onerror="this.style.display='none'" title="Hipercarga">`
+        : `<span class="lo hcic ${cls}" title="Hipercarga">⚡</span>`;
+    }
     loadout = items ? `<div class="br-loadout">${items}</div>` : "";
   }
   return `<div class="br-card ${b.owned ? "" : "locked"}" onclick="showBrawlerDetail(${b.id})">
     ${pw}<div class="topright">${badge}${prestige}</div>
     ${por}
     <div class="nm">${esc(b.name)}</div>
-    <div class="role">${esc(b.role || "")}</div>
+    <div class="role">${b.role ? esc(b.role.toUpperCase()) : "—"}</div>
+    ${b.role_secondary ? `<div class="role2">${esc(b.role_secondary)}</div>` : ""}
     <div class="meta">${tro}${wr}</div>
     ${loadout}
   </div>`;
@@ -3109,6 +3153,16 @@ function renderBrawlerDetail(d) {
   const sps = (d.star_powers || []).map(ability).join("") || '<div class="empty">—</div>';
   const gds = (d.gadgets || []).map(ability).join("") || '<div class="empty">—</div>';
 
+  let attackHtml = "";
+  if (d.attack && (d.attack.name || d.attack.description)) {
+    attackHtml = `<div class="br-section"><h3>🎯 Ataque${d.attack.name ? " · " + esc(d.attack.name) : ""}</h3>
+      <div class="feature-card"><div class="ds">${esc(d.attack.description || "")}</div></div></div>`;
+  }
+  let passiveHtml = "";
+  if (d.passive) {
+    passiveHtml = `<div class="br-section"><h3>🧬 Pasiva / Atributo</h3>
+      <div class="feature-card"><div class="ds">${esc(d.passive)}</div></div></div>`;
+  }
   let superHtml = "";
   if (d.super && (d.super.name || d.super.description)) {
     superHtml = `<div class="br-section"><h3>✦ Súper${d.super.name ? " · " + esc(d.super.name) : ""}</h3>
@@ -3154,16 +3208,16 @@ function renderBrawlerDetail(d) {
 
   $("br-detail").innerHTML = `
     <div class="br-d-top">
-      <div class="br-d-img"><div class="br-d-rarity" style="background:${rarColor};color:#0a0a1f">${esc(rar.name || "")}</div>${img}</div>
+      <div class="br-d-img"><div class="br-d-rarity" style="background:${rarColor};color:#0a0a1f">${esc(rar.name || "")}</div>${img}${d.skin && d.skin.name ? `<div class="br-d-skin">🎨 ${esc(d.skin.name)}</div>` : ""}</div>
       <div class="br-d-info">
         <h1>${esc(d.name)}</h1>
-        <div class="br-d-role">${esc(d.role || "")}</div>
+        <div class="br-d-role">${d.role ? esc(d.role.toUpperCase()) : "—"}${d.role_secondary ? ` <span class="role2">· ${esc(d.role_secondary)}</span>` : ""}</div>
         ${badges ? `<div class="br-taglines">${badges}</div>` : ""}
         <div class="br-d-desc">${esc(d.description || "")}</div>
         ${yourStats}
       </div>
     </div>
-    ${superHtml}
+    ${attackHtml}${passiveHtml}${superHtml}
     ${statsHtml}
     <div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>
     <div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>

@@ -165,10 +165,18 @@ def build_entry(wt: str) -> dict:
         stats["reload"] = clean(ib["EnfriamientoAtaque"])
 
     s_name, s_desc = first_subsection(section(wt, "Súper") or section(wt, "Super"))
+    a_name, a_desc = first_subsection(section(wt, "Ataque"))
+    role = clean(ib.get("Clase"))  # rol oficial en español (Control, Asesino, Tanque…)
+    passive_body = section(wt, "Atributo") or section(wt, "Atributos")
     hc_mult = ib.get("Multiplicador de hipercarga") or ib.get("MultiplicadorHipercarga")
     hc_body = section(wt, "Hipercarga")
     hc_name, hc_desc = first_subsection(hc_body) if hc_body else ("", "")
     has_hc = bool(hc_mult)  # "lanzada" = el infobox trae el multiplicador
+    hc_img = None
+    if hc_body:
+        mimg = re.search(r"Img[^|}]*\|\s*([^|}\]]+\.png)", hc_body)
+        if mimg:
+            hc_img = mimg.group(1).strip()
 
     entry = {}
     desc = sentence_cut(lead_paragraph(wt), 900)
@@ -176,8 +184,16 @@ def build_entry(wt: str) -> dict:
         entry["description_es"] = desc
     if stats:
         entry["stats_by_level"] = stats
+    if role:
+        entry["role"] = role
+    if a_name or a_desc:
+        entry["attack"] = {"name": a_name or None, "description": a_desc or None}
     if s_name or s_desc:
         entry["super"] = {"name": s_name or None, "description": s_desc or None}
+    if passive_body:
+        pv = sentence_cut(clean(passive_body), 400)
+        if pv:
+            entry["passive"] = pv
     sps = all_subsections(section(wt, "Habilidades Estelares"))
     gds = all_subsections(section(wt, "Gadgets"))
     if sps:
@@ -189,6 +205,7 @@ def build_entry(wt: str) -> dict:
                                 "multiplier": clean(hc_mult) if hc_mult else None}
     entry["_has_hypercharge"] = has_hc
     entry["_image_file"] = ib.get("image")  # se resuelve a URL en refresh()
+    entry["_hc_image_file"] = hc_img        # icono real de la hipercarga
     return entry
 
 
@@ -243,6 +260,41 @@ async def resolve_body_image(client: httpx.AsyncClient, name: str, infobox_image
         if url:
             return url
     return None
+
+
+_skin_img_cache: dict = {}  # (brawler, skin_name) -> url|None  (cachea también los fallos)
+
+
+async def resolve_skin_image(brawler: str, skin_name: str) -> str | None:
+    """Best-effort: imagen a cuerpo entero de una skin equipada, desde la wiki ES.
+    Los nombres de fichero de skin son irregulares (la API da "VIRUS CHARLIE",
+    la wiki lo guarda como "Charlie Virus.png"), así que probamos varias
+    convenciones y cacheamos el resultado para no repetir peticiones."""
+    if not brawler or not skin_name:
+        return None
+    key = (brawler, skin_name)
+    if key in _skin_img_cache:
+        return _skin_img_cache[key]
+    sk = " ".join(skin_name.split())
+    rest = re.sub(rf"\b{re.escape(brawler)}\b", "", sk, flags=re.I).strip()
+    rest_tc = rest.title()
+    cands = [
+        f"{brawler} {rest_tc}.png" if rest else None,   # Charlie Virus.png
+        f"{sk.title()}.png",                            # Virus Charlie.png
+        f"{brawler} Skin-{rest_tc}.png" if rest else None,
+        f"{brawler}-{rest_tc}.png" if rest else None,
+    ]
+    url = None
+    try:
+        async with httpx.AsyncClient(headers=UA, timeout=20, follow_redirects=True) as client:
+            for cand in [c for c in cands if c]:
+                url = await fetch_image_url(client, cand, 500)
+                if url:
+                    break
+    except Exception:  # noqa: BLE001
+        url = None
+    _skin_img_cache[key] = url
+    return url
 
 
 # --------------------------- builds de Brawl Time Ninja ---------------------------
@@ -342,11 +394,23 @@ async def refresh(only: set | None = None) -> dict:
                 continue
             entry = build_entry(wt)
             img_file = entry.pop("_image_file", None)
+            hc_img_file = entry.pop("_hc_image_file", None)
             if entry.pop("_has_hypercharge", False):
                 hc_total += 1
             url = await resolve_body_image(client, name, img_file)
             if url:
                 entry["body_image"] = url
+            if hc_img_file and entry.get("hypercharge"):
+                hc_url = await fetch_image_url(client, hc_img_file, 120)
+                if hc_url:
+                    entry["hypercharge"]["icon"] = hc_url
+            if entry.get("hypercharge") and not entry["hypercharge"].get("icon"):
+                base = name.replace(" ", "").replace("&", "").replace(".", "").replace("-", "")
+                for cand in (f"{name} Hipercarga.png", f"{base}Hypercharge.png"):
+                    hc_url = await fetch_image_url(client, cand, 120)
+                    if hc_url:
+                        entry["hypercharge"]["icon"] = hc_url
+                        break
             prev = out.get(str(bid)) or {}
             build = await fetch_build(client, name)
             if build:

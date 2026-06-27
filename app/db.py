@@ -1549,6 +1549,7 @@ def rotation_analysis(player: str, events: list[dict], min_games: int = 1,
             b.pop("_score", None)
         out.append({
             "mode": mode, "map": map_,
+            "category": ev.get("category"),
             "start_time": ev.get("startTime"), "end_time": ev.get("endTime"),
             "games": row["games"] or 0, "wins": wins, "losses": losses,
             "winrate": _winrate(wins, losses),
