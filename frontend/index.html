@@ -429,14 +429,14 @@
   footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 40px; }
 
   /* Informe: destacados */
-  .highlights { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 12px; margin-bottom: 20px; }
-  .hl-card { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 13px 15px; }
-  .hl-visual { width: 44px; height: 44px; border-radius: 9px; background: var(--bg-elev); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; overflow: hidden; }
+  .highlights { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .hl-card { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 17px 19px; }
+  .hl-visual { width: 56px; height: 56px; border-radius: 12px; background: var(--bg-elev); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; overflow: hidden; }
   .hl-portrait { width: 100%; height: 100%; object-fit: cover; }
   .hl-body { min-width: 0; }
-  .hl-label { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
-  .hl-name { font-family: var(--display); font-weight: 600; font-size: 15px; margin: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .hl-value { font-size: 12px; color: var(--cyan); }
+  .hl-label { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .hl-name { font-family: var(--display); font-weight: 700; font-size: 18px; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hl-value { font-size: 13px; color: var(--cyan); }
 
   /* Analíticas: racha actual */
   .streak-banner { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 10px; border-radius: 13px; padding: 12px 18px; margin-bottom: 18px; font-family: var(--display); font-size: 16px; letter-spacing: .3px; border: 1px solid var(--border); }
@@ -2158,7 +2158,7 @@ async function loadOverview() {
     <div class="stat win"><div class="k">Win rate</div><div class="v" style="color:${pctColor(wr)}">${wr == null ? "—" : wr + "<small>%</small>"}</div><div class="sub">${o.wins}V · ${o.losses}D${o.undecided ? " · " + o.undecided + "E" : ""}</div></div>
     <div class="stat"><div class="k">Partidas registradas</div><div class="v">${o.total}</div><div class="sub">acumuladas hasta ahora</div></div>
     <div class="stat star"><div class="k">Jugador estrella</div><div class="v">${o.star_rate == null ? "—" : o.star_rate + "<small>%</small>"}</div><div class="sub">${o.star_players} veces MVP (3v3)</div></div>
-    <div class="stat cyan"><div class="k">Balance de trofeos</div><div class="v" style="color:${o.trophy_delta >= 0 ? "var(--win)" : "var(--loss)"}">${o.trophy_delta >= 0 ? "+" : ""}${o.trophy_delta}</div><div class="sub">en el periodo registrado</div></div>`;
+    <div class="stat cyan"><div class="k">Balance de trofeos</div><div class="v" style="color:${o.trophy_delta_7d >= 0 ? "var(--win)" : "var(--loss)"}">${o.trophy_delta_7d >= 0 ? "+" : ""}${o.trophy_delta_7d}</div><div class="sub">últimos 7 días</div></div>`;
   if (o.annotated > 0) {
     cards += `<div class="stat combat"><div class="k">Combate (anotado)</div><div class="v" style="font-size:19px">${o.avg_kills ?? "—"} / ${o.avg_deaths ?? "—"}</div><div class="sub">asesinatos / muertes · ${o.annotated}p · daño ${o.avg_damage ?? "—"}</div></div>`;
   }

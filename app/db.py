@@ -19,7 +19,7 @@ import sqlite3
 import hashlib
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "..", "brawl_stats.db"))
 
@@ -1150,6 +1150,7 @@ def _build_filters(filters: dict):
 def overview(filters: dict | None = None) -> dict:
     filters = filters or {}
     where_sql, params = _build_filters(filters)
+    cutoff_7d = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y%m%dT%H%M%S.000Z")
     conn = get_conn()
     row = conn.execute(
         f"""
@@ -1161,12 +1162,13 @@ def overview(filters: dict | None = None) -> dict:
                SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) AS star_eligible,
                MAX(battle_time) AS last_battle, MAX(ingested_at) AS last_update,
                SUM(COALESCE(trophy_change,0)) AS trophy_delta,
+               SUM(CASE WHEN battle_time >= ? THEN COALESCE(trophy_change,0) ELSE 0 END) AS trophy_delta_7d,
                AVG(m.kills) AS avg_kills, AVG(m.deaths) AS avg_deaths,
                AVG(m.damage) AS avg_damage, AVG(m.healing) AS avg_healing,
                SUM(CASE WHEN m.battle_id IS NOT NULL THEN 1 ELSE 0 END) AS annotated
         FROM battles LEFT JOIN manual_stats m ON m.battle_id = battles.id {where_sql}
         """,
-        params,
+        [cutoff_7d] + params,
     ).fetchone()
     conn.close()
     wins, losses = row["wins"] or 0, row["losses"] or 0
@@ -1181,6 +1183,7 @@ def overview(filters: dict | None = None) -> dict:
         "star_players": row["star_players"] or 0,
         "last_battle": row["last_battle"], "last_update": row["last_update"],
         "trophy_delta": row["trophy_delta"] or 0,
+        "trophy_delta_7d": row["trophy_delta_7d"] or 0,
         "annotated": row["annotated"] or 0,
         "avg_kills": rnd(row["avg_kills"]), "avg_deaths": rnd(row["avg_deaths"]),
         "avg_damage": rnd(row["avg_damage"]), "avg_healing": rnd(row["avg_healing"]),
