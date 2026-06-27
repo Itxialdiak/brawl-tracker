@@ -43,11 +43,6 @@ Abre **http://localhost:8000**.
 
 Requiere **Python 3.9 o superior** (recomendado 3.11+).
 
-## 3. Comandos servidor
-conectarse a la aplicación por ssh: ssh -v -i ~/.ssh/id_ed25519 root@167.233.207.224
-levantar servidor local: uvicorn app.main:app --reload --port 8000
-editar proxy caddy: nano /etc/caddy/Caddyfile
-
 ## 3. Añadir jugadores
 
 No hace falta configurar ningún tag en el `.env`. En la web, en la barra
