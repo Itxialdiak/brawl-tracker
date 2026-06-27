@@ -146,6 +146,26 @@ async def _event_notifier():
         await asyncio.sleep(EVENT_NOTIFY_INTERVAL)
 
 
+WIKI_UPDATE_INTERVAL = 24 * 3600  # una vez al día
+
+
+async def _wiki_updater():
+    """Revisa a diario la wiki de Brawl Stars y Brawl Time Ninja, y regenera el
+    dataset de brawlers (stats, súper, hipercarga, descripción y builds) si tiene
+    más de ~20 h, para no re-scrapear en cada reinicio."""
+    from . import wiki
+    while True:
+        try:
+            fresh = os.path.exists(wiki.OUT_PATH) and \
+                (time.time() - os.path.getmtime(wiki.OUT_PATH)) < 20 * 3600
+            if not fresh:
+                res = await wiki.refresh()
+                print(f"[wiki] dataset de brawlers actualizado (wiki + builds): {res}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[wiki] error actualizando el dataset: {e}")
+        await asyncio.sleep(WIKI_UPDATE_INTERVAL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
@@ -186,10 +206,12 @@ async def lifespan(app: FastAPI):
     else:
         print("⚠️  Falta BRAWL_API_TOKEN en .env; el poller está parado.")
     notifier = asyncio.create_task(_event_notifier())  # avisos de cercanía/inicio (Fase 6)
+    wiki_task = asyncio.create_task(_wiki_updater())   # refresco diario de datos de brawlers
     yield
     if task:
         task.cancel()
     notifier.cancel()
+    wiki_task.cancel()
 
 
 app = FastAPI(title="Brawl Stars Tracker", lifespan=lifespan)
@@ -947,15 +969,32 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         })
 
     counts = await asyncio.to_thread(db.collection_counts, tag)
-    rating = await asyncio.to_thread(db.account_rating, tag, totals)
-    p11_hc = sum(1 for c in collection if (c.get("power") or 0) >= 11 and c["brawler_id"] in hc_ids)
+    rating = await asyncio.to_thread(db.account_rating, tag,
+                                     {**totals, "hypercharges": brawler_extra.hypercharge_total()})
     counters = {
         "brawlers": {"owned": counts["brawlers"], "total": totals.get("brawlers") or len(by_id)},
         "star_powers": {"owned": counts["star_powers_owned"], "total": totals.get("star_powers") or 0},
         "gadgets": {"owned": counts["gadgets_owned"], "total": totals.get("gadgets") or 0},
-        "hypercharges": {"in_game": brawler_extra.hypercharge_total(), "your_p11_available": p11_hc},
+        "hypercharges": {"owned": counts["hypercharges_owned"], "total": brawler_extra.hypercharge_total()},
     }
     return {"counters": counters, "rating": rating, "account": account, "brawlers": items}
+
+
+@app.get("/api/account-rating")
+async def api_account_rating(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Solo el rating de cuenta (para mostrarlo también en Estadísticas, sin cargar
+    toda la rejilla de brawlers)."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    try:
+        prof = await _get_player_cached(tag)
+        if prof.get("brawlers"):
+            await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[rating] no se pudo refrescar {tag}: {e}")
+    rating = await asyncio.to_thread(db.account_rating, tag,
+                                     {**(catalog.get("totals") or {}), "hypercharges": brawler_extra.hypercharge_total()})
+    return {"rating": rating}
 
 
 @app.get("/api/brawler/{brawler_id}")
@@ -973,30 +1012,47 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
     owned_sp = set(c["star_power_ids"]) if c else set()
     owned_gd = set(c["gadget_ids"]) if c else set()
 
-    def mark(items, owned):
-        return [{**it, "owned": it.get("id") in owned} for it in items]
-
     extra = brawler_extra.get(brawler_id)
+
+    def merge_abilities(cat_items, owned, es_list):
+        """Funde el catálogo (icono + lo poseído) con el nombre/efecto en español
+        de la wiki (emparejado por orden)."""
+        es_list = es_list or []
+        out = []
+        for i, it in enumerate(cat_items or []):
+            es = es_list[i] if i < len(es_list) else {}
+            out.append({"id": it.get("id"), "name": es.get("name") or it.get("name"),
+                        "icon": it.get("icon"),
+                        "description": es.get("description") or it.get("description"),
+                        "owned": it.get("id") in owned})
+        return out
+
     name = cat.get("name")
     bname = ((c["brawler_name"] if c else name) or name or "").upper()
     filt = {"player": tag, "brawler": bname}
     ov = await asyncio.to_thread(db.overview, filt)
     by_mode = await asyncio.to_thread(db.winrate_by, "mode", filt)
+    skin = {"id": c.get("skin_id"), "name": c.get("skin_name")} if (c and c.get("skin_id")) else None
 
     return {
-        "id": brawler_id, "name": name, "description": cat.get("description"),
+        "id": brawler_id, "name": name,
+        "description": extra.get("description_es") or cat.get("description"),
         "role": cat.get("role"), "rarity": cat.get("rarity"),
         "image_full": cat.get("image_full"), "portrait": cat.get("portrait"),
-        "star_powers": mark(cat.get("star_powers") or [], owned_sp),
-        "gadgets": mark(cat.get("gadgets") or [], owned_gd),
+        "super": extra.get("super"),
+        "star_powers": merge_abilities(cat.get("star_powers"), owned_sp, extra.get("star_powers_es")),
+        "gadgets": merge_abilities(cat.get("gadgets"), owned_gd, extra.get("gadgets_es")),
         "owned": c is not None,
         "power": c["power"] if c else None,
         "rank": c["rank"] if c else None,
         "trophies": c["trophies"] if c else None,
         "highest_trophies": c["highest_trophies"] if c else None,
         "rank_band": _rank_band(c["trophies"]) if c else None,
+        "prestige_level": c.get("prestige_level") if c else None,
+        "skin": skin,
         "gears_owned": len(c["gear_ids"]) if c else 0,
         "has_hypercharge": brawler_id in brawler_extra.hypercharge_ids(),
+        "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
         "hypercharge": extra.get("hypercharge"),
         "stats_by_level": extra.get("stats_by_level"),
         "builds": extra.get("builds") or [],

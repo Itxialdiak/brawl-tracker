@@ -1062,11 +1062,20 @@
   .hc-card .hcic { width:48px; height:48px; display:grid; place-items:center; font-size:26px; background:var(--bg-elev); border-radius:11px; flex-shrink:0; }
   .build-card { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:13px 15px; }
   .build-card .bn { font-family:var(--display); font-weight:700; font-size:14px; }
+  .build-card .bwr { font-family:var(--display); font-weight:700; font-size:11px; color:var(--win); margin-left:6px; }
   .build-card .src-link { display:inline-block; margin-top:8px; font-size:12px; color:var(--cyan); text-decoration:none; }
   .build-card .src-link:hover { text-decoration:underline; }
   .lvl-table { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
   .lvl-btn { font-family:var(--display); font-weight:700; font-size:13px; width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--panel); color:var(--muted); cursor:pointer; }
   .lvl-btn.active { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+  .br-taglines { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .br-tagline { font-family:var(--display); font-weight:700; font-size:11px; letter-spacing:.4px; padding:3px 11px; border-radius:20px; border:1px solid var(--border); }
+  .br-tagline.skin { background:rgba(91,84,255,.18); color:#b8b3ff; border-color:rgba(91,84,255,.4); }
+  .br-tagline.prestige { background:rgba(245,184,42,.16); color:var(--gold); border-color:rgba(245,184,42,.4); }
+  .feature-card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px; }
+  .feature-card.super { border-left:3px solid var(--cyan); }
+  .feature-card .ds, .hc-card .ds { color:var(--text); opacity:.9; font-size:13px; line-height:1.5; }
+  .hc-mult { margin-top:8px; font-size:12px; color:var(--magenta); }
   @media (max-width: 640px) { .br-d-top { grid-template-columns:1fr; } .br-d-img { max-width:300px; margin:0 auto; } }
 
   /* ---------- Paneles colapsables (6 + "ver más") ---------- */
@@ -1486,6 +1495,7 @@
     <div class="tab-content active" id="tab-stats">
       <h2 class="section-title">Estadísticas</h2>
       <section class="overview" id="overview"></section>
+      <div class="br-rating" id="stats-rating" style="display:none"></div>
       <div class="grid">
         <div class="panel p-brawler" id="panel-brawler"><h2><span class="dot"></span>Win rate por brawler</h2>
           <div class="hint">Rendimiento con cada brawler (V/D · estrella).</div><div class="rows" id="r-brawler"></div></div>
@@ -2129,6 +2139,13 @@ function applyCollapse(rowsEl, threshold = 6) {
 function render(el, data, kind) {
   const min = parseInt($("f-min").value) || 1;
   const f = data.filter((d) => d.total >= min);
+  // Orden por win rate: "contra cada brawler" de menor a mayor; el resto de mayor a menor.
+  const asc = kind === "vs";
+  f.sort((a, b) => {
+    const wa = a.winrate == null ? (asc ? Infinity : -Infinity) : a.winrate;
+    const wb = b.winrate == null ? (asc ? Infinity : -Infinity) : b.winrate;
+    return asc ? wa - wb : wb - wa;
+  });
   el.innerHTML = f.length ? f.map((d) => rowHTML(d, kind)).join("")
     : `<div class="empty"><span class="big">∅</span>Aún no hay datos suficientes.<br>Deja el tracker corriendo mientras se juega.</div>`;
   applyCollapse(el);
@@ -2157,7 +2174,15 @@ async function loadPanels() {
   render($("r-map"), mp, "map"); render($("r-vs"), vs, "vs");
   renderModeDonuts(m);
 }
-async function loadStats() { await Promise.all([loadOverview(), loadPanels(), loadStatsCharts()]); }
+async function loadStats() { await Promise.all([loadOverview(), loadPanels(), loadStatsCharts(), loadStatsRating()]); }
+async function loadStatsRating() {
+  if (!currentPlayer) return;
+  const el = $("stats-rating");
+  try {
+    const d = await getJSON("/api/account-rating?player=" + encodeURIComponent(currentPlayer));
+    el.innerHTML = ratingHTML(d.rating); el.style.display = "";
+  } catch (e) { el.style.display = "none"; }
+}
 async function loadStatsCharts() {
   if (!currentPlayer) return;
   try {
@@ -2873,15 +2898,13 @@ function renderBrCounters() {
     box("col", "🥊", c.brawlers.owned, c.brawlers.total, "Brawlers", "var(--cyan)") +
     box("sp", "★", c.star_powers.owned, c.star_powers.total, "Star Powers", "#ffd75e") +
     box("gd", "◆", c.gadgets.owned, c.gadgets.total, "Gadgets", "var(--win)") +
-    box("hc", "⚡", c.hypercharges.your_p11_available, c.hypercharges.in_game, "Hipercargas (en tus P11)", "var(--magenta)",
-        "La API no revela qué hipercargas tienes. Mostramos cuántos de tus brawlers a nivel 11 tienen hipercarga disponible, sobre el total del juego (dataset).");
+    box("hc", "⚡", c.hypercharges.owned, c.hypercharges.total, "Hipercargas", "var(--magenta)");
 }
 
-function renderBrRating() {
-  const r = brawlersData.rating;
+function ratingHTML(r) {
   const sub = (label, val) => `<div class="br-sub"><div class="lbl">${label} <b>${val}</b></div>
     <div class="barwrap"><div class="bar" style="width:${val}%"></div></div></div>`;
-  $("br-rating").innerHTML = `
+  return `
     <div class="score">
       <div><span class="num" style="color:${ratingColor(r.overall)}">${r.overall}</span><span class="max">/100</span></div>
       <div class="tier">${esc(r.tier)}</div>
@@ -2891,6 +2914,7 @@ function renderBrRating() {
       ${sub("Eficiencia", r.efficiency)}${sub("Pushing", r.pushing)}
     </div>`;
 }
+function renderBrRating() { $("br-rating").innerHTML = ratingHTML(brawlersData.rating); }
 
 function renderBrAccount() {
   const a = brawlersData.account || {};
@@ -3000,6 +3024,7 @@ function buildRefs(bld, d) {
   const parts = [];
   const sp = abilName(d.star_powers, bld.star_power_id); if (sp) parts.push("★ " + esc(sp));
   const gd = abilName(d.gadgets, bld.gadget_id); if (gd) parts.push("◆ " + esc(gd));
+  if (bld.gear) parts.push("⚙ " + esc(bld.gear));
   return parts.join(" · ") || "Configuración recomendada";
 }
 
@@ -3023,6 +3048,10 @@ function setStatLevel(n) {
 function renderBrawlerDetail(d) {
   const rar = d.rarity || {}, rarColor = rar.color || "var(--muted)";
   const img = d.image_full ? `<img src="${d.image_full}" alt="${esc(d.name)}" onerror="this.style.display='none'">` : "";
+  const badges = [
+    d.skin && d.skin.name ? `<span class="br-tagline skin">🎭 ${esc(d.skin.name)}</span>` : "",
+    d.prestige_level ? `<span class="br-tagline prestige">Prestigio ${d.prestige_level}</span>` : "",
+  ].join("");
 
   let yourStats;
   if (d.owned) {
@@ -3043,15 +3072,20 @@ function renderBrawlerDetail(d) {
   const sps = (d.star_powers || []).map(ability).join("") || '<div class="empty">—</div>';
   const gds = (d.gadgets || []).map(ability).join("") || '<div class="empty">—</div>';
 
+  let superHtml = "";
+  if (d.super && (d.super.name || d.super.description)) {
+    superHtml = `<div class="br-section"><h3>✦ Súper${d.super.name ? " · " + esc(d.super.name) : ""}</h3>
+      <div class="feature-card super"><div class="ds">${esc(d.super.description || "")}</div></div></div>`;
+  }
+
   let hcHtml = "";
-  if (d.has_hypercharge || d.hypercharge) {
-    const hc = d.hypercharge || {};
-    const ic = hc.icon ? `<img src="${hc.icon}" style="width:48px;height:48px;object-fit:contain" onerror="this.parentElement.textContent='⚡'">` : "⚡";
-    const p11 = d.owned && d.power >= 11;
-    hcHtml = `<div class="br-section"><h3>⚡ Hipercarga</h3>
+  if (d.hypercharge) {
+    const hc = d.hypercharge;
+    const ic = hc.icon ? `<img src="${hc.icon}" style="width:46px;height:46px;object-fit:contain" onerror="this.parentElement.textContent='⚡'">` : "⚡";
+    hcHtml = `<div class="br-section"><h3>⚡ Hipercarga${hc.name ? " · " + esc(hc.name) : ""}${d.owns_hypercharge ? ' <span class="tag">TIENES</span>' : ""}</h3>
       <div class="hc-card"><div class="hcic">${ic}</div>
-      <div><div class="nm" style="font-family:var(--display);font-weight:700;font-size:15px">${esc(hc.name || "Hipercarga")}</div>
-      <div class="ds" style="color:var(--muted);font-size:12px;margin-top:3px">${p11 ? "Tienes este brawler a nivel 11: hipercarga disponible." : "Requiere el brawler a nivel 11 para desbloquearla."}</div></div></div></div>`;
+      <div><div class="ds">${esc(hc.description || "")}</div>
+      ${hc.multiplier ? `<div class="hc-mult">Carga de súper extra: <b>${esc(hc.multiplier)}</b></div>` : ""}</div></div></div>`;
   }
 
   let statsHtml = "";
@@ -3066,9 +3100,9 @@ function renderBrawlerDetail(d) {
   let buildsHtml = "";
   if (d.builds && d.builds.length) {
     buildsHtml = `<div class="br-section"><h3>🛠️ Builds recomendadas</h3><div class="ability-grid">` +
-      d.builds.map((bld) => `<div class="build-card"><div class="bn">${esc(bld.name || "Build")}</div>
+      d.builds.map((bld) => `<div class="build-card"><div class="bn">${esc(bld.name || "Build")}${bld.win_rate ? ` <span class="bwr">${bld.win_rate}% WR</span>` : ""}</div>
         <div class="ds" style="color:var(--muted);font-size:12px;margin-top:5px">${buildRefs(bld, d)}</div>
-        ${bld.source ? `<a href="${esc(bld.source)}" target="_blank" rel="noopener" class="src-link">Fuente ↗</a>` : ""}</div>`).join("") +
+        ${bld.source ? `<a href="${esc(bld.source)}" target="_blank" rel="noopener" class="src-link">Fuente: Brawl Time Ninja ↗</a>` : ""}</div>`).join("") +
       `</div></div>`;
   }
 
@@ -3087,10 +3121,12 @@ function renderBrawlerDetail(d) {
       <div class="br-d-info">
         <h1>${esc(d.name)}</h1>
         <div class="br-d-role">${esc(d.role || "")}</div>
+        ${badges ? `<div class="br-taglines">${badges}</div>` : ""}
         <div class="br-d-desc">${esc(d.description || "")}</div>
         ${yourStats}
       </div>
     </div>
+    ${superHtml}
     ${statsHtml}
     <div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>
     <div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>

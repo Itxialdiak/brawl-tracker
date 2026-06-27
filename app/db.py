@@ -58,7 +58,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS brawler_collection (
             player_tag TEXT NOT NULL, brawler_id INTEGER NOT NULL, brawler_name TEXT,
             power INTEGER, rank INTEGER, trophies INTEGER, highest_trophies INTEGER,
-            star_power_ids TEXT, gadget_ids TEXT, gear_ids TEXT, updated_at TEXT,
+            star_power_ids TEXT, gadget_ids TEXT, gear_ids TEXT,
+            hypercharge_ids TEXT, skin_id INTEGER, skin_name TEXT, prestige_level INTEGER,
+            updated_at TEXT,
             PRIMARY KEY (player_tag, brawler_id)
         );
         CREATE TABLE IF NOT EXISTS manual_stats (
@@ -171,6 +173,10 @@ def init_db():
     _ensure_column(cur, "event_participants", "seed_cups", "INTEGER")
     _ensure_column(cur, "event_matches", "roster_a", "TEXT")
     _ensure_column(cur, "event_matches", "roster_b", "TEXT")
+    _ensure_column(cur, "brawler_collection", "hypercharge_ids", "TEXT")
+    _ensure_column(cur, "brawler_collection", "skin_id", "INTEGER")
+    _ensure_column(cur, "brawler_collection", "skin_name", "TEXT")
+    _ensure_column(cur, "brawler_collection", "prestige_level", "INTEGER")
     # El usuario itxialdiak es administrador por defecto.
     cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
     conn.commit()
@@ -282,18 +288,23 @@ def snapshot_brawlers(tag: str, brawlers: list | None) -> int:
         bid = b.get("id")
         if bid is None:
             continue
+        skin = b.get("skin") or {}
         cur.execute(
             """INSERT INTO brawler_collection
                  (player_tag, brawler_id, brawler_name, power, rank, trophies, highest_trophies,
-                  star_power_ids, gadget_ids, gear_ids, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                  star_power_ids, gadget_ids, gear_ids, hypercharge_ids, skin_id, skin_name,
+                  prestige_level, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(player_tag, brawler_id) DO UPDATE SET
                  brawler_name=excluded.brawler_name, power=excluded.power, rank=excluded.rank,
                  trophies=excluded.trophies, highest_trophies=excluded.highest_trophies,
                  star_power_ids=excluded.star_power_ids, gadget_ids=excluded.gadget_ids,
-                 gear_ids=excluded.gear_ids, updated_at=excluded.updated_at""",
+                 gear_ids=excluded.gear_ids, hypercharge_ids=excluded.hypercharge_ids,
+                 skin_id=excluded.skin_id, skin_name=excluded.skin_name,
+                 prestige_level=excluded.prestige_level, updated_at=excluded.updated_at""",
             (tag, bid, b.get("name"), b.get("power"), b.get("rank"), b.get("trophies"),
-             b.get("highestTrophies"), ids(b, "starPowers"), ids(b, "gadgets"), ids(b, "gears"), now),
+             b.get("highestTrophies"), ids(b, "starPowers"), ids(b, "gadgets"), ids(b, "gears"),
+             ids(b, "hyperCharges"), skin.get("id"), skin.get("name"), b.get("prestigeLevel"), now),
         )
         n += 1
     conn.commit(); conn.close()
@@ -312,7 +323,7 @@ def get_collection(tag: str) -> list[dict]:
     out = []
     for r in rows:
         d = dict(r)
-        for k in ("star_power_ids", "gadget_ids", "gear_ids"):
+        for k in ("star_power_ids", "gadget_ids", "gear_ids", "hypercharge_ids"):
             try:
                 d[k] = json.loads(d.get(k) or "[]")
             except Exception:  # noqa: BLE001
@@ -332,6 +343,7 @@ def collection_counts(tag: str) -> dict:
         "star_powers_owned": sum(len(b["star_power_ids"]) for b in coll),
         "gadgets_owned": sum(len(b["gadget_ids"]) for b in coll),
         "gears_owned": sum(len(b["gear_ids"]) for b in coll),
+        "hypercharges_owned": sum(1 for b in coll if b.get("hypercharge_ids")),
         "p11": sum(1 for p in powers if p >= 11),
         "avg_power": round(sum(powers) / len(powers), 1) if powers else 0,
         "total_trophies": sum(trophies),
@@ -346,9 +358,12 @@ def account_rating(tag: str, catalog_totals: dict | None = None) -> dict:
     coll = get_collection(tag)
     ct = catalog_totals or {}
     total_brawlers = ct.get("brawlers") or len(coll) or 1
-    avail = (ct.get("star_powers") or 0) + (ct.get("gadgets") or 0) or (len(coll) * 4) or 1
+    # Maestría: star powers + gadgets + hipercargas poseídos / disponibles.
+    avail = (ct.get("star_powers") or 0) + (ct.get("gadgets") or 0) + (ct.get("hypercharges") or 0) \
+        or (len(coll) * 5) or 1
 
-    owned = sum(len(b["star_power_ids"]) + len(b["gadget_ids"]) for b in coll)
+    owned = sum(len(b["star_power_ids"]) + len(b["gadget_ids"]) + (1 if b.get("hypercharge_ids") else 0)
+                for b in coll)
     powers = [b.get("power") or 0 for b in coll]
     trophies = [b.get("trophies") or 0 for b in coll]
 
