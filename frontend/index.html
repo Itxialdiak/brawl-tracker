@@ -352,12 +352,12 @@
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
   /* Filtros multi-selección (dropdown con checkboxes) */
-  .ms-field { min-width: 175px; }
+  .ms-field { min-width: 200px; }
   .ms { position: relative; }
   .ms-trigger { width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 11px 30px 11px 12px; color: var(--text); font-size: 14px; font-family: var(--body); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ms-trigger::after { content: "▾"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 10px; pointer-events: none; }
   .ms.open .ms-trigger { border-color: var(--cyan); }
-  .ms-panel { display: none; position: absolute; z-index: 60; top: calc(100% + 5px); left: 0; min-width: 100%; width: max-content; max-width: 280px; background: var(--panel); border: 1px solid var(--border); border-radius: 11px; box-shadow: 0 14px 34px rgba(0,0,0,.55); overflow: hidden; }
+  .ms-panel { display: none; position: absolute; z-index: 60; top: calc(100% + 5px); left: 0; min-width: 100%; width: max-content; max-width: 300px; background: #181436; border: 1px solid #3a3470; border-radius: 11px; box-shadow: 0 16px 40px rgba(0,0,0,.7); overflow: hidden; }
   .ms.open .ms-panel { display: block; }
   .ms-actions { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
   .ms-actions button { flex: 1; font-size: 11.5px; padding: 6px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg-elev); color: var(--muted); cursor: pointer; font-family: var(--display); font-weight: 600; }
@@ -371,6 +371,14 @@
   .ms-empty { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
   .ms-clear { align-self: flex-end; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 9px; padding: 11px 15px; color: var(--muted); font-size: 13px; font-family: var(--display); font-weight: 600; cursor: pointer; white-space: nowrap; }
   .ms-clear:hover { color: var(--loss); border-color: var(--loss); }
+  /* Filtro de Brawlers: lista en dos columnas (PC) por tener tantas opciones */
+  #ms-brawler .ms-panel { max-width: 460px; }
+  #ms-brawler .ms-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 4px; }
+  @media (max-width: 760px) {
+    .ms-field { min-width: 0; }
+    #ms-brawler .ms-panel { max-width: 280px; }
+    #ms-brawler .ms-options { display: block; }
+  }
   .scope-note { display: none; font-size: 13px; color: var(--cyan); margin: -6px 0 18px; }
   .scope-note.show { display: block; }
 
@@ -1661,7 +1669,7 @@
           <div class="field ms-field"><label>Modo</label><div class="ms" id="ms-mode"></div></div>
           <div class="field ms-field"><label>Mapa</label><div class="ms" id="ms-map"></div></div>
           <div class="field ms-field"><label>Rol</label><div class="ms" id="ms-role"></div></div>
-          <button class="ms-clear" type="button" onclick="clearFilters()">✕ Limpiar filtros</button>
+          <button class="ms-clear" type="button" onclick="msClearAll()">✕ Limpiar filtros</button>
         </div>
         <div class="scope-note" id="scope-note"></div>
       </div>
@@ -2557,7 +2565,7 @@ function msAll(key, all) {
   checks.forEach((c) => { c.checked = all; });
   msTrig(key); onFilterChange();
 }
-function clearFilters() {
+function msClearAll() {
   let any = false;
   ["brawler", "mode", "map", "role"].forEach((k) => {
     if (filterSel[k].length) any = true;
