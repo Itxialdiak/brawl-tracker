@@ -439,7 +439,7 @@
   .hl-value { font-size: 12px; color: var(--cyan); }
 
   /* Analíticas: racha actual */
-  .streak-banner { display: flex; align-items: center; gap: 10px; border-radius: 13px; padding: 14px 18px; margin-bottom: 18px; font-family: var(--display); font-size: 17px; letter-spacing: .3px; border: 1px solid var(--border); }
+  .streak-banner { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 10px; border-radius: 13px; padding: 12px 18px; margin-bottom: 18px; font-family: var(--display); font-size: 16px; letter-spacing: .3px; border: 1px solid var(--border); }
   .streak-banner b { font-size: 22px; }
   .streak-banner.win { background: rgba(65,224,138,0.10); border-color: rgba(65,224,138,0.35); color: var(--win); }
   .streak-banner.loss { background: rgba(255,93,108,0.10); border-color: rgba(255,93,108,0.35); color: var(--loss); }
@@ -1470,22 +1470,12 @@
       <div class="pl-stats" id="player-stats"></div>
     </div>
 
-    <div class="filters">
-      <div class="field"><label for="f-brawler">Brawler</label>
-        <select id="f-brawler"><option value="">Todos</option></select></div>
-      <div class="field"><label for="f-mode">Modo</label>
-        <select id="f-mode"><option value="">Todos</option></select></div>
-      <div class="field"><label for="f-map">Mapa</label>
-        <select id="f-map"><option value="">Todos</option></select></div>
-      <div class="field"><label for="f-min">Mín. partidas</label>
-        <input type="number" id="f-min" min="1" value="1" /></div>
-    </div>
-    <div class="scope-note" id="scope-note"></div>
+    <div class="streak-banner" id="streak-banner" style="display:none"></div>
 
     <div class="tabs">
       <button class="tab active" data-tab="stats">Estadísticas</button>
       <button class="tab" data-tab="brawlers">Brawlers</button>
-      <button class="tab" data-tab="report">Analíticas</button>
+      <button class="tab" data-tab="report">Modos de Juego</button>
       <button class="tab" data-tab="rankings">Rankings</button>
       <button class="tab" data-tab="history">Historial de partidas</button>
       <button class="tab" data-tab="coach">Consejos</button>
@@ -1494,51 +1484,31 @@
     <!-- ESTADÍSTICAS -->
     <div class="tab-content active" id="tab-stats">
       <h2 class="section-title">Estadísticas</h2>
+      <div id="filters-bar">
+        <div class="filters">
+          <div class="field"><label for="f-brawler">Brawler</label>
+            <select id="f-brawler"><option value="">Todos</option></select></div>
+          <div class="field"><label for="f-mode">Modo</label>
+            <select id="f-mode"><option value="">Todos</option></select></div>
+          <div class="field"><label for="f-map">Mapa</label>
+            <select id="f-map"><option value="">Todos</option></select></div>
+          <div class="field"><label for="f-min">Mín. partidas</label>
+            <input type="number" id="f-min" min="1" value="1" /></div>
+        </div>
+        <div class="scope-note" id="scope-note"></div>
+      </div>
       <section class="overview" id="overview"></section>
+      <div class="highlights" id="highlights"></div>
       <div class="br-rating" id="stats-rating" style="display:none"></div>
       <div class="grid">
         <div class="panel p-brawler" id="panel-brawler"><h2><span class="dot"></span>Win rate por brawler</h2>
           <div class="hint">Rendimiento con cada brawler (V/D · estrella).</div><div class="rows" id="r-brawler"></div></div>
-        <div class="panel p-mode"><h2><span class="dot"></span>Por modo de juego</h2>
+        <div class="panel p-mode" id="panel-mode"><h2><span class="dot"></span>Por modo de juego</h2>
           <div class="hint">Dónde rinde mejor según el modo.</div><div class="rows" id="r-mode"></div></div>
-        <div class="panel p-map"><h2><span class="dot"></span>Por mapa</h2>
+        <div class="panel p-map" id="panel-map"><h2><span class="dot"></span>Por mapa</h2>
           <div class="hint">Haz clic en un mapa para ver su imagen.</div><div class="rows" id="r-map"></div></div>
         <div class="panel p-vs"><h2><span class="dot"></span>Contra cada brawler</h2>
           <div class="hint">Win rate y copas medias del rival.</div><div class="rows" id="r-vs"></div></div>
-      </div>
-      <div class="charts-row">
-        <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
-          <div class="hint">Balance acumulado de trofeos.</div>
-          <div class="chart-box" id="trophy-chart"></div></div>
-        <div class="panel chart-sq"><h2><span class="dot"></span>Forma reciente · win rate</h2>
-          <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
-          <div class="chart-box" id="winrate-chart"></div></div>
-      </div>
-      <div class="charts-row">
-        <div class="panel chart-sq"><h2><span class="dot"></span>Modos más jugados</h2>
-          <div class="hint">Reparto de tus partidas por modo de juego.</div>
-          <div class="chart-box" id="mode-play-donut"></div></div>
-        <div class="panel chart-sq"><h2><span class="dot"></span>Mejores modos · win rate</h2>
-          <div class="hint">Comparativa de tu win rate por modo.</div>
-          <div class="chart-box" id="mode-wr-donut"></div></div>
-      </div>
-    </div>
-
-    <!-- ANALÍTICAS -->
-    <div class="tab-content" id="tab-report">
-      <h2 class="section-title">Analíticas</h2>
-      <p class="hint" style="margin-bottom:18px">Datos derivados y cruzados de tus partidas. Respeta los filtros de arriba (brawler / modo / mapa), así que sirve para toda la cuenta o acotado a un brawler, modo o mapa concreto.</p>
-      <div class="streak-banner" id="streak-banner" style="display:none"></div>
-      <div class="highlights" id="highlights"></div>
-      <div class="rotation-block" id="rotation-block" style="display:none">
-        <h2 class="section-title" style="font-size:16px">Qué jugar ahora</h2>
-        <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
-        <div class="rotation-grid" id="rotation-grid"></div>
-      </div>
-      <div class="grid">
-        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
-          <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
-          <div class="heat-wrap" id="heatmap"></div></div>
       </div>
       <div class="grid grid-5">
         <div class="panel"><h2><span class="dot"></span>Mejores aliados</h2>
@@ -1556,6 +1526,38 @@
         <div class="panel"><h2><span class="dot"></span>Por franja horaria</h2>
           <div class="hint">A qué hora del día rindes mejor (en tu hora local).</div>
           <div class="rows" id="hourly"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
+          <div class="hint">Balance acumulado de trofeos.</div>
+          <div class="chart-box" id="trophy-chart"></div></div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Forma reciente · win rate</h2>
+          <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
+          <div class="chart-box" id="winrate-chart"></div></div>
+      </div>
+      <div class="charts-row" id="mode-donuts-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Modos más jugados</h2>
+          <div class="hint">Reparto de tus partidas por modo de juego.</div>
+          <div class="chart-box" id="mode-play-donut"></div></div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Mejores modos · win rate</h2>
+          <div class="hint">Comparativa de tu win rate por modo.</div>
+          <div class="chart-box" id="mode-wr-donut"></div></div>
+      </div>
+    </div>
+
+    <!-- MODOS DE JUEGO -->
+    <div class="tab-content" id="tab-report">
+      <h2 class="section-title">Modos de Juego</h2>
+      <p class="hint" style="margin-bottom:18px">Qué jugar ahora según tu win rate, y con qué brawler rindes mejor en cada modo.</p>
+      <div class="rotation-block" id="rotation-block" style="display:none">
+        <h2 class="section-title" style="font-size:16px">Qué jugar ahora</h2>
+        <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
+        <div class="rotation-grid" id="rotation-grid"></div>
+      </div>
+      <div class="grid">
+        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
+          <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
+          <div class="heat-wrap" id="heatmap"></div></div>
       </div>
     </div>
 
@@ -1638,7 +1640,6 @@
         <p class="hint" style="margin-bottom:16px">Tu colección al completo: nivel, rango, star powers y gadgets que tienes, y tu win rate con cada uno. Pincha en un brawler para ver su ficha.</p>
         <div class="br-account" id="br-account"></div>
         <div class="br-counters" id="br-counters"></div>
-        <div class="br-rating" id="br-rating"></div>
         <div class="br-distrib" id="br-distrib"></div>
         <div class="br-toolbar">
           <input id="br-search" class="br-search" placeholder="Buscar brawler…" autocomplete="off" />
@@ -2174,7 +2175,7 @@ async function loadPanels() {
   render($("r-map"), mp, "map"); render($("r-vs"), vs, "vs");
   renderModeDonuts(m);
 }
-async function loadStats() { await Promise.all([loadOverview(), loadPanels(), loadStatsCharts(), loadStatsRating()]); }
+async function loadStats() { await Promise.all([loadOverview(), loadPanels(), loadStatsReport(), loadStatsRating()]); }
 async function loadStatsRating() {
   if (!currentPlayer) return;
   const el = $("stats-rating");
@@ -2183,13 +2184,19 @@ async function loadStatsRating() {
     el.innerHTML = ratingHTML(d.rating); el.style.display = "";
   } catch (e) { el.style.display = "none"; }
 }
-async function loadStatsCharts() {
+async function loadStatsReport() {
   if (!currentPlayer) return;
   try {
-    const rep = await getJSON("/api/report?" + qs());
-    $("trophy-chart").innerHTML = trophyChart(rep.trophy_series);
-    $("winrate-chart").innerHTML = winrateChart(rep.winrate_evolution);
-  } catch (e) { /* sin gráficos si falla */ }
+    const a = await getJSON("/api/report?" + qs());
+    renderStreak(a.streak);            // banda de racha (en la cabecera)
+    renderHighlights(a.highlights);    // fila de destacados (2ª fila)
+    $("trophy-chart").innerHTML = trophyChart(a.trophy_series);
+    $("winrate-chart").innerHTML = winrateChart(a.winrate_evolution);
+    $("trophy-diff").innerHTML = renderBuckets(a.trophy_diff, true); applyCollapse($("trophy-diff"));
+    $("hourly").innerHTML = renderHourly(a.battle_points); applyCollapse($("hourly"));
+    render($("ri-allies"), a.allies, "brawler");
+    renderValuation(a.by_brawler);
+  } catch (e) { /* si falla, se deja lo que haya */ }
 }
 
 /* ---------- Historial ---------- */
@@ -2284,14 +2291,26 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("lightbo
 /* ---------- Filtros / jugadores ---------- */
 async function loadFilters() {
   const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
-  fill($("f-brawler"), f.brawlers); fill($("f-mode"), f.modes); fill($("f-map"), f.maps);
+  fill($("f-brawler"), f.brawlers); fill($("f-mode"), f.modes, modeName); fill($("f-map"), f.maps);
 }
-function fill(sel, values) { const c = sel.value; sel.innerHTML = '<option value="">Todos</option>' + values.map((v) => `<option>${esc(v)}</option>`).join(""); sel.value = values.includes(c) ? c : ""; }
+function fill(sel, values, labelFn) {
+  const c = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' +
+    values.map((v) => `<option value="${esc(v)}">${esc(labelFn ? labelFn(v) : v)}</option>`).join("");
+  sel.value = values.includes(c) ? c : "";
+}
 function applyScope() {
-  const b = $("f-brawler").value;
+  const b = $("f-brawler").value, m = $("f-mode").value, mp = $("f-map").value;
   $("panel-brawler").style.display = b ? "none" : "";
+  $("panel-mode").style.display = m ? "none" : "";
+  $("panel-map").style.display = mp ? "none" : "";
+  const donuts = $("mode-donuts-row"); if (donuts) donuts.style.display = m ? "none" : "";
+  const parts = [];
+  if (b) parts.push("el brawler " + b);
+  if (m) parts.push("el modo " + modeName(m));
+  if (mp) parts.push("el mapa " + mp);
   const n = $("scope-note");
-  if (b) { n.classList.add("show"); n.textContent = `Viendo solo ${b}: el desglose por modo, mapa y rivales es de ese brawler.`; }
+  if (parts.length) { n.classList.add("show"); n.textContent = `Viendo solo ${parts.join(" · ")}: el resto del desglose se ajusta a ese filtro.`; }
   else { n.classList.remove("show"); n.textContent = ""; }
 }
 const ICON_TROPHY = `<svg viewBox="0 0 576 512" fill="currentColor"><path d="M400 0H176c-26.5 0-48.1 21.8-47.1 48.2c.2 5.3 .4 10.6 .7 15.8H24C10.7 64 0 74.7 0 88c0 92.6 33.5 157 78.5 200.7c44.3 43.1 98.3 64.8 138.1 75.8c23.4 6.5 39.4 26 39.4 45.6c0 20.9-17 37.9-37.9 37.9H192c-17.7 0-32 14.3-32 32s14.3 32 32 32H384c17.7 0 32-14.3 32-32s-14.3-32-32-32H359.9C339 448 322 431 322 410.1c0-19.6 16-39.1 39.4-45.6c39.9-11 93.9-32.7 138.2-75.8C544.5 245 578 180.6 578 88c0-13.3-10.7-24-24-24H446.4c.3-5.2 .5-10.5 .7-15.8C448.1 21.8 426.5 0 400 0zM48.9 112h84.4c9.1 90.1 29.2 150.3 51.9 190.6c-24.9-11-50.8-26.5-73.2-48.3c-32-31.1-58-76-63-142.3zM464.1 254.3c-22.4 21.8-48.3 37.3-73.2 48.3c22.7-40.3 42.8-100.5 51.9-190.6h84.4c-5 66.3-31 111.2-63 142.3z"/></svg>`;
@@ -2849,10 +2868,24 @@ function showSection(name) {
 }
 
 /* ---------- Pestañas ---------- */
+const FILTER_TABS = { stats: "tab-stats", coach: "tab-coach" };  // dónde tienen sentido los filtros
+function placeFilters(name) {
+  const fb = $("filters-bar");
+  if (!fb) return;
+  const targetId = FILTER_TABS[name];
+  if (targetId) {
+    const title = $(targetId).querySelector(".section-title");
+    if (title) title.insertAdjacentElement("afterend", fb);  // bajo el título de la sección
+    fb.style.display = "";
+  } else {
+    fb.style.display = "none";
+  }
+}
 function switchTab(name) {
   activeTab = name;
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === "tab-" + name));
+  placeFilters(name);
   if (name === "history") loadHistory(true);
   if (name === "report") { loadReport(); loadRotation(); }
   if (name === "rankings") loadRankings();
@@ -2871,15 +2904,15 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrRating(); renderBrAccount(); renderBrDistrib(); renderBrGrid(); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrGrid(); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
-  $("br-counters").innerHTML = ""; $("br-rating").innerHTML = "";
+  $("br-counters").innerHTML = "";
   try {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrRating(); renderBrAccount(); renderBrDistrib(); renderBrGrid();
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrGrid();
 }
 
 function renderBrCounters() {
@@ -2914,7 +2947,6 @@ function ratingHTML(r) {
       ${sub("Eficiencia", r.efficiency)}${sub("Pushing", r.pushing)}
     </div>`;
 }
-function renderBrRating() { $("br-rating").innerHTML = ratingHTML(brawlersData.rating); }
 
 function renderBrAccount() {
   const a = brawlersData.account || {};
@@ -3698,16 +3730,10 @@ $("coach-back").addEventListener("click", backToReportList);
 /* ---------- Informe (cálculos derivados) ---------- */
 function fmtDateTime(iso) { try { return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
 
-async function loadReport() {
+async function loadReport() {  // pestaña "Modos de Juego": solo el mapa de calor brawler × modo
   if (!currentPlayer) return;
   const a = await getJSON("/api/report?" + qs());
-  renderStreak(a.streak);
-  renderHighlights(a.highlights);
-  $("trophy-diff").innerHTML = renderBuckets(a.trophy_diff, true); applyCollapse($("trophy-diff"));
-  $("hourly").innerHTML = renderHourly(a.battle_points); applyCollapse($("hourly"));
   $("heatmap").innerHTML = heatmap(a.crosstab);
-  render($("ri-allies"), a.allies, "brawler");
-  renderValuation(a.by_brawler);
 }
 function renderStreak(s) {
   const el = $("streak-banner");
