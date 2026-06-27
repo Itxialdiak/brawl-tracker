@@ -1,0 +1,215 @@
+"""Rutas de apartado Brawlers: rejilla, rating de cuenta y ficha de detalle.
+
+Extraído de main.py; se incluye con app.include_router()."""
+import asyncio
+from fastapi import APIRouter, Query, Depends
+from fastapi.responses import JSONResponse
+from .. import db, assets, brawler_extra, auth
+from ..api_common import _require_follow, _get_player_cached
+
+router = APIRouter()
+
+
+# --------------------------- Brawlers (apartado tipo Brawlify) ---------------------------
+
+def _rank_band(trophies) -> str:
+    """Banda de rango por trofeos del brawler (icono en el frontend)."""
+    t = trophies or 0
+    if t >= 3000: return "p3"
+    if t >= 2000: return "p2"
+    if t >= 1000: return "p1"
+    if t >= 750:  return "gold"
+    if t >= 500:  return "silver"
+    if t >= 250:  return "bronze"
+    return "wood"
+
+
+@router.get("/api/brawlers")
+async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Rejilla del apartado Brawlers: contadores, rating y todos los brawlers con tu
+    colección fusionada (nivel, rank, loadout poseído y tu win rate)."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    by_id = catalog.get("by_id") or {}
+    totals = catalog.get("totals") or {}
+    # Perfil (cacheado 120 s): stats de cuenta + refresco de la colección al abrir.
+    account = {}
+    try:
+        prof = await _get_player_cached(tag)
+        if prof.get("brawlers"):
+            await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
+        account = {"trophies": prof.get("trophies"), "highest_trophies": prof.get("highestTrophies"),
+                   "victories_3v3": prof.get("3vs3Victories"), "victories_solo": prof.get("soloVictories"),
+                   "victories_duo": prof.get("duoVictories"), "exp_level": prof.get("expLevel")}
+    except Exception as e:  # noqa: BLE001
+        print(f"[brawlers] no se pudo leer el perfil de {tag}: {e}")
+    collection = await asyncio.to_thread(db.get_collection, tag)
+    coll_by_id = {c["brawler_id"]: c for c in collection}
+    wr = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
+    wr_by_name = {(r["label"] or "").upper(): r for r in wr}
+    hc_ids = brawler_extra.hypercharge_ids()
+
+    items = []
+    for bid, cat in by_id.items():
+        c = coll_by_id.get(bid)
+        name = cat.get("name")
+        w = wr_by_name.get((name or "").upper())
+        owned_sp = set(c["star_power_ids"]) if c else set()
+        owned_gd = set(c["gadget_ids"]) if c else set()
+        ex = brawler_extra.get(bid)
+        role = ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role")
+        items.append({
+            "id": bid, "name": name, "role": role,
+            "role_secondary": brawler_extra.role_secondary(name),
+            "hypercharge_icon": (ex.get("hypercharge") or {}).get("icon"),
+            "rarity": cat.get("rarity"),
+            "portrait": cat.get("portrait"),
+            "owned": c is not None,
+            "power": c["power"] if c else None,
+            "rank": c["rank"] if c else None,
+            "trophies": c["trophies"] if c else None,
+            "rank_band": _rank_band(c["trophies"]) if c else None,
+            "prestige": c.get("prestige_level") if c else None,
+            "star_powers": [{"icon": s.get("icon"), "owned": s.get("id") in owned_sp}
+                            for s in (cat.get("star_powers") or [])],
+            "gadgets": [{"icon": g.get("icon"), "owned": g.get("id") in owned_gd}
+                        for g in (cat.get("gadgets") or [])],
+            "owned_star_powers": len(owned_sp),
+            "total_star_powers": len(cat.get("star_powers") or []),
+            "owned_gadgets": len(owned_gd),
+            "total_gadgets": len(cat.get("gadgets") or []),
+            "has_hypercharge": bid in hc_ids,
+            "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
+            "your_winrate": w["winrate"] if w else None,
+            "your_battles": w["total"] if w else 0,
+        })
+
+    # Top 10 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
+    from .. import skins
+    owned_sorted = sorted([it for it in items if it["owned"] and it["trophies"] is not None],
+                          key=lambda x: x["trophies"], reverse=True)[:13]
+    top_brawlers = []
+    for pos, it in enumerate(owned_sorted):
+        tb = {"id": it["id"], "name": it["name"], "trophies": it["trophies"],
+              "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"],
+              "your_winrate": it["your_winrate"], "your_battles": it["your_battles"]}
+        if pos < 3:  # podio: imagen de la ficha (skin equipada si la hay, o cuerpo entero)
+            ex = brawler_extra.get(it["id"])
+            image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")
+            c = coll_by_id.get(it["id"])
+            if c and c.get("skin_id") and c.get("skin_name"):
+                try:
+                    skin_url = skins.get_image(c["skin_id"]) or await skins.resolve_and_cache(c["skin_id"], it["name"], c["skin_name"])
+                    if skin_url:
+                        image_full = skin_url
+                except Exception:  # noqa: BLE001
+                    pass
+            tb["image_full"] = image_full
+        top_brawlers.append(tb)
+
+    counts = await asyncio.to_thread(db.collection_counts, tag)
+    rating = await asyncio.to_thread(db.account_rating, tag,
+                                     {**totals, "hypercharges": brawler_extra.hypercharge_total()})
+    counters = {
+        "brawlers": {"owned": counts["brawlers"], "total": totals.get("brawlers") or len(by_id)},
+        "star_powers": {"owned": counts["star_powers_owned"], "total": totals.get("star_powers") or 0},
+        "gadgets": {"owned": counts["gadgets_owned"], "total": totals.get("gadgets") or 0},
+        "hypercharges": {"owned": counts["hypercharges_owned"], "total": brawler_extra.hypercharge_total()},
+    }
+    return {"counters": counters, "rating": rating, "account": account,
+            "brawlers": items, "top_brawlers": top_brawlers}
+
+
+@router.get("/api/account-rating")
+async def api_account_rating(player: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Solo el rating de cuenta (para mostrarlo también en Estadísticas, sin cargar
+    toda la rejilla de brawlers)."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    try:
+        prof = await _get_player_cached(tag)
+        if prof.get("brawlers"):
+            await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[rating] no se pudo refrescar {tag}: {e}")
+    rating = await asyncio.to_thread(db.account_rating, tag,
+                                     {**(catalog.get("totals") or {}), "hypercharges": brawler_extra.hypercharge_total()})
+    return {"rating": rating}
+
+
+@router.get("/api/brawler/{brawler_id}")
+async def api_brawler_detail(brawler_id: int, player: str = Query(None),
+                             user: dict = Depends(auth.require_user)):
+    """Ficha de un brawler: catálogo + lo que posees + dataset curado (hipercarga,
+    stats por nivel, builds) + tu win rate con él, global y por modo."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    cat = (catalog.get("by_id") or {}).get(brawler_id)
+    if not cat:
+        return JSONResponse({"error": "Brawler no encontrado en el catálogo."}, status_code=404)
+    collection = await asyncio.to_thread(db.get_collection, tag)
+    c = next((x for x in collection if x["brawler_id"] == brawler_id), None)
+    owned_sp = set(c["star_power_ids"]) if c else set()
+    owned_gd = set(c["gadget_ids"]) if c else set()
+
+    extra = brawler_extra.get(brawler_id)
+
+    def merge_abilities(cat_items, owned, es_list):
+        """Funde el catálogo (icono + lo poseído) con el nombre/efecto en español
+        de la wiki (emparejado por orden)."""
+        es_list = es_list or []
+        out = []
+        for i, it in enumerate(cat_items or []):
+            es = es_list[i] if i < len(es_list) else {}
+            out.append({"id": it.get("id"), "name": es.get("name") or it.get("name"),
+                        "icon": it.get("icon"),
+                        "description": es.get("description") or it.get("description"),
+                        "owned": it.get("id") in owned})
+        return out
+
+    name = cat.get("name")
+    bname = ((c["brawler_name"] if c else name) or name or "").upper()
+    filt = {"player": tag, "brawler": bname}
+    ov = await asyncio.to_thread(db.overview, filt)
+    by_mode = await asyncio.to_thread(db.winrate_by, "mode", filt)
+    skin = {"id": c.get("skin_id"), "name": c.get("skin_name")} if (c and c.get("skin_id")) else None
+    image_full = extra.get("body_image") or cat.get("image_full")
+    if skin and skin.get("id") and skin.get("name"):
+        from .. import skins as skin_cat
+        skin_url = skin_cat.get_image(skin["id"]) or await skin_cat.resolve_and_cache(skin["id"], name, skin["name"])
+        if skin_url:
+            image_full = skin_url       # muestra la skin equipada si la encontramos
+            skin["image"] = skin_url
+
+    return {
+        "id": brawler_id, "name": name,
+        "description": extra.get("description_es") or cat.get("description"),
+        "role": extra.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role"),
+        "role_secondary": brawler_extra.role_secondary(name),
+        "rarity": cat.get("rarity"),
+        "image_full": image_full, "portrait": cat.get("portrait"),
+        "attack": extra.get("attack"),
+        "passive": extra.get("passive"),
+        "super": extra.get("super"),
+        "star_powers": merge_abilities(cat.get("star_powers"), owned_sp, extra.get("star_powers_es")),
+        "gadgets": merge_abilities(cat.get("gadgets"), owned_gd, extra.get("gadgets_es")),
+        "owned": c is not None,
+        "power": c["power"] if c else None,
+        "rank": c["rank"] if c else None,
+        "trophies": c["trophies"] if c else None,
+        "highest_trophies": c["highest_trophies"] if c else None,
+        "rank_band": _rank_band(c["trophies"]) if c else None,
+        "prestige_level": c.get("prestige_level") if c else None,
+        "skin": skin,
+        "gears_owned": len(c["gear_ids"]) if c else 0,
+        "has_hypercharge": brawler_id in brawler_extra.hypercharge_ids(),
+        "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
+        "hypercharge": extra.get("hypercharge"),
+        "stats_by_level": extra.get("stats_by_level"),
+        "builds": extra.get("builds") or [],
+        "your": {
+            "winrate": ov.get("winrate"), "battles": ov.get("total"),
+            "by_mode": [{"mode": m["label"], "winrate": m["winrate"], "battles": m["total"]}
+                        for m in by_mode],
+        },
+    }
