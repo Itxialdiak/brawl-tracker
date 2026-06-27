@@ -1,0 +1,135 @@
+{
+  "_note": "Guía por modo: nombre ES, intro/objetivo y consejos. Editable. map_tip = consejo general de cómo jugar los mapas de ese modo.",
+  "gemGrab": {
+    "name_es": "Atrapagemas",
+    "intro": "Modo 3 vs 3 de control: una mina en el centro suelta gemas cada pocos segundos y los dos equipos pelean por acapararlas.",
+    "objective": "Reúne 10 gemas entre tu equipo y aguanta la cuenta atrás de 15 segundos sin que os las arrebaten ni muera el portador.",
+    "tips": [
+      "Controla el centro: quien domina la mina dicta el ritmo de la partida.",
+      "No vayas a por gemas si vas a morir con ellas; al caer las sueltas todas.",
+      "Cuando lleguéis a 10, esconde al portador detrás del equipo y juega a defender el tiempo."
+    ],
+    "map_tip": "Usa los muros para cubrir al portador de gemas y abre líneas con tu súper antes de empujar el centro."
+  },
+  "brawlBall": {
+    "name_es": "Balón Brawl",
+    "intro": "Modo 3 vs 3 tipo fútbol: hay un balón en el centro del campo y dos porterías.",
+    "objective": "Marca 2 goles llevando el balón a la portería rival; si se acaba el tiempo, gana quien más goles tenga (o se va a prórroga).",
+    "tips": [
+      "No sobreextiendas con el balón: si mueres con él, das una contra peligrosa al rival.",
+      "Guarda tu súper para romper paredes hacia la portería o despejar un gol cantado.",
+      "Controla el centro y los arbustos; el medio campo decide la mayoría de jugadas."
+    ],
+    "map_tip": "Identifica las paredes destructibles que abren camino a portería y juega los pases en corto para no perder el balón."
+  },
+  "heist": {
+    "name_es": "Atraco",
+    "intro": "Modo 3 vs 3 de ataque-defensa: cada equipo tiene una caja fuerte que proteger.",
+    "objective": "Destruye la caja fuerte enemiga antes de que destruyan la tuya, equilibrando ataque y defensa.",
+    "tips": [
+      "Brawlers de daño alto o por área brillan aquí: aprovecha ventanas para hacer burst a la caja.",
+      "No te lances todos a atacar; deja presión defensiva o te harán la contra a tu caja.",
+      "Empuja por los flancos o por donde el rival tenga peor control de la línea."
+    ],
+    "map_tip": "Mira qué ruta llega antes a la caja enemiga y abusa de los súpers que ignoran muros para picar la caja sin exponerte."
+  },
+  "bounty": {
+    "name_es": "Caza Estelar",
+    "intro": "Modo 3 vs 3 de combate a distancia: cada baja suma estrellas a tu equipo, y morir con estrellas se las regala al rival.",
+    "objective": "Acumula más estrellas que el rival al acabar el tiempo; hay una estrella central que da ventaja al inicio.",
+    "tips": [
+      "Posicionamiento por encima de todo: juega a rango y no regales muertes tontas.",
+      "Si llevas muchas estrellas, juega seguro detrás; eres un objetivo prioritario.",
+      "Pelea por la estrella central al inicio, pero no mueras por ella."
+    ],
+    "map_tip": "Aprovecha arbustos y muros para cortar líneas de tiro; controla el centro abierto con tu brawler de mayor alcance."
+  },
+  "hotZone": {
+    "name_es": "Zona Restringida",
+    "intro": "Modo 3 vs 3 de control de área: una o varias zonas que hay que ocupar.",
+    "objective": "Mantén a tu equipo dentro de la(s) zona(s) para llenar tu barra al 100% antes que el rival.",
+    "tips": [
+      "Brawlers de control de área y aguante mandan: niega la zona al rival, no solo la ocupes.",
+      "No abandones la zona para perseguir bajas; el progreso solo cuenta dentro.",
+      "Presiona fuerte justo cuando el rival acaba de reaparecer y la zona queda libre."
+    ],
+    "map_tip": "Usa los muros para defender la zona y coloca daño por área en los accesos para que entrar al círculo le cueste caro al rival."
+  },
+  "knockout": {
+    "name_es": "Noqueo",
+    "intro": "Modo 3 vs 3 a vida única, al mejor de 3 rondas: no hay reaparición dentro de la ronda.",
+    "objective": "Elimina a todo el equipo rival antes de que os eliminen; gana quien se lleve 2 rondas.",
+    "tips": [
+      "No te separes del equipo: un 3 vs 2 suele decidir la ronda.",
+      "Juega a distancia y usa arbustos para emboscar o esconderte.",
+      "Vigila el muro de gas que cierra el mapa con el tiempo y reposiciónate antes de quedar atrapado."
+    ],
+    "map_tip": "Controla los arbustos centrales para tener visión y abre la ronda con daño a distancia antes de comprometer la pelea."
+  },
+  "brawlHockey": {
+    "name_es": "Brawl Hockey",
+    "intro": "Modo 3 vs 3 sobre hielo: como el Balón Brawl pero el suelo resbala y se juega con un disco.",
+    "objective": "Mete el disco en la portería rival; el deslizamiento hace que el control y los rebotes sean clave.",
+    "tips": [
+      "Brawlers rápidos y con buen control cercano dominan el disco.",
+      "Aprovecha los rebotes en las paredes para pases y tiros imposibles de parar.",
+      "Cuidado con el deslizamiento al defender: deja margen para no pasarte de frenada."
+    ],
+    "map_tip": "Juega con los rebotes de las bandas y guarda el súper para empujar el disco a portería o despejar."
+  },
+  "wipeout": {
+    "name_es": "Destrucción",
+    "intro": "Modo 3 vs 3 de eliminaciones con reaparición.",
+    "objective": "Sé el primer equipo en llegar al número de bajas objetivo.",
+    "tips": [
+      "Presión constante: prioriza daño y no regales muertes en posiciones malas.",
+      "Agrupaos para ganar los intercambios; pelear 1 vs 3 solo alimenta al rival.",
+      "Controla el centro y las líneas de visión largas."
+    ],
+    "map_tip": "Mantén el control del centro y usa coberturas para no morir gratis en los intercambios."
+  },
+  "duels": {
+    "name_es": "Duelos",
+    "intro": "Modo 1 vs 1 con tres brawlers por jugador: cuando cae uno, sale el siguiente.",
+    "objective": "Elimina los tres brawlers del rival antes de perder los tuyos.",
+    "tips": [
+      "Lleva variedad de alcances para tener respuesta a cualquier brawler enemigo.",
+      "Gestiona el orden: empieza con el brawler que mejor counterea lo que esperas.",
+      "Aprovecha coberturas; un duelo se gana con posicionamiento tanto como con daño."
+    ],
+    "map_tip": "Estudia las coberturas centrales: controlar el muro o el arbusto del medio suele decidir el duelo."
+  },
+  "soloShowdown": {
+    "name_es": "Supervivencia (solo)",
+    "intro": "Battle royale de 10 jugadores: recoge cubos de poder y sé el último en pie.",
+    "objective": "Sobrevive mientras el gas venenoso reduce el mapa; el último vivo gana.",
+    "tips": [
+      "Evita peleas tempranas: deja que otros se desgasten y recoge cubos de poder.",
+      "Controla arbustos para emboscar y esquivar; la visión es vida.",
+      "Vigila el gas y reposiciónate al centro antes de quedar atrapado."
+    ],
+    "map_tip": "Abre por las cajas de poder cercanas, evita el 1 contra varios y usa los arbustos para controlar los enfrentamientos."
+  },
+  "duoShowdown": {
+    "name_es": "Supervivencia (dúo)",
+    "intro": "Battle royale por parejas: cinco equipos de dos recogen cubos y pelean por sobrevivir.",
+    "objective": "Sé la última pareja en pie; si tu compañero cae, puede reaparecer si sobrevives.",
+    "tips": [
+      "Mantente cerca de tu dúo: separados sois presa fácil.",
+      "Reparte los cubos de poder según quién vaya a liderar las peleas.",
+      "Si tu compañero muere, juega a sobrevivir para que reaparezca."
+    ],
+    "map_tip": "Coordina con tu dúo el control de arbustos y cubos; pelea los 2 contra 1 y evita los 1 contra 2."
+  },
+  "trioShowdown": {
+    "name_es": "Supervivencia (trío)",
+    "intro": "Battle royale por tríos: equipos de tres recogen cubos y pelean por ser los últimos.",
+    "objective": "Sé el último trío en pie controlando recursos y peleas en grupo.",
+    "tips": [
+      "Jugad agrupados: la fuerza del trío está en pelear juntos.",
+      "Reparte cubos hacia vuestro mejor carry.",
+      "Controlad una zona rica en cubos y defendedla."
+    ],
+    "map_tip": "Tomad pronto una esquina con cubos y arbustos, y mantened la formación para no perder intercambios."
+  }
+}

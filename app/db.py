@@ -1307,6 +1307,38 @@ def winrate_vs(filters: dict | None = None) -> list[dict]:
     return out
 
 
+def community_meta(mode: str | None = None, map_: str | None = None) -> dict:
+    """Meta comunitario (BrawlSensei): uso y win rate por brawler agregando TODAS
+    las partidas de TODOS los jugadores seguidos —un tier list propio, no el de
+    otras webs—, opcionalmente filtrado por modo/mapa. Devuelve el agregado del
+    modo (total + win rate medio) y la lista por brawler con pick rate."""
+    where = ["my_brawler IS NOT NULL"]
+    params: list = []
+    if mode:
+        where.append("mode = ?"); params.append(mode)
+    if map_:
+        where.append("map = ?"); params.append(map_)
+    where_sql = "WHERE " + " AND ".join(where)
+    conn = get_conn()
+    rows = conn.execute(
+        f"""SELECT my_brawler AS brawler, COUNT(*) AS games,
+                   SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses
+            FROM battles {where_sql}
+            GROUP BY my_brawler ORDER BY games DESC""",
+        params,
+    ).fetchall()
+    conn.close()
+    total = sum(r["games"] for r in rows)
+    tw = sum(r["wins"] or 0 for r in rows)
+    tl = sum(r["losses"] or 0 for r in rows)
+    brawlers = [{"brawler": r["brawler"], "games": r["games"],
+                 "pick_rate": round(100 * r["games"] / total, 1) if total else 0.0,
+                 "winrate": _winrate(r["wins"], r["losses"]),
+                 "wins": r["wins"], "losses": r["losses"]} for r in rows]
+    return {"total": total, "winrate": _winrate(tw, tl), "brawlers": brawlers}
+
+
 def distinct_values(player: str | None = None) -> dict:
     conn = get_conn()
 

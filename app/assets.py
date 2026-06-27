@@ -83,6 +83,52 @@ async def get_assets() -> dict:
     return _cache["data"]
 
 
+# --- Catálogo de mapas por modo (para el Hub de Modos) -------------------------
+
+_map_catalog_cache = {"data": None, "at": 0.0}
+
+
+def norm_mode(s: str | None) -> str:
+    """Clave de modo normalizada para casar el modo canónico de la BD ('gemGrab')
+    con el de BrawlAPI ('Gem Grab'): minúsculas sin espacios/guiones."""
+    return (s or "").lower().replace(" ", "").replace("-", "").replace("_", "")
+
+
+async def get_map_catalog() -> dict:
+    """Todos los mapas de Brawlify agrupados por modo (clave normalizada), cada uno
+    con imagen, si está activo (no 'disabled') y el color oficial del modo. Es la
+    fuente de 'todos los mapas del modo' del Hub. Cacheado 12 h; ante fallo
+    devuelve lo último o vacío."""
+    now = time.time()
+    if _map_catalog_cache["data"] is not None and (now - _map_catalog_cache["at"]) < CACHE_TTL:
+        return _map_catalog_cache["data"]
+    try:
+        async with httpx.AsyncClient() as client:
+            maps = await _fetch(client, "maps")
+    except Exception as e:  # noqa: BLE001
+        print(f"[assets] no se pudo cargar el catálogo de mapas: {e}")
+        return _map_catalog_cache["data"] or {"by_mode": {}, "by_name": {}}
+    by_mode, by_name = {}, {}
+    for m in maps:
+        name = m.get("name")
+        gm = m.get("gameMode") or {}
+        mode_name = gm.get("name")
+        if not name or not mode_name:
+            continue
+        entry = {"name": name, "image": m.get("imageUrl"),
+                 "active": not m.get("disabled", False),
+                 "mode": mode_name, "mode_color": gm.get("color"),
+                 "last_active": m.get("lastActive") or 0}
+        by_mode.setdefault(norm_mode(mode_name), []).append(entry)
+        by_name[name.lower()] = entry
+    # los más recientes primero dentro de cada modo
+    for lst in by_mode.values():
+        lst.sort(key=lambda e: (e["active"], e["last_active"]), reverse=True)
+    _map_catalog_cache["data"] = {"by_mode": by_mode, "by_name": by_name}
+    _map_catalog_cache["at"] = now
+    return _map_catalog_cache["data"]
+
+
 # --- Catálogo completo de brawlers (contenido para el apartado Brawlers) -------
 
 _catalog_cache = {"data": None, "at": 0.0}

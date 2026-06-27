@@ -454,6 +454,67 @@
   .rot-cat-label { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .3px; color: var(--text); margin: 24px 0 12px; }
   .rot-cat-label:first-child { margin-top: 0; }
   .rot-cat-label span { font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); letter-spacing: 0; }
+  /* Hub de Modos */
+  .hub-block { margin-top: 26px; }
+  .hub-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .hub-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 13px 10px; background: var(--panel); border: 1px solid var(--border); border-top: 3px solid var(--mc, var(--cyan)); border-radius: 12px; cursor: pointer; transition: transform .12s, background .15s, box-shadow .15s; }
+  .hub-btn:hover { transform: translateY(-2px); background: var(--bg-elev); }
+  .hub-btn.active { background: var(--bg-elev); box-shadow: 0 0 0 1px var(--mc, var(--cyan)), 0 6px 18px rgba(0,0,0,.35); }
+  .hub-btn img { width: 34px; height: 34px; object-fit: contain; }
+  .hub-btn-name { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); letter-spacing: .2px; text-align: center; }
+  .hub-btn-meta { font-size: 11px; color: var(--muted); }
+  .hub-content:not(:empty) { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .hub-h3 { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--text); margin: 24px 0 4px; }
+  .hub-h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); }
+  .hub-hint { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .hub-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .hub-stat-main, .hub-stat-side { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .hub-wr { font-family: var(--display); font-weight: 800; font-size: 38px; line-height: 1; }
+  .hub-wr-sub { font-size: 12px; color: var(--muted); margin: 5px 0 8px; }
+  .hub-spark-svg { width: 100%; height: 58px; display: block; }
+  .hub-side-title { font-family: var(--display); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; }
+  .meta-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .meta-row img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
+  .meta-name { flex: 1; font-size: 13px; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta-val { font-family: var(--display); font-weight: 700; font-size: 13px; }
+  .hub-intro { margin: 14px 0 2px; font-size: 13.5px; color: var(--text); line-height: 1.55; }
+  .hub-intro p { margin-bottom: 6px; }
+  .hub-tips { margin: 6px 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .hub-tips li { margin-bottom: 4px; }
+  .hub-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 16px; }
+  .hub-meta-col { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .hub-insights ul { margin: 0; padding-left: 17px; }
+  .hub-insights li { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 9px; }
+  .hub-map-sub { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); margin: 16px 0 10px; }
+  .hub-map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+  .hub-map-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 11px; overflow: hidden; cursor: pointer; transition: transform .12s, box-shadow .15s, border-color .15s; }
+  .hub-map-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.35); border-color: var(--cyan); }
+  .hub-map-card.inactive { opacity: .6; }
+  .hub-map-img { position: relative; aspect-ratio: 16/10; background: var(--bg); }
+  .hub-map-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hub-map-noimg { width: 100%; height: 100%; display: grid; place-items: center; font-size: 28px; opacity: .4; }
+  .map-cat { position: absolute; top: 6px; right: 6px; font-size: 13px; background: rgba(10,10,31,.82); border-radius: 6px; padding: 1px 6px; }
+  .hub-map-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 9px; }
+  .hub-map-name { font-size: 12px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .map-wr { font-family: var(--display); font-weight: 700; font-size: 12px; flex: 0 0 auto; }
+  .map-wr.none { color: var(--muted); }
+  .map-modal { position: fixed; inset: 0; background: rgba(5,5,16,.78); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 30px 16px; }
+  .map-modal.show { display: flex; }
+  .map-modal-card { position: relative; width: 100%; max-width: 920px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .map-modal-close { position: absolute; top: 10px; right: 12px; z-index: 3; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(10,10,31,.6); color: #fff; font-size: 22px; cursor: pointer; line-height: 1; }
+  .map-modal-close:hover { background: rgba(10,10,31,.92); }
+  .mm-head { padding: 28px 24px 20px; background-size: cover; background-position: center; }
+  .mm-head h2 { font-family: var(--display); font-weight: 800; font-size: 26px; color: #fff; }
+  .mm-wr { font-size: 13px; color: #cdd3e0; margin-top: 4px; }
+  .mm-body { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 20px 24px 24px; }
+  .mm-col { display: flex; flex-direction: column; gap: 16px; }
+  .mm-title { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 4px; }
+  .mm-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .draft-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  .draft-row img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
+  .draft-comm { font-family: var(--display); font-weight: 700; font-size: 12px; color: #f5b82a; }
+  .draft-you { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--cyan); }
+  @media (max-width: 720px) { .hub-stats, .mm-body { grid-template-columns: 1fr; } }
   .rot-card { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; overflow: hidden; transition: transform .15s, border-color .15s, box-shadow .15s; }
   .rot-card.good { border-color: rgba(65,224,138,.45); }
   .rot-card.bad { border-color: rgba(255,93,108,.4); }
@@ -1591,6 +1652,12 @@
           <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
           <div class="heat-wrap" id="heatmap"></div></div>
       </div>
+      <div class="hub-block" id="hub-block" style="display:none">
+        <h2 class="section-title" style="font-size:16px">Hub de Modos</h2>
+        <p class="hint" style="margin-bottom:14px">Elige un modo para ver tu rendimiento, el meta de la comunidad (BrawlSensei) y todos sus mapas.</p>
+        <div class="hub-buttons" id="hub-buttons"></div>
+        <div class="hub-content" id="hub-content"></div>
+      </div>
     </div>
 
     <!-- RANKINGS -->
@@ -2084,6 +2151,10 @@
     <div class="lightbox-inner"><img id="lb-img" src="" alt="" /><div class="cap" id="lb-cap"></div></div>
   </div>
 
+  <div class="map-modal" id="map-modal">
+    <div class="map-modal-card" id="map-modal-card"></div>
+  </div>
+
   <footer>Los datos se acumulan mientras el tracker está en marcha. La API solo guarda las 25 últimas partidas de cada jugador.</footer>
 
 <script>
@@ -2323,7 +2394,8 @@ document.addEventListener("click", (e) => {
 });
 $("lb-close").addEventListener("click", () => $("lightbox").classList.remove("show"));
 $("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") $("lightbox").classList.remove("show"); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("lightbox").classList.remove("show"); });
+$("map-modal").addEventListener("click", (e) => { if (e.target.id === "map-modal") closeMapModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("lightbox").classList.remove("show"); closeMapModal(); } });
 
 /* ---------- Filtros / jugadores ---------- */
 async function loadFilters() {
@@ -3811,11 +3883,159 @@ $("coach-back").addEventListener("click", backToReportList);
 /* ---------- Informe (cálculos derivados) ---------- */
 function fmtDateTime(iso) { try { return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
 
-async function loadReport() {  // pestaña "Modos de Juego": solo el mapa de calor brawler × modo
+async function loadReport() {  // pestaña "Modos de Juego": heatmap + Hub de Modos
   if (!currentPlayer) return;
   const a = await getJSON("/api/report?" + qs());
   $("heatmap").innerHTML = heatmap(a.crosstab);
+  renderHubButtons(a.by_mode || []);
 }
+
+/* ---------- Hub de Modos ---------- */
+let hubMode = null;
+function renderHubButtons(byMode) {
+  const block = $("hub-block"), btns = $("hub-buttons");
+  if (!block || !btns) return;
+  const modes = (byMode || []).filter((m) => m.label && m.total > 0).sort((x, y) => y.total - x.total);
+  if (!modes.length) { block.style.display = "none"; hubMode = null; $("hub-content").innerHTML = ""; return; }
+  block.style.display = "";
+  btns.innerHTML = modes.map((m) => {
+    const a = modeAsset(m.label), color = modeColor(m.label, 0);
+    const ic = a && a.icon ? `<img src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
+    return `<button class="hub-btn ${hubMode === m.label ? "active" : ""}" data-mode="${esc(m.label)}" style="--mc:${color}">
+      ${ic}<span class="hub-btn-name">${esc(modeName(m.label))}</span>
+      <span class="hub-btn-meta">${m.total}p · ${m.winrate == null ? "—" : m.winrate + "%"}</span></button>`;
+  }).join("");
+  btns.querySelectorAll(".hub-btn").forEach((b) => b.addEventListener("click", () => selectHubMode(b.dataset.mode)));
+  if (hubMode && modes.some((m) => m.label === hubMode)) selectHubMode(hubMode, true);
+  else { hubMode = null; $("hub-content").innerHTML = ""; }
+}
+async function selectHubMode(mode, force) {
+  if (hubMode === mode && !force) {  // toggle: cerrar
+    hubMode = null;
+    document.querySelectorAll(".hub-btn").forEach((b) => b.classList.remove("active"));
+    $("hub-content").innerHTML = "";
+    return;
+  }
+  hubMode = mode;
+  document.querySelectorAll(".hub-btn").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  $("hub-content").innerHTML = `<div class="empty" style="padding:34px">Cargando ${esc(modeName(mode))}…</div>`;
+  try {
+    const d = await getJSON(`/api/mode-hub?player=${encodeURIComponent(currentPlayer)}&mode=${encodeURIComponent(mode)}`);
+    if (hubMode !== mode) return;  // el usuario cambió mientras cargaba
+    $("hub-content").innerHTML = renderModeHub(d);
+    $("hub-content").querySelectorAll(".hub-map-card").forEach((c) =>
+      c.addEventListener("click", () => openMapModal(c.dataset.map, c.dataset.mode)));
+  } catch (e) { $("hub-content").innerHTML = `<div class="empty" style="padding:30px">No se pudo cargar el modo.</div>`; }
+}
+function brawlerStatRow(name, valueText, color) {
+  const port = brawlerPortrait(name);
+  const img = port ? `<img src="${port}" alt="" onerror="this.style.display='none'">` : "";
+  return `<div class="meta-row">${img}<span class="meta-name">${esc(name)}</span><span class="meta-val" style="color:${color}">${valueText}</span></div>`;
+}
+function miniSpark(series) {
+  const pts = (series || []).map((p) => p.cumulative);
+  if (pts.length < 2) return `<div class="empty" style="padding:8px;font-size:12px">Pocas partidas para la gráfica.</div>`;
+  const min = Math.min(...pts, 0), max = Math.max(...pts, 0), range = (max - min) || 1, W = 260, H = 60;
+  const xy = pts.map((v, i) => [((i / (pts.length - 1)) * W).toFixed(1), (H - ((v - min) / range) * H).toFixed(1)]);
+  const line = xy.map((c) => c.join(",")).join(" ");
+  const col = pts[pts.length - 1] >= (pts[0] || 0) ? "var(--win)" : "var(--loss)";
+  return `<svg viewBox="0 0 ${W} ${H}" class="hub-spark-svg" preserveAspectRatio="none">
+    <polyline points="0,${H} ${line} ${W},${H}" fill="${col}" opacity="0.12"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderModeHub(d) {
+  const wr = d.your.winrate, g = d.guide || {};
+  const bestB = (d.your.best_brawlers || []).slice(0, 5)
+    .map((b) => brawlerStatRow(b.label, b.winrate == null ? "—" : b.winrate + "%", pctColor(b.winrate))).join("") || `<div class="empty">Aún sin datos.</div>`;
+  const statsRow = `<div class="hub-stats">
+    <div class="hub-stat-main">
+      <div class="hub-wr" style="color:${pctColor(wr)}">${wr == null ? "—" : wr + "%"}</div>
+      <div class="hub-wr-sub">tu win rate · ${d.your.total} partidas${d.your.trophy_delta != null ? ` · <b style="color:${d.your.trophy_delta >= 0 ? "var(--win)" : "var(--loss)"}">${d.your.trophy_delta >= 0 ? "+" : ""}${d.your.trophy_delta}🏆</b>` : ""}</div>
+      <div class="hub-spark">${miniSpark(d.your.trophy_series)}</div>
+    </div>
+    <div class="hub-stat-side"><div class="hub-side-title">Tus mejores brawlers aquí</div>${bestB}</div>
+  </div>`;
+  const intro = g.intro ? `<div class="hub-intro"><p>${esc(g.intro)}</p>
+    ${g.objective ? `<p><b>Objetivo:</b> ${esc(g.objective)}</p>` : ""}
+    ${(g.tips || []).length ? `<ul class="hub-tips">${g.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}</div>` : "";
+  return `${statsRow}${intro}
+    <h3 class="hub-h3"><span class="dot"></span>Meta Comunitario</h3>
+    <div class="hub-hint">Tier list propio de BrawlSensei (datos reales de todos los jugadores), y tu desviación respecto a la media.</div>
+    ${renderMetaComunitario(d)}
+    <h3 class="hub-h3"><span class="dot"></span>Mapas</h3>
+    ${renderHubMaps(d.mode, d.maps)}`;
+}
+function renderMetaComunitario(d) {
+  const c = d.community || {};
+  const pickL = (c.by_pick || []).slice(0, 6).map((b) => brawlerStatRow(b.brawler, b.pick_rate + "%", "var(--cyan)")).join("") || `<div class="empty">Sin datos de la comunidad.</div>`;
+  const wrL = (c.by_winrate || []).slice(0, 6).map((b) => brawlerStatRow(b.brawler, b.winrate == null ? "—" : b.winrate + "%", pctColor(b.winrate))).join("") || `<div class="empty">Sin datos.</div>`;
+  const ins = (d.insights || []).map((i) => `<li>${esc(i)}</li>`).join("");
+  return `<div class="hub-meta">
+    <div class="hub-meta-col"><div class="hub-side-title">Más usados (pick rate)</div>${pickL}</div>
+    <div class="hub-meta-col"><div class="hub-side-title">Mejor win rate comunitario</div>${wrL}</div>
+    <div class="hub-meta-col hub-insights"><div class="hub-side-title">Tu desviación</div>${ins ? `<ul>${ins}</ul>` : `<div class="empty">Juega más partidas para compararte con la media.</div>`}</div>
+  </div>`;
+}
+function hubMapCard(m, mode) {
+  const badge = m.category === "trophy" ? `<span class="map-cat trophy" title="En rotación · Copas">🏆</span>`
+    : m.category === "ranked" ? `<span class="map-cat ranked" title="En rotación · Competitivo">🏅</span>` : "";
+  const img = m.image ? `<img src="${m.image}" alt="" loading="lazy" onerror="this.style.display='none'">` : `<div class="hub-map-noimg">🗺️</div>`;
+  const wr = m.your_winrate == null ? `<span class="map-wr none">—</span>` : `<span class="map-wr" style="color:${pctColor(m.your_winrate)}">${m.your_winrate}%</span>`;
+  return `<div class="hub-map-card ${m.active ? "" : "inactive"}" data-map="${esc(m.name)}" data-mode="${esc(mode)}">
+    <div class="hub-map-img">${img}${badge}</div>
+    <div class="hub-map-foot"><span class="hub-map-name">${esc(m.name)}</span>${wr}</div></div>`;
+}
+function renderHubMaps(mode, maps) {
+  const rot = (maps.rotation || []).map((m) => hubMapCard(m, mode)).join("");
+  const oth = (maps.others || []).map((m) => hubMapCard(m, mode)).join("");
+  return `${rot ? `<div class="hub-map-sub">Mapas en rotación</div><div class="hub-map-grid">${rot}</div>` : ""}
+    ${oth ? `<div class="hub-map-sub">Otros mapas</div><div class="hub-map-grid">${oth}</div>` : ""}
+    ${!rot && !oth ? `<div class="empty">Sin mapas para este modo.</div>` : ""}`;
+}
+function draftRow(x) {
+  const port = brawlerPortrait(x.brawler);
+  const img = port ? `<img src="${port}" alt="" onerror="this.style.display='none'">` : "";
+  const you = x.your_winrate == null ? "" : `<span class="draft-you" title="tu win rate aquí">tú ${x.your_winrate}%</span>`;
+  return `<div class="draft-row">${img}<span class="meta-name">${esc(x.brawler)}</span>
+    <span class="draft-comm" title="win rate del meta comunitario">meta ${Math.round(x.community_winrate)}%</span>${you}</div>`;
+}
+async function openMapModal(map, mode) {
+  const modal = $("map-modal"), card = $("map-modal-card");
+  card.innerHTML = `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button><div class="empty" style="padding:46px">Cargando ${esc(map)}…</div>`;
+  modal.classList.add("show");
+  try {
+    const d = await getJSON(`/api/map-detail?player=${encodeURIComponent(currentPlayer)}&map=${encodeURIComponent(map)}&mode=${encodeURIComponent(mode || "")}`);
+    card.innerHTML = renderMapModal(d);
+  } catch (e) { card.innerHTML = `<button class="map-modal-close" onclick="closeMapModal()">&times;</button><div class="empty" style="padding:46px">No se pudo cargar el mapa.</div>`; }
+}
+function renderMapModal(d) {
+  const wr = d.your.winrate;
+  const list = (items) => (items || []).length
+    ? items.map((x) => brawlerStatRow(x.label || x.brawler, x.winrate == null ? "—" : x.winrate + "%", pctColor(x.winrate))).join("")
+    : `<div class="empty">Sin datos todavía.</div>`;
+  const draft = (d.draft || []).map(draftRow).join("") || `<div class="empty">Juega o espera más datos de la comunidad.</div>`;
+  const tips = (d.tips || []).map((t) => `<li>${esc(t)}</li>`).join("");
+  const headBg = d.image ? ` style="background-image:linear-gradient(180deg,rgba(12,12,30,.4),rgba(12,12,30,.94)),url('${d.image}')"` : "";
+  return `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button>
+    <div class="mm-head"${headBg}>
+      <h2>${esc(d.map)}</h2>
+      <div class="mm-wr">${wr == null ? "Aún no juegas aquí" : `Tu win rate: <b style="color:${pctColor(wr)}">${wr}%</b> · ${d.your.total} partidas`}</div>
+    </div>
+    <div class="mm-body">
+      <div class="mm-col">
+        <div class="mm-block"><div class="mm-title">⚔️ Ayudante de draft</div>
+          <div class="mm-hint">Mejores brawlers aquí cruzando el meta comunitario con tu historial.</div>${draft}</div>
+        ${tips ? `<div class="mm-block"><div class="mm-title">💡 Consejos</div><ul class="hub-tips">${tips}</ul></div>` : ""}
+      </div>
+      <div class="mm-col">
+        <div class="mm-block"><div class="mm-title">Tus mejores brawlers</div>${list(d.your.best_brawlers)}</div>
+        <div class="mm-block"><div class="mm-title">Mejores aliados</div>${list(d.your.best_allies)}</div>
+        <div class="mm-block"><div class="mm-title">Rivales más duros</div>${list(d.your.worst_enemies)}</div>
+      </div>
+    </div>`;
+}
+function closeMapModal() { $("map-modal").classList.remove("show"); }
+window.closeMapModal = closeMapModal;
 function renderStreak(s) {
   const el = $("streak-banner");
   if (!el) return;
