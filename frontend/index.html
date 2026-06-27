@@ -213,6 +213,18 @@
 
   /* ===================== PANEL DE ADMINISTRACIÓN ===================== */
   .admin-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .user-row.orphan .user-name { color: var(--loss); }
+  .pl-tag { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px; }
+  .orphan-badge { background: rgba(255,77,115,.18); color: var(--loss); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 8px; text-transform: uppercase; letter-spacing: .4px; }
+  .off-badge { background: rgba(255,255,255,.08); color: var(--muted); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; }
+  .pl-meta { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  .metric-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .metric-v { font-family: var(--display); font-weight: 800; font-size: 26px; color: var(--text); line-height: 1.1; }
+  .metric-v small { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .metric-l { font-family: var(--display); font-weight: 600; font-size: 11.5px; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: .4px; }
+  .metric-s { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .metrics-sub { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); margin: 20px 0 12px; }
   .atab { font-family: var(--display); font-size: 12.5px; letter-spacing: .6px; text-transform: uppercase; cursor: pointer;
     background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 11px; padding: 9px 15px; transition: all .12s; }
   .atab:hover { color: var(--text); }
@@ -1120,14 +1132,13 @@
   .top10-panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px 20px; margin-bottom:18px; }
   .top10-panel h2 { display:flex; align-items:center; gap:8px; font-family:var(--display); font-weight:700; font-size:15px; color:var(--text); margin-bottom:16px; }
   .top10-panel h2 .dot { width:8px; height:8px; border-radius:50%; background:var(--gold); }
-  .podium { display:flex; align-items:flex-end; justify-content:center; gap:14px; margin-bottom:16px; padding:24px 0 44px; }
-  .podium-col.pos2 { transform:translateY(24px); }
-  .podium-col.pos3 { transform:translateY(44px); }
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:14px; margin-bottom:16px; padding-top:20px; }
   .podium-col { display:flex; flex-direction:column; align-items:center; cursor:pointer; width:150px; max-width:31%; }
   .podium-col:hover .podium-img img { transform:scale(1.04); }
   .podium-img { position:relative; width:100%; display:flex; align-items:flex-end; justify-content:center; }
   .podium-img img { width:100%; max-height:150px; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); transition:transform .15s; }
-  .podium-col.pos1 .podium-img img { max-height:186px; }
+  .podium-col.pos1 .podium-img img { max-height:188px; }
+  .podium-col.pos2 .podium-img img { max-height:166px; }
   .crown { position:absolute; top:-21px; left:50%; transform:translateX(-50%); font-size:25px; z-index:2; }
   .podium-base { width:100%; text-align:center; border-radius:10px 10px 0 0; padding:8px 6px 10px; margin-top:2px; background:linear-gradient(180deg,var(--bg-elev),var(--bg)); border:1px solid var(--border); border-bottom:none; }
   .podium-col.pos1 .podium-base { background:linear-gradient(180deg,rgba(245,184,42,.28),rgba(245,184,42,.05)); border-color:rgba(245,184,42,.5); }
@@ -1148,6 +1159,23 @@
   .top-mini-name { font-size:12.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .top-mini-tro { font-size:11.5px; color:var(--gold); font-weight:700; }
   @media (max-width: 560px) { .podium-img img { max-height:110px; } .podium-col.pos1 .podium-img img { max-height:135px; } }
+  /* Top 13: extras junto al podio (solo PC) */
+  .top13-main { display:flex; align-items:flex-end; justify-content:center; gap:18px; }
+  .top13-main .podium { flex:0 0 auto; }
+  .podium-extra { flex:1 1 0; min-width:0; max-width:290px; background:var(--bg-elev); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+  .extra-title { font-family:var(--display); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:10px; }
+  .winner-row { display:flex; align-items:center; gap:9px; padding:6px 0; cursor:pointer; }
+  .winner-row img { width:38px; height:38px; border-radius:8px; object-fit:cover; background:var(--bg); flex:0 0 auto; }
+  .wm-pos { font-family:var(--display); font-weight:800; font-size:13px; color:var(--muted); min-width:13px; flex:0 0 auto; }
+  .wm-tx { display:flex; flex-direction:column; min-width:0; }
+  .wm-name { font-family:var(--display); font-weight:700; font-size:13px; color:var(--text); }
+  .wm-sub { font-size:11.5px; color:var(--muted); }
+  .eff-row { display:flex; align-items:center; gap:8px; padding:7px 0; }
+  .eff-name { font-size:12px; color:var(--text); font-weight:600; width:60px; flex:0 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .eff-bar-wrap { flex:1; height:9px; background:rgba(255,255,255,.07); border-radius:5px; overflow:hidden; }
+  .eff-bar { height:100%; border-radius:5px; }
+  .eff-val { font-family:var(--display); font-weight:700; font-size:12px; width:42px; text-align:right; flex:0 0 auto; }
+  @media (max-width: 920px) { .podium-extra { display:none; } }
 
   /* Badge de rango por banda de trofeos */
   .rank-badge { width:16px; height:16px; border-radius:5px; display:inline-block; position:relative; flex-shrink:0; box-shadow:inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.35); transform:rotate(45deg); }
@@ -1536,7 +1564,7 @@
   </div>
 
   <div class="app-banner-bar">
-    <div class="app-banner" role="img" aria-label="BrawlSensei"></div>
+    <div class="app-banner" role="button" tabindex="0" aria-label="BrawlSensei — Inicio" title="Volver al inicio" onclick="goHome()" style="cursor:pointer"></div>
   </div>
 
   <div class="banner" id="banner"></div>
@@ -1786,9 +1814,9 @@
           <div class="br-sort-group"><span class="br-tb-lbl">Ordenar por:</span>
             <div class="br-sorts" id="br-sorts">
               <button class="br-sort active" data-sort="winrate">Win rate</button>
-              <button class="br-sort" data-sort="trophies">Mejores</button>
               <button class="br-sort" data-sort="rarity">Rareza</button>
               <button class="br-sort" data-sort="role">Rol</button>
+              <button class="br-sort" data-sort="trophies">Copas</button>
               <button class="br-sort" data-sort="power">Nivel</button>
               <button class="br-sort" data-sort="name">Nombre</button>
             </div></div>
@@ -2162,6 +2190,8 @@
     <div class="admin-tabs">
       <button class="atab active" data-atab="pending" onclick="showAdminTab('pending')">Cambios pendientes <span class="admin-badge" id="admin-tab-badge" style="display:none">0</span></button>
       <button class="atab" data-atab="users" onclick="showAdminTab('users')">Usuarios</button>
+      <button class="atab" data-atab="players" onclick="showAdminTab('players')">Jugadores</button>
+      <button class="atab" data-atab="metrics" onclick="showAdminTab('metrics')">Métricas</button>
       <button class="atab" data-atab="history" onclick="showAdminTab('history')">Historial</button>
     </div>
 
@@ -2179,6 +2209,20 @@
         <button class="btn" onclick="openCreateUser()">＋ Crear usuario</button>
       </div>
       <div id="users-list"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
+    <div class="admin-panel" id="admin-players">
+      <div class="admin-panel-head">
+        <h3>Jugadores trackeados</h3>
+        <button class="btn" onclick="openAddPlayers()">＋ Añadir jugador(es)</button>
+      </div>
+      <p class="admin-hint">Los <span style="color:var(--loss)">marcados en rojo</span> no los sigue ningún usuario (huérfanos, añadidos a mano). Borrar deja de recopilar sus partidas; te preguntará si conservar o no su historial.</p>
+      <div id="players-list"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
+    <div class="admin-panel" id="admin-metrics">
+      <div class="admin-panel-head"><h3>Métricas</h3></div>
+      <div id="metrics-body"><div class="wk-loading">Cargando…</div></div>
     </div>
 
     <div class="admin-panel" id="admin-history">
@@ -2201,6 +2245,7 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+function goHome() { location.href = "/"; }
 let currentPlayer = null;
 let currentUser = null;
 let rankScope = "global";
@@ -3068,7 +3113,7 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop10(); renderBrRoles(); renderBrGrid(); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
@@ -3076,7 +3121,7 @@ async function loadBrawlers() {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop10(); renderBrRoles(); renderBrGrid();
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid();
 }
 
 function renderBrCounters() {
@@ -3160,7 +3205,7 @@ function renderBrDistrib() {
     distribPanel("Por trofeos", bandRows);
 }
 
-function renderTop10() {
+function renderTop13() {
   const el = $("br-top10");
   const top = brawlersData && brawlersData.top_brawlers;
   if (!el || !top || !top.length) { if (el) el.innerHTML = ""; return; }
@@ -3170,12 +3215,27 @@ function renderTop10() {
     const src = b.image_full || b.portrait;
     const img = src ? `<img src="${src}" alt="" onerror="this.style.display='none'">` : "";
     return `<div class="podium-col pos${b.pos}" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
-      <div class="podium-img">${b.pos === 1 ? '<span class="crown">👑</span>' : ""}${img}</div>
+      <div class="podium-img">${img}</div>
       <div class="podium-base"><span class="podium-pos">${b.pos}</span>
         <span class="podium-name">${esc(b.name)}</span>
         <span class="podium-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
   }).join("");
-  const restHtml = top.slice(3, 10).map((b, i) => {
+  // Extras (solo PC): rendimiento de los 3 ganadores + gráfica de eficiencia.
+  const winnersMini = podium.map((b) => {
+    const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
+    const wr = b.your_winrate;
+    return `<div class="winner-row" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
+      <span class="wm-pos">${b.pos}</span>${img}
+      <div class="wm-tx"><span class="wm-name">${esc(b.name)}</span>
+        <span class="wm-sub">${wr == null ? "sin partidas" : `<b style="color:${pctColor(wr)}">${wr}%</b> WR · ${b.your_battles}p`}</span></div></div>`;
+  }).join("");
+  const effRows = podium.map((b) => {
+    const wr = b.your_winrate, w = wr == null ? 0 : Math.max(3, wr);
+    return `<div class="eff-row"><span class="eff-name">${esc(b.name)}</span>
+      <div class="eff-bar-wrap"><div class="eff-bar" style="width:${w}%;background:${pctColor(wr)}"></div></div>
+      <span class="eff-val" style="color:${pctColor(wr)}">${wr == null ? "—" : wr + "%"}</span></div>`;
+  }).join("");
+  const restHtml = top.slice(3, 13).map((b, i) => {
     const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
     return `<div class="top-mini" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
       <span class="top-mini-pos">${i + 4}</span>${img}
@@ -3183,8 +3243,12 @@ function renderTop10() {
         <span class="top-mini-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
   }).join("");
   el.innerHTML = `<div class="top10-panel">
-    <h2><span class="dot"></span>Top 10 Brawlers</h2>
-    <div class="podium">${podiumHtml}</div>
+    <h2><span class="dot"></span>Top 13 Brawlers</h2>
+    <div class="top13-main">
+      <div class="podium-extra extra-left"><div class="extra-title">Rendimiento</div>${winnersMini}</div>
+      <div class="podium">${podiumHtml}</div>
+      <div class="podium-extra extra-right"><div class="extra-title">Eficiencia · win rate</div>${effRows}</div>
+    </div>
     ${restHtml ? `<div class="top-mini-row">${restHtml}</div>` : ""}</div>`;
 }
 
@@ -3718,6 +3782,8 @@ function showAdminTab(name) {
   document.querySelectorAll(".admin-panel").forEach((p) => p.classList.toggle("active", p.id === "admin-" + name));
   if (name === "pending") loadAdminPending();
   if (name === "users") loadAdminUsers();
+  if (name === "players") loadAdminPlayers();
+  if (name === "metrics") loadAdminMetrics();
   if (name === "history") loadAdminHistory();
 }
 
@@ -3874,6 +3940,65 @@ async function submitCreateUser() {
   const { ok, d } = await apiSend("/api/admin/users", "POST", { username, password, is_admin });
   if (!ok) { err.textContent = d.error || d.detail || "No se pudo crear."; return; }
   closeCreateUser(); wikiToast("Usuario creado ✓", "ok"); loadAdminUsers();
+}
+
+/* ---------- Jugadores (admin) ---------- */
+async function loadAdminPlayers() {
+  const wrap = $("players-list");
+  try {
+    const d = await getJSON("/api/admin/players");
+    const players = d.players || [];
+    if (!players.length) { wrap.innerHTML = '<div class="admin-empty">No hay jugadores trackeados.</div>'; return; }
+    wrap.innerHTML = players.map((p) => {
+      const orphan = (p.followers || 0) === 0, name = p.name || p.tag;
+      return `<div class="user-row ${orphan ? "orphan" : ""}">
+        <div class="user-name">${esc(name)}<span class="pl-tag">${esc(p.tag)}</span>${orphan ? '<span class="orphan-badge">huérfano</span>' : ""}${p.active ? "" : '<span class="off-badge">inactivo</span>'}</div>
+        <div class="pl-meta">${(p.battles || 0).toLocaleString("es-ES")} partidas · ${p.followers} seguidor${p.followers === 1 ? "" : "es"}</div>
+        <div class="user-actions"><button class="danger" onclick="delAdminPlayer('${esc(p.tag)}', '${esc(name)}')">Borrar</button></div>
+      </div>`;
+    }).join("");
+  } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
+}
+async function openAddPlayers() {
+  const tags = prompt("Añadir jugador(es) al trackeo (aunque no los siga ningún usuario).\n\nPega uno o varios player IDs separados por comas:");
+  if (!tags || !tags.trim()) return;
+  const { ok, d } = await apiSend("/api/admin/players", "POST", { tags });
+  if (!ok) { wikiToast(d.error || "No se pudo añadir", "err"); return; }
+  const n = (d.added || []).length, s = (d.skipped || []).length;
+  wikiToast(`Añadidos ${n}${s ? ` · ${s} ya estaban` : ""} ✓`, "ok");
+  loadAdminPlayers();
+}
+async function delAdminPlayer(tag, name) {
+  if (!confirm(`¿Dejar de trackear a ${name} (${tag})? No se recopilarán más sus partidas.`)) return;
+  const delBattles = confirm("¿Borrar también su historial de partidas?\n\nAceptar = borrar todo · Cancelar = conservar el historial");
+  const { ok, d } = await apiSend(`/api/admin/players/${encodeURIComponent(tag)}?delete_battles=${delBattles}`, "DELETE");
+  if (!ok) { wikiToast(d.error || "No se pudo borrar", "err"); return; }
+  wikiToast(delBattles ? "Jugador y partidas borrados" : "Jugador eliminado (historial conservado)", "ok");
+  loadAdminPlayers();
+}
+
+/* ---------- Métricas (admin) ---------- */
+async function loadAdminMetrics() {
+  const wrap = $("metrics-body");
+  try {
+    const m = await getJSON("/api/admin/metrics");
+    const fmt = (n) => (n || 0).toLocaleString("es-ES");
+    const card = (label, value, sub) => `<div class="metric-card"><div class="metric-v">${value}</div><div class="metric-l">${label}</div>${sub ? `<div class="metric-s">${sub}</div>` : ""}</div>`;
+    const tok = (o) => `${fmt((o || {}).tokens)} <small>tok</small>`;
+    const reqs = (o) => `${fmt((o || {}).requests)} peticiones`;
+    const general = card("Usuarios", fmt(m.users)) +
+      card("Jugadores trackeados", fmt(m.active_players), `${fmt(m.orphans)} huérfanos · ${fmt(m.players)} en total`) +
+      card("Partidas en BD", fmt(m.battles)) +
+      card("Informes IA generados", fmt(m.reports));
+    const ai = m.ai || {};
+    const aiCards = card("Total", tok(ai.total), reqs(ai.total)) +
+      card("Este mes", tok(ai.month), reqs(ai.month)) +
+      card("Esta semana", tok(ai.week), reqs(ai.week)) +
+      card("Hoy", tok(ai.day), reqs(ai.day));
+    wrap.innerHTML = `<div class="metrics-grid">${general}</div>
+      <h4 class="metrics-sub">Consumo de IA · tokens en peticiones a Claude</h4>
+      <div class="metrics-grid">${aiCards}</div>`;
+  } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
 }
 
 /* ---------- Historial ---------- */

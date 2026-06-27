@@ -1129,6 +1129,44 @@ def api_admin_history_revert(hid: int, admin: dict = Depends(auth.require_admin)
     return {"ok": ok}
 
 
+@app.get("/api/admin/players")
+def api_admin_players(admin: dict = Depends(auth.require_admin)):
+    """Todos los jugadores trackeados, con nº de partidas y de seguidores (huérfanos
+    = sin ningún usuario que los siga)."""
+    return {"players": db.list_players_admin()}
+
+
+@app.post("/api/admin/players")
+def api_admin_players_add(payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    """Añade jugador(es) al trackeo aunque no los siga ningún usuario. `tags` admite
+    una lista o un string con player IDs separados por comas/saltos de línea."""
+    raw = payload.get("tags") or payload.get("tag") or ""
+    parts = re.split(r"[,\n;]+", raw) if isinstance(raw, str) else list(raw)
+    seen, added, skipped = set(), [], []
+    for p in parts:
+        t = db.normalize_tag(str(p).strip())
+        if len(t) < 4 or t in seen:
+            continue
+        seen.add(t)
+        (added if db.add_player(t) else skipped).append(t)
+    return {"added": added, "skipped": skipped}
+
+
+@app.delete("/api/admin/players/{tag}")
+def api_admin_player_delete(tag: str, delete_battles: bool = Query(False),
+                            admin: dict = Depends(auth.require_admin)):
+    """Deja de trackear al jugador. Por defecto conserva su historial; con
+    delete_battles=true borra también sus partidas."""
+    db.admin_remove_player(tag, delete_battles)
+    return {"removed": db.normalize_tag(tag), "battles_deleted": delete_battles}
+
+
+@app.get("/api/admin/metrics")
+def api_admin_metrics(admin: dict = Depends(auth.require_admin)):
+    """Usuarios, jugadores, partidas, informes y consumo de tokens de IA."""
+    return db.admin_metrics()
+
+
 @app.get("/api/assets")
 async def api_assets(user: dict = Depends(auth.require_user)):
     """Retratos de brawlers, iconos de modo (con color) e imágenes de mapas (Brawlify)."""
@@ -1228,11 +1266,12 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     # Top 10 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
     from . import skins
     owned_sorted = sorted([it for it in items if it["owned"] and it["trophies"] is not None],
-                          key=lambda x: x["trophies"], reverse=True)[:10]
+                          key=lambda x: x["trophies"], reverse=True)[:13]
     top_brawlers = []
     for pos, it in enumerate(owned_sorted):
         tb = {"id": it["id"], "name": it["name"], "trophies": it["trophies"],
-              "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"]}
+              "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"],
+              "your_winrate": it["your_winrate"], "your_battles": it["your_battles"]}
         if pos < 3:  # podio: imagen de la ficha (skin equipada si la hay, o cuerpo entero)
             ex = brawler_extra.get(it["id"])
             image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")

@@ -250,13 +250,40 @@ def list_players() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def active_player_tags() -> list[str]:
-    """Jugadores a sondear: la unión deduplicada de los que algún usuario sigue."""
+def list_players_admin() -> list[dict]:
+    """Todos los jugadores trackeados con nº de partidas y nº de seguidores (usuarios
+    que lo siguen). Los huérfanos (followers=0) van primero. Para el panel de admin."""
     conn = get_conn()
     rows = conn.execute(
-        """SELECT DISTINCT up.player_tag FROM user_players up
-           JOIN players p ON p.tag = up.player_tag WHERE p.active=1"""
+        """
+        SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name,
+               (SELECT COUNT(*) FROM battles b WHERE b.player_tag = p.tag) AS battles,
+               (SELECT COUNT(*) FROM user_players up WHERE up.player_tag = p.tag) AS followers
+        FROM players p ORDER BY followers ASC, battles DESC, p.added_at DESC
+        """
     ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def admin_remove_player(tag: str, delete_battles: bool = False) -> None:
+    """Deja de trackear un jugador. Por defecto conserva su historial de partidas
+    (solo deja de recopilar más); con delete_battles=True borra también el registro."""
+    tag = normalize_tag(tag)
+    if delete_battles:
+        remove_player(tag)  # limpieza completa (battles + cascadas + fila del jugador)
+        return
+    conn = get_conn()
+    conn.execute("DELETE FROM user_players WHERE player_tag=?", (tag,))
+    conn.execute("DELETE FROM players WHERE tag=?", (tag,))  # deja de sondearse; battles intactas
+    conn.commit(); conn.close()
+
+
+def active_player_tags() -> list[str]:
+    """Jugadores a sondear: todos los activos —los que sigue algún usuario y también
+    los que un admin haya añadido al trackeo sin seguidores (huérfanos)."""
+    conn = get_conn()
+    rows = conn.execute("SELECT tag FROM players WHERE active=1").fetchall()
     conn.close()
     return [r[0] for r in rows]
 
@@ -828,6 +855,57 @@ def set_user_admin(uid: int, is_admin: bool) -> None:
     conn = get_conn()
     conn.execute("UPDATE users SET is_admin=? WHERE id=?", (1 if is_admin else 0, uid))
     conn.commit(); conn.close()
+
+
+def _ensure_ai_usage(conn) -> None:
+    conn.execute("""CREATE TABLE IF NOT EXISTS ai_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, kind TEXT,
+        input_tokens INTEGER, output_tokens INTEGER)""")
+
+
+def log_ai_usage(kind: str, input_tokens: int, output_tokens: int) -> None:
+    """Registra el consumo de tokens de una llamada a la IA (para métricas de admin)."""
+    conn = get_conn()
+    _ensure_ai_usage(conn)
+    conn.execute("INSERT INTO ai_usage (at, kind, input_tokens, output_tokens) VALUES (?,?,?,?)",
+                 (datetime.now(timezone.utc).isoformat(), kind, int(input_tokens or 0), int(output_tokens or 0)))
+    conn.commit(); conn.close()
+
+
+def admin_metrics() -> dict:
+    """Métricas globales del panel de admin: usuarios, jugadores, partidas, informes
+    y consumo de tokens de IA (total/mes/semana/día)."""
+    conn = get_conn()
+    _ensure_ai_usage(conn)
+
+    def one(q, p=()):
+        return conn.execute(q, p).fetchone()
+
+    users = one("SELECT COUNT(*) FROM users")[0]
+    players = one("SELECT COUNT(*) FROM players")[0]
+    active = one("SELECT COUNT(*) FROM players WHERE active=1")[0]
+    orphans = one("SELECT COUNT(*) FROM players p WHERE NOT EXISTS "
+                  "(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)")[0]
+    battles = one("SELECT COUNT(*) FROM battles")[0]
+    try:
+        reports = one("SELECT COUNT(*) FROM reports")[0]
+    except Exception:  # noqa: BLE001
+        reports = 0
+    now = datetime.now(timezone.utc)
+
+    def toks(cutoff=None):
+        if cutoff is not None:
+            r = one("SELECT COALESCE(SUM(input_tokens+output_tokens),0), COUNT(*) FROM ai_usage WHERE at>=?",
+                    (cutoff.isoformat(),))
+        else:
+            r = one("SELECT COALESCE(SUM(input_tokens+output_tokens),0), COUNT(*) FROM ai_usage")
+        return {"tokens": r[0], "requests": r[1]}
+
+    ai = {"total": toks(), "month": toks(now - timedelta(days=30)),
+          "week": toks(now - timedelta(days=7)), "day": toks(now - timedelta(days=1))}
+    conn.close()
+    return {"users": users, "players": players, "active_players": active, "orphans": orphans,
+            "battles": battles, "reports": reports, "ai": ai}
 
 
 def follow_player(user_id: int, tag: str) -> None:

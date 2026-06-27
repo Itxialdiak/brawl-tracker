@@ -146,6 +146,10 @@ async def generate_report(player: str, filters: dict) -> tuple[str, str]:
             ),
         }],
     )
+    try:
+        db.log_ai_usage("report", msg.usage.input_tokens, msg.usage.output_tokens)
+    except Exception:  # noqa: BLE001
+        pass
     text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
     return _split_title(text, label)
 
@@ -180,4 +184,8 @@ async def generate_event_summary(ctx: str) -> str:
                 "sin listas, solo el texto del aviso. No te inventes datos que no estén en el contexto."),
         messages=[{"role": "user", "content": ctx}],
     )
+    try:
+        db.log_ai_usage("event_summary", msg.usage.input_tokens, msg.usage.output_tokens)
+    except Exception:  # noqa: BLE001
+        pass
     return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
