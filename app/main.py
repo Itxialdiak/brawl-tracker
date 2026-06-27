@@ -185,6 +185,13 @@ async def _wiki_updater():
                 res = await wiki.refresh()
                 await _rebuild_roles_index()
                 print(f"[wiki] dataset de brawlers actualizado (wiki + builds): {res}")
+            try:  # precachea imágenes a cuerpo entero de las skins equipadas por cualquier jugador
+                from . import skins
+                eq = await asyncio.to_thread(db.all_equipped_skins)
+                if eq:
+                    print(f"[skins] precache de imágenes: {await skins.refresh_missing(eq)}")
+            except Exception as se:  # noqa: BLE001
+                print(f"[skins] error precacheando skins: {se}")
         except Exception as e:  # noqa: BLE001
             print(f"[wiki] error actualizando el dataset: {e}")
         await asyncio.sleep(WIKI_UPDATE_INTERVAL)
@@ -1219,7 +1226,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         })
 
     # Top 10 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
-    from . import wiki
+    from . import skins
     owned_sorted = sorted([it for it in items if it["owned"] and it["trophies"] is not None],
                           key=lambda x: x["trophies"], reverse=True)[:10]
     top_brawlers = []
@@ -1230,9 +1237,9 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             ex = brawler_extra.get(it["id"])
             image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")
             c = coll_by_id.get(it["id"])
-            if c and c.get("skin_name"):
+            if c and c.get("skin_id") and c.get("skin_name"):
                 try:
-                    skin_url = await wiki.resolve_skin_image(it["name"], c["skin_name"])
+                    skin_url = skins.get_image(c["skin_id"]) or await skins.resolve_and_cache(c["skin_id"], it["name"], c["skin_name"])
                     if skin_url:
                         image_full = skin_url
                 except Exception:  # noqa: BLE001
@@ -1307,9 +1314,9 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
     by_mode = await asyncio.to_thread(db.winrate_by, "mode", filt)
     skin = {"id": c.get("skin_id"), "name": c.get("skin_name")} if (c and c.get("skin_id")) else None
     image_full = extra.get("body_image") or cat.get("image_full")
-    if skin and skin.get("name"):
-        from . import wiki
-        skin_url = await wiki.resolve_skin_image(name, skin["name"])
+    if skin and skin.get("id") and skin.get("name"):
+        from . import skins as skin_cat
+        skin_url = skin_cat.get_image(skin["id"]) or await skin_cat.resolve_and_cache(skin["id"], name, skin["name"])
         if skin_url:
             image_full = skin_url       # muestra la skin equipada si la encontramos
             skin["image"] = skin_url

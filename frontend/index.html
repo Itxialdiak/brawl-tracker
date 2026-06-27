@@ -1120,13 +1120,15 @@
   .top10-panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px 20px; margin-bottom:18px; }
   .top10-panel h2 { display:flex; align-items:center; gap:8px; font-family:var(--display); font-weight:700; font-size:15px; color:var(--text); margin-bottom:16px; }
   .top10-panel h2 .dot { width:8px; height:8px; border-radius:50%; background:var(--gold); }
-  .podium { display:flex; align-items:flex-end; justify-content:center; gap:14px; margin-bottom:16px; }
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:14px; margin-bottom:16px; padding:24px 0 44px; }
+  .podium-col.pos2 { transform:translateY(24px); }
+  .podium-col.pos3 { transform:translateY(44px); }
   .podium-col { display:flex; flex-direction:column; align-items:center; cursor:pointer; width:150px; max-width:31%; }
   .podium-col:hover .podium-img img { transform:scale(1.04); }
   .podium-img { position:relative; width:100%; display:flex; align-items:flex-end; justify-content:center; }
   .podium-img img { width:100%; max-height:150px; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); transition:transform .15s; }
   .podium-col.pos1 .podium-img img { max-height:186px; }
-  .crown { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:24px; z-index:2; }
+  .crown { position:absolute; top:-21px; left:50%; transform:translateX(-50%); font-size:25px; z-index:2; }
   .podium-base { width:100%; text-align:center; border-radius:10px 10px 0 0; padding:8px 6px 10px; margin-top:2px; background:linear-gradient(180deg,var(--bg-elev),var(--bg)); border:1px solid var(--border); border-bottom:none; }
   .podium-col.pos1 .podium-base { background:linear-gradient(180deg,rgba(245,184,42,.28),rgba(245,184,42,.05)); border-color:rgba(245,184,42,.5); }
   .podium-col.pos2 .podium-base { background:linear-gradient(180deg,rgba(184,194,207,.22),rgba(184,194,207,.04)); }
@@ -1783,8 +1785,8 @@
           <input id="br-search" class="br-search" placeholder="Buscar brawler…" autocomplete="off" />
           <div class="br-sort-group"><span class="br-tb-lbl">Ordenar por:</span>
             <div class="br-sorts" id="br-sorts">
-              <button class="br-sort active" data-sort="trophies">Mejores</button>
-              <button class="br-sort" data-sort="winrate">Win rate</button>
+              <button class="br-sort active" data-sort="winrate">Win rate</button>
+              <button class="br-sort" data-sort="trophies">Mejores</button>
               <button class="br-sort" data-sort="rarity">Rareza</button>
               <button class="br-sort" data-sort="role">Rol</button>
               <button class="br-sort" data-sort="power">Nivel</button>
@@ -3057,7 +3059,7 @@ function switchTab(name) {
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 
 /* ============================ BRAWLERS (apartado tipo Brawlify) ============================ */
-let brawlersData = null, brawlersPlayer = null, brSort = "trophies", brSearch = "", brRole = null, statLevelSel = 11;
+let brawlersData = null, brawlersPlayer = null, brSort = "winrate", brSearch = "", brRole = null, statLevelSel = 11;
 const RANK_LABELS = { wood: "Madera", bronze: "Bronce", silver: "Plata", gold: "Oro", p1: "Prestigio 1", p2: "Prestigio 2", p3: "Prestigio 3" };
 const RARITY_ORDER = { "Common": 0, "Rare": 1, "Super Rare": 2, "Epic": 3, "Mythic": 4, "Legendary": 5, "Ultra Legendary": 6 };
 

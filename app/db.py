@@ -1339,6 +1339,18 @@ def community_meta(mode: str | None = None, map_: str | None = None) -> dict:
     return {"total": total, "winrate": _winrate(tw, tl), "brawlers": brawlers}
 
 
+def all_equipped_skins() -> list:
+    """(skin_id, brawler_name, skin_name) distintos equipados por cualquier jugador
+    seguido. Para precachear las imágenes a cuerpo entero de todas las skins en uso."""
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT DISTINCT skin_id, brawler_name, skin_name FROM brawler_collection
+           WHERE skin_id IS NOT NULL AND skin_name IS NOT NULL"""
+    ).fetchall()
+    conn.close()
+    return [(r["skin_id"], r["brawler_name"], r["skin_name"]) for r in rows]
+
+
 def distinct_values(player: str | None = None) -> dict:
     conn = get_conn()
 
