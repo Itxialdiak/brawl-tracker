@@ -1085,7 +1085,8 @@
   .br-card { background:var(--panel); border:1px solid var(--border); border-radius:15px; padding:12px; cursor:pointer; transition:transform .15s,border-color .15s,box-shadow .15s; position:relative; text-align:center; }
   .br-card:hover { transform:translateY(-3px); border-color:rgba(150,130,255,.5); box-shadow:0 12px 28px rgba(0,0,0,.4); }
   .br-card.locked { opacity:.5; filter:grayscale(.55); }
-  .br-card .por { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; background:var(--bg-elev); display:block; }
+  .br-card .por-frame { width:100%; aspect-ratio:1; border-radius:11px; padding:3px; box-sizing:border-box; background:var(--border); }
+  .br-card .por { width:100%; height:100%; object-fit:cover; border-radius:8px; background:var(--bg-elev); display:block; }
   .br-card .nm { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:.3px; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .br-card .role { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; min-height:13px; }
   .br-card .pw { position:absolute; top:8px; left:8px; font-family:var(--display); font-weight:700; font-size:12px; background:rgba(0,0,0,.6); border:1px solid var(--border); border-radius:8px; padding:1px 7px; }
@@ -1100,14 +1101,51 @@
   .br-card .prestige-pip { width:17px; height:17px; border-radius:50%; background:linear-gradient(135deg,#c98bff,#7a35d5); color:#fff; font-family:var(--display); font-weight:700; font-size:10px; display:inline-grid; place-items:center; box-shadow:0 1px 3px rgba(0,0,0,.45); }
   .br-card .role2 { font-size:10px; color:var(--cyan); text-transform:none; letter-spacing:.2px; margin-top:1px; }
   .br-d-role .role2 { color:var(--cyan); text-transform:none; font-size:13px; }
-  .por.band-wood { border:3px solid #8a5a2f; } .por.band-bronze { border:3px solid #c87a35; }
-  .por.band-silver { border:3px solid #aeb8c4; } .por.band-gold { border:3px solid #f5b82a; box-shadow:0 0 10px rgba(245,184,42,.3); }
-  .por.band-p1 { border:3px solid #4a8be0; box-shadow:0 0 10px rgba(74,139,224,.35); } .por.band-p2 { border:3px solid #a35fe0; box-shadow:0 0 10px rgba(163,95,224,.4); }
-  .por.band-p3 { border:3px solid #e05fa0; box-shadow:0 0 12px rgba(224,95,160,.45); }
+  /* Marco del retrato según RAREZA del brawler (no el rango de copas) */
+  .por-frame.rar-common { background:#b8c2cf; }
+  .por-frame.rar-rare { background:#36e0a0; }
+  .por-frame.rar-super-rare { background:#5b9bff; }
+  .por-frame.rar-epic { background:#c64ff0; }
+  .por-frame.rar-mythic { background:#ff4d73; }
+  .por-frame.rar-legendary { background:#ffd75e; }
+  .por-frame.rar-ultra-legendary { background:linear-gradient(135deg,#ff4d73,#ff8e3c,#ffe93b,#36e0a0,#3fe1ff,#c64ff0); }
   .br-roles { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px; }
   .br-role-chip { font-family:var(--display); font-weight:600; font-size:11.5px; letter-spacing:.3px; color:var(--muted); background:var(--panel); border:1px solid var(--border); border-radius:20px; padding:6px 13px; cursor:pointer; transition:color .15s,background .15s,border-color .15s; }
   .br-role-chip:hover { color:var(--text); }
   .br-role-chip.active { color:var(--bg); background:var(--cyan); border-color:var(--cyan); }
+  .br-sort-group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .br-filter-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .br-tb-lbl { font-family:var(--display); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); flex:0 0 auto; }
+  /* Top 10 Brawlers (podio + fila) */
+  .top10-panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px 20px; margin-bottom:18px; }
+  .top10-panel h2 { display:flex; align-items:center; gap:8px; font-family:var(--display); font-weight:700; font-size:15px; color:var(--text); margin-bottom:16px; }
+  .top10-panel h2 .dot { width:8px; height:8px; border-radius:50%; background:var(--gold); }
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:14px; margin-bottom:16px; }
+  .podium-col { display:flex; flex-direction:column; align-items:center; cursor:pointer; width:150px; max-width:31%; }
+  .podium-col:hover .podium-img img { transform:scale(1.04); }
+  .podium-img { position:relative; width:100%; display:flex; align-items:flex-end; justify-content:center; }
+  .podium-img img { width:100%; max-height:150px; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); transition:transform .15s; }
+  .podium-col.pos1 .podium-img img { max-height:186px; }
+  .crown { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:24px; z-index:2; }
+  .podium-base { width:100%; text-align:center; border-radius:10px 10px 0 0; padding:8px 6px 10px; margin-top:2px; background:linear-gradient(180deg,var(--bg-elev),var(--bg)); border:1px solid var(--border); border-bottom:none; }
+  .podium-col.pos1 .podium-base { background:linear-gradient(180deg,rgba(245,184,42,.28),rgba(245,184,42,.05)); border-color:rgba(245,184,42,.5); }
+  .podium-col.pos2 .podium-base { background:linear-gradient(180deg,rgba(184,194,207,.22),rgba(184,194,207,.04)); }
+  .podium-col.pos3 .podium-base { background:linear-gradient(180deg,rgba(205,127,50,.22),rgba(205,127,50,.04)); }
+  .podium-pos { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; font-family:var(--display); font-weight:800; font-size:12px; color:var(--bg); margin-bottom:3px; }
+  .podium-col.pos1 .podium-pos { background:var(--gold); }
+  .podium-col.pos2 .podium-pos { background:#b8c2cf; }
+  .podium-col.pos3 .podium-pos { background:#cd7f32; }
+  .podium-name { display:block; font-family:var(--display); font-weight:700; font-size:13px; color:var(--text); text-transform:uppercase; letter-spacing:.3px; }
+  .podium-tro { display:block; font-size:12px; color:var(--gold); font-weight:700; margin-top:1px; }
+  .top-mini-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(132px,1fr)); gap:10px; }
+  .top-mini { display:flex; align-items:center; gap:8px; background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:7px 10px; cursor:pointer; transition:border-color .15s, transform .12s; }
+  .top-mini:hover { border-color:var(--cyan); transform:translateY(-2px); }
+  .top-mini-pos { font-family:var(--display); font-weight:800; font-size:13px; color:var(--muted); flex:0 0 auto; min-width:16px; }
+  .top-mini img { width:32px; height:32px; border-radius:7px; object-fit:cover; background:var(--bg); flex:0 0 auto; }
+  .top-mini-tx { display:flex; flex-direction:column; min-width:0; }
+  .top-mini-name { font-size:12.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .top-mini-tro { font-size:11.5px; color:var(--gold); font-weight:700; }
+  @media (max-width: 560px) { .podium-img img { max-height:110px; } .podium-col.pos1 .podium-img img { max-height:135px; } }
 
   /* Badge de rango por banda de trofeos */
   .rank-badge { width:16px; height:16px; border-radius:5px; display:inline-block; position:relative; flex-shrink:0; box-shadow:inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.35); transform:rotate(45deg); }
@@ -1740,18 +1778,20 @@
         <div class="br-account" id="br-account"></div>
         <div class="br-counters" id="br-counters"></div>
         <div class="br-distrib" id="br-distrib"></div>
+        <div class="top10" id="br-top10"></div>
         <div class="br-toolbar">
           <input id="br-search" class="br-search" placeholder="Buscar brawler…" autocomplete="off" />
-          <div class="br-sorts" id="br-sorts">
-            <button class="br-sort active" data-sort="trophies">Mejores</button>
-            <button class="br-sort" data-sort="winrate">Win rate</button>
-            <button class="br-sort" data-sort="rarity">Rareza</button>
-            <button class="br-sort" data-sort="role">Rol</button>
-            <button class="br-sort" data-sort="power">Nivel</button>
-            <button class="br-sort" data-sort="name">Nombre</button>
-          </div>
+          <div class="br-sort-group"><span class="br-tb-lbl">Ordenar por:</span>
+            <div class="br-sorts" id="br-sorts">
+              <button class="br-sort active" data-sort="trophies">Mejores</button>
+              <button class="br-sort" data-sort="winrate">Win rate</button>
+              <button class="br-sort" data-sort="rarity">Rareza</button>
+              <button class="br-sort" data-sort="role">Rol</button>
+              <button class="br-sort" data-sort="power">Nivel</button>
+              <button class="br-sort" data-sort="name">Nombre</button>
+            </div></div>
         </div>
-        <div class="br-roles" id="br-roles"></div>
+        <div class="br-filter-row"><span class="br-tb-lbl">Filtrar por:</span><div class="br-roles" id="br-roles"></div></div>
         <div class="br-grid" id="br-grid"></div>
       </div>
       <div id="brawler-detail-view" style="display:none">
@@ -3026,7 +3066,7 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrRoles(); renderBrGrid(); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop10(); renderBrRoles(); renderBrGrid(); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
@@ -3034,7 +3074,7 @@ async function loadBrawlers() {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderBrRoles(); renderBrGrid();
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop10(); renderBrRoles(); renderBrGrid();
 }
 
 function renderBrCounters() {
@@ -3106,13 +3146,44 @@ function renderBrDistrib() {
   const pwMax = Math.max(...Object.values(pw));
   const pwRows = Object.keys(pw).map(Number).sort((a, b) => a - b)
     .map((p) => dbar("Nivel " + p, pw[p], pwMax, "var(--cyan)")).join("");
-  const bands = [["1250+", 1250], ["1000+", 1000], ["750+", 750], ["500+", 500], ["300+", 300]];
-  const bandRows = bands.map(([lbl, thr]) =>
-    dbar(lbl, owned.filter((b) => (b.trophies || 0) >= thr).length, owned.length, "var(--gold)")).join("");
+  const RANK_BANDS = [["wood", "Madera", "#9c6b3f"], ["bronze", "Bronce", "#cd7f32"], ["silver", "Plata", "#b8c2cf"],
+    ["gold", "Oro", "#f5b82a"], ["p1", "Prestigio 1", "#3fa9ff"], ["p2", "Prestigio 2", "#ff4d5e"], ["p3", "Prestigio 3", "#ffe93b"]];
+  const bandCount = {};
+  owned.forEach((b) => { if (b.rank_band) bandCount[b.rank_band] = (bandCount[b.rank_band] || 0) + 1; });
+  const bandMax = Math.max(...RANK_BANDS.map(([k]) => bandCount[k] || 0), 1);
+  const bandRows = RANK_BANDS.map(([k, lbl, col]) => dbar(lbl, bandCount[k] || 0, bandMax, col)).join("");
   $("br-distrib").innerHTML =
     distribPanel("Por rareza", rarRows) +
     distribPanel("Por nivel de poder", pwRows) +
     distribPanel("Por trofeos", bandRows);
+}
+
+function renderTop10() {
+  const el = $("br-top10");
+  const top = brawlersData && brawlersData.top_brawlers;
+  if (!el || !top || !top.length) { if (el) el.innerHTML = ""; return; }
+  const podium = top.slice(0, 3).map((b, i) => ({ ...b, pos: i + 1 }));
+  const order = [podium[1], podium[0], podium[2]].filter(Boolean);  // 2 · 1 · 3
+  const podiumHtml = order.map((b) => {
+    const src = b.image_full || b.portrait;
+    const img = src ? `<img src="${src}" alt="" onerror="this.style.display='none'">` : "";
+    return `<div class="podium-col pos${b.pos}" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
+      <div class="podium-img">${b.pos === 1 ? '<span class="crown">👑</span>' : ""}${img}</div>
+      <div class="podium-base"><span class="podium-pos">${b.pos}</span>
+        <span class="podium-name">${esc(b.name)}</span>
+        <span class="podium-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
+  }).join("");
+  const restHtml = top.slice(3, 10).map((b, i) => {
+    const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
+    return `<div class="top-mini" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
+      <span class="top-mini-pos">${i + 4}</span>${img}
+      <div class="top-mini-tx"><span class="top-mini-name">${esc(b.name)}</span>
+        <span class="top-mini-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
+  }).join("");
+  el.innerHTML = `<div class="top10-panel">
+    <h2><span class="dot"></span>Top 10 Brawlers</h2>
+    <div class="podium">${podiumHtml}</div>
+    ${restHtml ? `<div class="top-mini-row">${restHtml}</div>` : ""}</div>`;
 }
 
 function brComparator(a, b) {
@@ -3151,10 +3222,11 @@ function renderBrRoles() {
 }
 
 function renderBrawlerCard(b) {
-  const band = b.owned && b.rank_band ? "band-" + b.rank_band : "";
-  const por = b.portrait
-    ? `<img class="por ${band}" src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
-    : `<div class="por ${band}"></div>`;
+  const rar = "rar-" + ((b.rarity && b.rarity.name ? b.rarity.name : "Common").toLowerCase().replace(/\s+/g, "-"));
+  const inner = b.portrait
+    ? `<img class="por" src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+    : `<div class="por"></div>`;
+  const por = `<div class="por-frame ${rar}">${inner}</div>`;
   const pw = b.owned ? `<div class="pw">${b.power}</div>` : "";
   const badge = b.owned ? rankBadge(b.rank_band) : "";
   const prestige = b.owned && b.prestige ? `<span class="prestige-pip" title="Prestigio ${b.prestige}">${b.prestige}</span>` : "";

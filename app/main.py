@@ -1218,6 +1218,28 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "your_battles": w["total"] if w else 0,
         })
 
+    # Top 10 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
+    from . import wiki
+    owned_sorted = sorted([it for it in items if it["owned"] and it["trophies"] is not None],
+                          key=lambda x: x["trophies"], reverse=True)[:10]
+    top_brawlers = []
+    for pos, it in enumerate(owned_sorted):
+        tb = {"id": it["id"], "name": it["name"], "trophies": it["trophies"],
+              "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"]}
+        if pos < 3:  # podio: imagen de la ficha (skin equipada si la hay, o cuerpo entero)
+            ex = brawler_extra.get(it["id"])
+            image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")
+            c = coll_by_id.get(it["id"])
+            if c and c.get("skin_name"):
+                try:
+                    skin_url = await wiki.resolve_skin_image(it["name"], c["skin_name"])
+                    if skin_url:
+                        image_full = skin_url
+                except Exception:  # noqa: BLE001
+                    pass
+            tb["image_full"] = image_full
+        top_brawlers.append(tb)
+
     counts = await asyncio.to_thread(db.collection_counts, tag)
     rating = await asyncio.to_thread(db.account_rating, tag,
                                      {**totals, "hypercharges": brawler_extra.hypercharge_total()})
@@ -1227,7 +1249,8 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         "gadgets": {"owned": counts["gadgets_owned"], "total": totals.get("gadgets") or 0},
         "hypercharges": {"owned": counts["hypercharges_owned"], "total": brawler_extra.hypercharge_total()},
     }
-    return {"counters": counters, "rating": rating, "account": account, "brawlers": items}
+    return {"counters": counters, "rating": rating, "account": account,
+            "brawlers": items, "top_brawlers": top_brawlers}
 
 
 @app.get("/api/account-rating")
