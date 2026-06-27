@@ -1023,9 +1023,12 @@
   .br-card .topright { position:absolute; top:7px; right:8px; display:flex; gap:5px; align-items:center; font-size:13px; }
   .br-card .meta { display:flex; align-items:center; justify-content:center; gap:9px; margin-top:7px; font-size:11px; color:var(--muted); }
   .br-card .wr { font-family:var(--display); font-weight:700; }
-  .br-card .dots { display:flex; gap:3px; justify-content:center; margin-top:7px; flex-wrap:wrap; }
-  .br-card .dot2 { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.12); }
-  .br-card .dot2.on-sp { background:#ffd75e; } .br-card .dot2.on-gd { background:var(--win); }
+  .br-loadout { display:flex; gap:5px; justify-content:center; align-items:center; margin-top:9px; flex-wrap:wrap; }
+  .br-loadout .lo { width:22px; height:22px; object-fit:contain; border-radius:6px; flex-shrink:0; }
+  .br-loadout .lo.off { opacity:.32; filter:grayscale(1) brightness(.65); }
+  .br-loadout .lo.hcic { display:inline-grid; place-items:center; font-size:13px; line-height:1; background:linear-gradient(135deg,#c98bff,#7a35d5); color:#fff; box-shadow:inset 0 1px 1px rgba(255,255,255,.3); }
+  .br-loadout .lo.hcic.off { background:var(--bg-elev); border:1px solid var(--border); color:var(--muted); opacity:.5; filter:none; box-shadow:none; }
+  .br-card .prestige-pip { width:17px; height:17px; border-radius:50%; background:linear-gradient(135deg,#c98bff,#7a35d5); color:#fff; font-family:var(--display); font-weight:700; font-size:10px; display:inline-grid; place-items:center; box-shadow:0 1px 3px rgba(0,0,0,.45); }
 
   /* Badge de rango por banda de trofeos */
   .rank-badge { width:16px; height:16px; border-radius:5px; display:inline-block; position:relative; flex-shrink:0; box-shadow:inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.35); transform:rotate(45deg); }
@@ -1039,8 +1042,8 @@
   /* Ficha de detalle */
   .br-detail { margin-top:14px; }
   .br-d-top { display:grid; grid-template-columns:minmax(220px,300px) 1fr; gap:24px; align-items:start; }
-  .br-d-img { background:linear-gradient(160deg,var(--bg-elev),#241c52); border:1px solid var(--border); border-radius:18px; padding:10px; text-align:center; position:relative; overflow:hidden; min-height:180px; display:grid; place-items:center; }
-  .br-d-img img { width:100%; max-height:340px; object-fit:contain; }
+  .br-d-img { background:linear-gradient(160deg,var(--bg-elev),#241c52); border:1px solid var(--border); border-radius:18px; padding:10px; text-align:center; position:relative; overflow:hidden; min-height:300px; display:grid; place-items:center; }
+  .br-d-img img { width:100%; max-height:440px; object-fit:contain; }
   .br-d-rarity { position:absolute; top:12px; left:12px; font-family:var(--display); font-weight:700; font-size:11px; letter-spacing:.5px; text-transform:uppercase; padding:3px 9px; border-radius:6px; }
   .br-d-info h1 { font-family:var(--display); font-weight:700; font-size:34px; letter-spacing:.5px; line-height:1.05; }
   .br-d-role { color:var(--muted); text-transform:uppercase; letter-spacing:.8px; font-size:12px; margin-bottom:12px; }
@@ -1473,7 +1476,7 @@
     <div class="streak-banner" id="streak-banner" style="display:none"></div>
 
     <div class="tabs">
-      <button class="tab active" data-tab="stats">Estadísticas</button>
+      <button class="tab active" data-tab="stats">Analíticas</button>
       <button class="tab" data-tab="brawlers">Brawlers</button>
       <button class="tab" data-tab="report">Modos de Juego</button>
       <button class="tab" data-tab="rankings">Rankings</button>
@@ -1483,7 +1486,7 @@
 
     <!-- ESTADÍSTICAS -->
     <div class="tab-content active" id="tab-stats">
-      <h2 class="section-title">Estadísticas</h2>
+      <h2 class="section-title">Analíticas</h2>
       <div id="filters-bar">
         <div class="filters">
           <div class="field"><label for="f-brawler">Brawler</label>
@@ -3021,21 +3024,23 @@ function renderBrawlerCard(b) {
     : `<div class="por"></div>`;
   const pw = b.owned ? `<div class="pw">${b.power}</div>` : "";
   const badge = b.owned ? rankBadge(b.rank_band) : "";
-  const hc = b.has_hypercharge ? `<span title="Tiene hipercarga">⚡</span>` : "";
+  const prestige = b.owned && b.prestige ? `<span class="prestige-pip" title="Prestigio ${b.prestige}">${b.prestige}</span>` : "";
   const wr = b.your_winrate == null ? "" : `<span class="wr" style="color:${pctColor(b.your_winrate)}">${b.your_winrate}%</span>`;
   const tro = b.owned && b.trophies != null ? `<span>🏆 ${b.trophies}</span>` : "";
-  let dots = "";
+  let loadout = "";
   if (b.owned) {
-    for (let i = 0; i < b.total_star_powers; i++) dots += `<span class="dot2 ${i < b.owned_star_powers ? "on-sp" : ""}"></span>`;
-    for (let i = 0; i < b.total_gadgets; i++) dots += `<span class="dot2 ${i < b.owned_gadgets ? "on-gd" : ""}"></span>`;
+    const ic = (a) => a.icon ? `<img class="lo ${a.owned ? "" : "off"}" src="${a.icon}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
+    let items = (b.star_powers || []).map(ic).join("") + (b.gadgets || []).map(ic).join("");
+    if (b.has_hypercharge) items += `<span class="lo hcic ${b.owns_hypercharge ? "" : "off"}" title="Hipercarga${b.owns_hypercharge ? " · la tienes" : " · no la tienes"}">⚡</span>`;
+    loadout = items ? `<div class="br-loadout">${items}</div>` : "";
   }
   return `<div class="br-card ${b.owned ? "" : "locked"}" onclick="showBrawlerDetail(${b.id})">
-    ${pw}<div class="topright">${badge}${hc}</div>
+    ${pw}<div class="topright">${badge}${prestige}</div>
     ${por}
     <div class="nm">${esc(b.name)}</div>
     <div class="role">${esc(b.role || "")}</div>
     <div class="meta">${tro}${wr}</div>
-    ${dots ? `<div class="dots">${dots}</div>` : ""}
+    ${loadout}
   </div>`;
 }
 

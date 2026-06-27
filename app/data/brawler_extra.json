@@ -115,6 +115,7 @@
       "description": "El radio de acción de las Superbalas es un 33% mayor. Cuando se activa la súper, las balas de Shelly tendrán un radio un 33% más grande y la cantidad de proyectiles aumenta de 9 a 12. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/3b/Shelly.png/revision/latest/scale-to-width-down/500?cb=20251026041340&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -216,6 +217,7 @@
       "description": "El radio de acción de la Tormenta de balas es una 120% más ancho. Cuando se activa, el ancho de su super aumenta de 0,67 casillas a 1,47 casillas. También obtiene un aumento de velocidad del 20, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/8a/Colt_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20251026184317&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -299,6 +301,7 @@
       "description": "La embestida reduce el daño recibido en un 80%.Cuando Bull está usando su súper, recibirá un escudo que reduce el daño que recibe en un 80% mientras utiliza su Súper. El escudo no persiste después de que termina el Súper y no se acumula con ninguna otra reducción de daño. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b7/Bull_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20240308194145&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -393,7 +396,8 @@
         "gear": "Shield",
         "win_rate": 69.6
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/9/96/Gigi.png/revision/latest/scale-to-width-down/500?cb=20251025173635&path-prefix=es"
   },
   "16000074": {
     "description_es": "Nuestra amiga y vecina Charlie al público del circo tiene impresionado. Con sus dotes tejedoras de auténtica artista esta arácnida es la reina de la pista, pero el espectáculo llego a su fin, ¡cuidado! ¡Es hora de desvalijar el gentío embelsado! Charlie es una Brawler Mítica que se pudo desbloquear al conseguir el nivel 30 del Brawl Pass número 21: Circo de Curiosidades, ahora puede ser obtenida en el Camino Starr. Charlie tiene una salud y daño moderados, junto con una gran utilidad gracias a su super. Fue la Brawler N°73 agregada al juego. Ataca lanzando su yo-yo, el cual solo posee una munición que se recarga al volver luego de ser lanzado, regresa al llegar a su distancia máxima o cuando choca con un enemigo o muro. Su super consiste en una bola de cabello que captura temporalmente a los brawlers enemigos.",
@@ -470,6 +474,7 @@
       "description": "La crisálida genera 3 arañas que persiguen y atacan a los enemigos más cercanos. Al golpear un enemigo con su súper, 3 arañas aparecen alrededor de la crisálida, igual que su primer gadget. Las arañas aparecerán incluso si la crisálida no atrapa a ningún enemigo. También viene con un aumento de 20% de velocidad, 5% de ataque y 5% de defensa.",
       "multiplier": "60%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/c9/Charlie.png/revision/latest/scale-to-width-down/500?cb=20231027203547&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -555,6 +560,7 @@
       "description": "El Primo salta por los aires y al aterrizar da un codazo intergaláctico que atrae a los enemigos hacia el epicentro del impacto. Cuando se activa, el Súper, El Primo atrae a los enemigos en un radio a su alrededor al golpearlos. Los enemigos en los arbustos y los enemigos invisibles como Leon, Sandy, Kit o Kaze Ninja se revelarán si son atraídos. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/04/El_Primo_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20191108132435&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -638,6 +644,7 @@
       "description": "Nita hipercarga a Bruce y, además de hacer que aumente de tamaño, aumenta un 15% su velocidad de movimiento y un 20% su salud. Cuando se activa, el próximo oso de Nita será más grande. El oso agrandado caminará un 15% más rápido y tendrá un 20% más de salud. Nita obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "50%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/39/Nita-skin-c.png/revision/latest?cb=20231213022115&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -721,6 +728,7 @@
       "description": "La granada punzante actúa sobre un área un 20% mayor. Cuando se activa, el área del súper de Spike aumenta en un 20%. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/8e/Spike_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20231214175243&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -796,7 +804,8 @@
         "gear": "Health",
         "win_rate": 78.4
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/8e/Bolt.png/revision/latest/scale-to-width-down/500?cb=20260418153233&path-prefix=es"
   },
   "16000105": {
     "description_es": "Una fanática del \"cosplay\" que está convencida de que es el personaje de anime Starr Nova. Esto provoca situaciones algo incómodas, ya que cree que los problemas del mundo real también se solucionan a base de espazados. Starr Nova es una Brawler Mítica que tiene una salud moderada, una velocidad de movimiento rápida, una velocidad de recarga muy rápida y un alcance y daño variables. Fue la Brawler N°103 agregada al juego. Ataca disparando destellos perforantes desde su cabello. Para su Súper, se lanza hacia adelante, transformándose en su forma alterna y dañando a los enemigos a su paso. El ataque de la forma alterna de Starr Nova consiste en dar un tajo con su espada en un arco amplio y de corto alcance, curándose ligeramente cuando golpea a los enemigos con su ataque.",
@@ -876,7 +885,8 @@
         "gear": "Shield",
         "win_rate": 73.0
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/4/47/Starr_Nova.png/revision/latest/scale-to-width-down/500?cb=20260418153128&path-prefix=es"
   },
   "16000104": {
     "description_es": "A Damian le encanta hacer ruido. Lidera una banda junto a su hermano, Draco, pero la música lo infunde de una ira incontenible que hace que destruya todo lo que se encuentre. Sus conciertos suelen terminar una vez que ha destrozado los instrumentos, el escenario... y a los brawlers. Damian es un Brawler Mítico con una salud muy elevada y un potencial de daño enorme. Fue el Brawler número 102 añadido al juego. Su atributo le permite cargar su súper cuando sufre daño. Su ataque consiste en un combo de puñetazos, el tercero empujando a los rivales y haciendo que generen una explosión a su alrededor que se propaga. Para su súper, se lanza y genera a su alrededor una prisión que empuja a los rivales encerrados de vuelta al centro de esta. Su primer Gadget, \"Reverberación curativa\", deja caer un micrófono que le recupera salud al primer aliado que lo recoja.",
@@ -961,7 +971,8 @@
         "gear": "Gadget Cooldown",
         "win_rate": 72.6
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/6/63/Damian.png/revision/latest/scale-to-width-down/500?cb=20260420201954&path-prefix=es"
   },
   "16000103": {
     "description_es": "Najia es una Brawler Mítica que tiene salud moderada, una velocidad de movimiento rápida, una velocidad de recarga muy rápida y un alcance y daño variables. Fue la Brawler número 101 añadida al juego. Ataca disparando un tarro que contiene una serpiente de papel, la cual daña a los enemigos con el tiempo. Para su Súper, lanza tres tarros que generan serpientes que persiguen a los enemigos más cercanos para envenenarlos. Su primer Gadget, Charcos Venenosos, crea temporalmente charcos venenosos después de ser golpeada por sus ataques. Su segundo Gadget, Tarro Sorpresa, permite a Najia aparecer en un jarrón y empujar a los enemigos a la barra después de que este sea destruido. Su primera Habilidad Estelar, Guardiana Tóxica, genera una serpiente donde el Brawler fue derrotado mientras estaba envenenado.",
@@ -1046,7 +1057,8 @@
         "gear": "Vision",
         "win_rate": 67.6
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/cc/Najia.png/revision/latest?cb=20260223022936&path-prefix=es"
   },
   "16000102": {
     "description_es": "Su identidad es casi tan misteriosa como sus poderes. Era el dueño de la primera atracción en la historia de Starr Park, pero se rumorea que lo echaron del parque y le prohibieron volver... Ahora ha regresado para buscar venganza. Sirius es un Brawler Ultralegendario con una salud moderadamente alta, alcance y daño variables, una velocidad de movimiento y recarga muy rápida, y una gran utilidad con su Súper. Fue el Brawler N°100 agregado al juego, y durante su lanzamiento inicial se podía desbloquear gratis anticipadamente al ganar una partida con cada uno de los 99 Brawlers anteriores. Su Atributo permite que su Súper se cargue con el tiempo. Su ataque dispara dos proyectiles a la vez: un Golpe Sombrío de largo alcance y una Bomba Starr que explota en el suelo en un radio pequeño. Los ataques cargan sus Sombras de Brawler.",
@@ -1118,7 +1130,8 @@
         "gear": "Shield",
         "win_rate": 66.7
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/18/Sirius.png/revision/latest?cb=20260221210748&path-prefix=es"
   },
   "16000101": {
     "description_es": "Este biólogo marino que trabaja en el acuario de Starr Park está obsesionado con la vida marina y quiere hacer que todos los visitantes posibles la descubran. Aunque dé un poco de repelús, es muy simpático... o eso creemos. Glowy es un Brawler Mítico con salud moderada, largo alcance y que puede infligir daño explosivo constantemente bajo a enemigos y curar a aliados, pero tiene una utilidad inmensa con su Súper. Fue el Brawler N°99 agregado al juego. Su atributo le permite cargar su Súper curándose a sí mismo y a sus aliados. Su ataque es un rayo luminoso de largo alcance que daña a los enemigos y cura a los aliados con el tiempo. Para su Súper, Glowy revela su rostro en un cono ancho que inflige poco daño y los asusta temporalmente. Los enemigos asustados huirán, verán su velocidad de movimiento reducida y no podrán usar sus ataques, Súper o Hipercarga.",
@@ -1203,7 +1216,8 @@
         "gear": "Shield",
         "win_rate": 69.0
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/14/Glowy.png/revision/latest/scale-to-width-down/500?cb=20251216161837&path-prefix=es"
   },
   "16000099": {
     "description_es": "¿Has visto a los socorristas de las piscinas? Pues Pierce es uno de ellos. Solo que, en lugar de salvar a la gente, les dispara. Así que... igual no es un socorrista. Cuando Buzz cree que en la piscina hay algo más que agua, llama a Pierce para hacer limpieza. Pierce es un Brawler Legendario que tiene una salud moderadamente baja, un alcance muy largo y un daño variable, pero sufre por tener una velocidad de recarga extremadamente lenta. Fue el 98° Brawler añadido al juego. Ataca disparando agua a los enemigos, que dejan caer proyectiles al suelo al impactar en un objetivo. Al recoger los proyectiles, dispara automáticamente al objetivo más cercano, que atraviesa obstáculos. Para su Súper, Pierce marca todos los objetivos en el radio tras un tiempo y ataca automáticamente disparando proyectiles que se dirigen a los enemigos.",
@@ -1286,9 +1300,10 @@
         "star_power_id": 23001061,
         "gadget_id": 23001062,
         "gear": "Shield",
-        "win_rate": 65.6
+        "win_rate": 65.5
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/9/9b/Pierce.png/revision/latest/scale-to-width-down/500?cb=20251213172321&path-prefix=es"
   },
   "16000098": {
     "description_es": "Ziggy es un Brawler Mítico que tiene una velocidad de movimiento superior a la media, una salud moderada, un daño moderado y una utilidad inmensa con su súper. Fue el 96º Brawler añadido al juego. Ataca invocando rayos sobre un objetivo. Para su súper, crea una gran tormenta eléctrica que viaja muy rápido, pero se ralentiza cuando daña a los enemigos atrapados que quedan atrapados en ella. Su primer gadget, Descarga Incesante, golpea al objetivo más cercano con rayos cada segundo durante 5 segundos. Su segundo gadget, Ahora me ves..., teletransporta a Ziggy donde impacte su siguiente ataque. Su primera Habilidad Estelar, Actuación Atronadora, ralentiza temporalmente a los enemigos dentro del súper de Ziggy. Su segunda Habilidad Estelar, El Gran Ziggini, aumenta el daño de su siguiente ataque cuando uno de sus ataques golpea a un enemigo.",
@@ -1373,7 +1388,8 @@
         "gear": "Speed",
         "win_rate": 66.7
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/37/Ziggy.png/revision/latest/scale-to-width-down/500?cb=20251026035600&path-prefix=es"
   },
   "16000097": {
     "description_es": "Mina es una bailarina urbana que incorpora movimientos de capoeira en las batallas de \"breakdance\" con suma facilidad. Suele pasar el rato con Ollie en la pista de skate y entrena escuchando sus canciones. Mina es una Brawler Mítica que tiene mucha salud, una velocidad de movimiento superior a la media, un daño variable y una inmensa movilidad con sus ataques básicos y su súper. Fue la 95.ª Brawler añadida al juego. Su ataque principal lanza una patada que alterna entre tres ataques distintos con diferente alcance y amplitud. En el primer ataque, su sandalia sale volando, lo que tiene un largo alcance, pero poco daño. En el segundo ataque, dispara una pandereta que inflige un daño moderado y tiene un alcance medio. En el tercer ataque, proyecta una onda de luz en forma de cono que inflige mucho daño, pero tiene un alcance corto.",
@@ -1458,7 +1474,8 @@
         "gear": "Shield",
         "win_rate": 66.4
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/6/6b/Mina.png/revision/latest?cb=20260326233221&path-prefix=es"
   },
   "16000096": {
     "description_es": "Trunk es un árbol con un aspecto muy extraño, ¿Se deberá a que en realidad es una colonia de hormigas superinteligentes que controlan un árbol mecánico? Imposible, ¿quién se va a creer algo así? Trunk es un Brawler Épico con una salud muy elevada, un daño variable y una velocidad considerablemente alta. Su atributo le permite permite cargar su súper de los enemigos que lo dañan. Su mecánica consiste en llenar el suelo de hormigas, con las que se beneficiará obteniendo un aumento de daño y velocidad de movimiento. Su ataque principal hace que gire a su alrededor, infligiendo más daño en el borde de su ataque y creando hormigas debajo de sí. Su Súper hace que se lance rápidamente dejando un rastro de hormigas por donde pasa. Su primer Gadget ¡Por la reina! deja hormigas sobre el suelo en una zona amplia.",
@@ -1543,7 +1560,8 @@
         "gear": "Damage",
         "win_rate": 70.8
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/cc/Trunk.png/revision/latest/scale-to-width-down/500?cb=20250625154639&path-prefix=es"
   },
   "16000095": {
     "description_es": "Alli es una Brawler Mítica que tiene una salud y un daño moderadamente altos, y una velocidad de movimiento rápida y una velocidad de recarga y alcance de ataque variables. Fue la 93.ª Brawler añadida al juego. Los atributos de Alli le permiten moverse sobre el agua y enfurecerse, obteniendo un aumento temporal de velocidad de movimiento y una mejora de alcance de ataque cuando se acerca a enemigos con menos del 50% de salud. Su ataque es una carrera corta en el suelo; en arbustos y sobre el agua, ataca saltando obstáculos, infligiendo daño a cualquier enemigo en un radio pequeño cuando aterriza. Con su súper, se vuelve inconsistentemente invisible, y su primer ataque inflige un daño adicional proporcional a la salud de su enemigo o una cantidad fija contra ciertos objetivos..",
@@ -1628,7 +1646,8 @@
         "gear": "Shield",
         "win_rate": 66.2
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/03/Alli.png/revision/latest/scale-to-width-down/500?cb=20250623161914&path-prefix=es"
   },
   "16000094": {
     "description_es": "Los padres de Kaze la criaron para ser un arma viviente, pero ese nunca fue su deseo, así que decidió escaparse a Starr Park con Kenji y vivir a su manera. Sin embargo, sigue atrapada en una disyuntiva vital: ser una humilde geisha o una ninja letal. Kaze es una Brawler Ultralegendaria que cuenta con una salud moderadamente alta, un daño variable, y con la característica única de alternar entre dos formas: La forma Ninja y la forma Geisha, a las que puede cambiar utilizando su Gadget, el cual estará disponible desde el nivel 1. En su forma Geisha, el ataque de Kaze arremete hacia donde apunta con dos afilados abanicos que infligirán daño en un radio a su alrededor, pero que en cierto punto del ataque hará un daño crítico. Su Super crea temporalmente un área circular en la que los enemigos tendrán una visibilidad limitada, y que sufrirán daño en el borde de la misma.",
@@ -1677,7 +1696,8 @@
         "gear": "Damage",
         "win_rate": 65.4
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/53/Kaze.png/revision/latest/scale-to-width-down/500?cb=20260509164931&path-prefix=es"
   },
   "16000093": {
     "description_es": "Por el día Yong pasa desapercibido como un oficinista cualquiera, pero por la noche se convierte en una deidad del karaoke.., o al menos eso es lo que piensa él. El jurado todavía no ha dado un veredicto sobre su habilidad con el microfono. Jae-Yong es un Brawler Mítico que tiene una salud moderada y un daño variable, además de tener una inmensa utilidad de apoyo gracias a sus dos formas. Fue el 91.vo Brawler añadido al juego. Su atributo le permite cargar su Super automáticamente cada siete segundos. Su Ataque es un proyectil que atraviesa objetivos y tendrá ciertos beneficios para los aliados según la forma de Jae-Yong. En su forma festiva, su ataque curará a los aliados y hará un daño mayor a los enemigos, en su forma de trabajador, hará menos daño, pero los aliados alcanzados por el ataque tendrán un aumento de velocidad.",
@@ -1762,7 +1782,8 @@
         "gear": "Speed",
         "win_rate": 67.0
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/54/Jae-Yong.png/revision/latest/scale-to-width-down/500?cb=20250424230413&path-prefix=es"
   },
   "16000092": {
     "description_es": "Finx es el propietario de la \"escape room\" de Starr Park y debería encargarse de ayudar a los visitantes a resolver los acertijos. Sin embargo, lo único que hace es cometer travesuras con sus habilidades de control. También le encantan los gatos. Finx es un Brawler Mítico que tiene una salud moderada, un daño variable y una inmensa utilidad con su Súper. Su ataque dispara tres proyectiles en línea recta, provocando mayor daño con el proyectil central. Su Súper crea un área que aumenta la velocidad de sus proyectiles y la de sus aliados, y disminuye la velocidad de los proyectiles del enemigo. Su primer Gadget, Finx del pasado, marca el terreno al que se teletransportará después de 3 segundos con su munición inicial. Su segundo Gadget, Prisión Temporal, permite que el proyectil central de su próximo ataque aturda temporalmente a los enemigos.",
@@ -1833,7 +1854,8 @@
         "gear": "Shield",
         "win_rate": 68.2
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/d3/Finx.png/revision/latest/scale-to-width-down/500?cb=20250224172046&path-prefix=es"
   },
   "16000091": {
     "description_es": "Lumi es una Brawler Mítica que tiene una salud moderada, un largo alcance y un daño potencialmente alto. Ataca lanzando mazas a sus oponentes y los hace volar hacia atrás. Para su Súper, crea tres áreas explosivas circulares, que tienen diferentes tamaños y daño variable, siendo la primera explosión la que causa la menor cantidad de daño y la tercera la que causa la mayor cantidad. Los enemigos afectados por la mayor explosión quedan temporalmente aturdidos. Su primer Gadget, Llamas infernales, deja un área en llamas en el suelo alrededor de las mazas, quemando a los enemigos si la tocan. Su segundo Gadget, Ritmo Polar, crea un área de hielo que ralentiza a los enemigos y dificulta las maniobras. Su primera Habilidad Estelar, Mazas Incapacitantes, hace que su Súper deje un área en llamas en el suelo, quemando a los enemigos si la tocan.",
@@ -1916,9 +1938,10 @@
         "star_power_id": 23000905,
         "gadget_id": 23000908,
         "gear": "Damage",
-        "win_rate": 67.2
+        "win_rate": 67.1
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/88/Lumi.png/revision/latest/scale-to-width-down/500?cb=20250226190750&path-prefix=es"
   },
   "16000090": {
     "description_es": "Ollie es un Brawler Mítico que tiene mucha salud, poco daño, pero una inmensa utilidad con su Súper. El atributo de Ollie le permite cargar su Súper contra los enemigos que lo dañan. Su ataque es una onda de sonido en un cono estrecho que atraviesa los objetivos. Con su Súper, se lanza hacia adelante y crea una gran onda de sonido que daña a los enemigos cercanos y al mismo tiempo los hipnotiza temporalmente. Los enemigos hipnotizados se moverán hacia Ollie. Su primer Gadget, Estilo Libre, hace que Ollie salte hacia adelante e hipnotice brevemente a los enemigos cercanos al aterrizar. Su segundo Gadget, Ojos bien Abiertos, permite que su próximo ataque también los hipnotice temporalmente. Su primera Habilidad Estelar, Patada con Impulso, aumenta la velocidad de movimiento de Ollie mientras se mueve cerca de una pared.",
@@ -1994,6 +2017,7 @@
       "description": "¡Ollie se impulsa más lejos y más rápido! El área de efecto de su explosión musical es mayor y no consume munición cuando empieza a cargarse. Cuando se activa, el súper de Ollie aumenta su alcance y velocidad de desplazamiento. Cuando llega al final del alcance, el área de efecto de la explosión musical aumenta un 50%, su velocidad de recarga es mayor y Ollie no consume munición. Además, aumenta el daño de su súper en 2000.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/2/25/Ollie.png/revision/latest/scale-to-width-down/500?cb=20260331230350&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2066,6 +2090,7 @@
       "description": "El súper afecta un área mayor. También permite que Meeple y sus aliados atraviesen muros y caminen sobre el agua. Al activar su Hipercarga, su Súper ahora cubrirá un área de 4,33 casillas de radio, que permitirá que Meeple y sus aliados puedan moverse a través de los muros y caminar sobre el agua. Tanto Meeple como los aliados dentro de esta área brillarán de blanco, indicando que pueden moverse a través de los muros y el agua.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/2/24/Meeple.png/revision/latest/scale-to-width-down/500?cb=20241211222914&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2078,7 +2103,8 @@
     ]
   },
   "16000088": {
-    "description_es": "¡Buzz Lightyear llega a Starr Park! Su aventura empezó con un reparto accidental en la tienda de souvenirs, y desde entonces ha impresionado a los brawlers con sus tres modos de pelea distintos. Buzz Lightyear es un Tiempo Limitado que se puede desbloquear gratis desde el 12 de diciembre de 2024 hasta el 5 de febrero de 2025 durante el evento de Toy Story. Buzz Lightyear tiene tres modos. En el primer modo, tiene una salud moderadamente baja, un daño moderadamente alto, un largo alcance y una velocidad de recarga rápida. El ataque de Buzz Lightyear es una explosión láser que también dañará a los enemigos con el tiempo al entrar en contacto. Para su Súper, dispara cinco láseres de izquierda a derecha, que dañarán de manera similar a los enemigos con el tiempo al golpearlos."
+    "description_es": "¡Buzz Lightyear llega a Starr Park! Su aventura empezó con un reparto accidental en la tienda de souvenirs, y desde entonces ha impresionado a los brawlers con sus tres modos de pelea distintos. Buzz Lightyear es un Tiempo Limitado que se puede desbloquear gratis desde el 12 de diciembre de 2024 hasta el 5 de febrero de 2025 durante el evento de Toy Story. Buzz Lightyear tiene tres modos. En el primer modo, tiene una salud moderadamente baja, un daño moderadamente alto, un largo alcance y una velocidad de recarga rápida. El ataque de Buzz Lightyear es una explosión láser que también dañará a los enemigos con el tiempo al entrar en contacto. Para su Súper, dispara cinco láseres de izquierda a derecha, que dañarán de manera similar a los enemigos con el tiempo al golpearlos.",
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b4/Buzz_Lightyear.png/revision/latest/scale-to-width-down/500?cb=20241210183606&path-prefix=es"
   },
   "16000087": {
     "description_es": "Juju es la propietaria del Emporio de los Horrores, y no va a ninguna parte sin su muñeco vudú \"mascota\", Gris-Gris. Además de ser capaz de controlar los elementos, los muñecos que fabrica y vende a los visitantes de Starr Park tienen una calidad excelente.Juju es una brawler Mítica que tiene una salud moderadamente baja y un daño variable. Fue la Brawler N°85 agregada al juego. El atributo de Juju le permite moverse sobre el agua. Ella ataca lanzando un juguete vudú que explota en el suelo en un radio pequeño, lo que obtiene un beneficio diferente según el entorno en el que se encuentra y que puede aumentar más daño en el suelo; tiene más alcance en los arbustos; o ralentizar a los enemigos en el agua. Para su Súper, lanza una muñeca con cabeza que genera su muñeco vudú Gris-Gris, que tiene una salud moderada y ataca disparando agujas a los enemigos.",
@@ -2154,6 +2180,7 @@
       "description": "Juju invoca un Gris-Gris hipercargado que lanza alfileres más grandes, se mueve un 25% más rápido, tiene un 20% más de salud e inflige un 20% más de daño.Con su Hipercarga, Juju invocará a un Gris-Gris más grande rodeado por un áura púrpura, que tiene un 25% más de velocidad de movimiento, tiene un 20 más de salud, y cada alfiler hará un 20% más de daño y será ligeramente más ancho.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b7/Juju.png/revision/latest/scale-to-width-down/500?cb=20250304214812&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2161,7 +2188,7 @@
         "star_power_id": 23000849,
         "gadget_id": 23000850,
         "gear": "Vision",
-        "win_rate": 66.0
+        "win_rate": 65.9
       }
     ]
   },
@@ -2233,9 +2260,10 @@
         "star_power_id": 23000833,
         "gadget_id": 23000835,
         "gear": "Shield",
-        "win_rate": 65.5
+        "win_rate": 65.6
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/dc/Shade.png/revision/latest/scale-to-width-down/500?cb=20250703154218&path-prefix=es"
   },
   "16000085": {
     "description_es": "Este talentoso cocinero cambió la katana por los cuchillos de cocina y ahora regenta un tranquilo restaurante de sushi en Starr Park. Parece que oculta algo sobre su pasado, ¡pero su sushi es tan delicioso que a nadie le importa!Kenji es un brawler Legendario que tiene una gran salud, un daño variable y una velocidad de movimiento muy rápida. Fue el Brawler N°84 agregado al juego. Su atributo le permite recuperar salud después de atacar a los enemigos. Su ataque alterna entre un dash y un slash. En el primer ataque, lanza algunas fichas hacia adelante mientras balancea su katana, causando poco daño a los enemigos en su camino. En el segundo ataque, no se lanza, sino que mueve su katana en un arco amplio y de corto alcance, causando un daño moderado.",
@@ -2311,6 +2339,7 @@
       "description": "Kenji atrae a los enemigos cercanos a la zona central del súper.Cuando se activa, el Súper de Kenji atrae a los enemigos durante 1 segundo en un radio de 5 casillas alrededor del centro de los cortes, 4 casillas hacia adentro, hasta que están a 1 casilla del centro. También obtiene un escudo y un aumento de daño del 5%, así como un aumento de velocidad del 20%.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/c8/Kenji.png/revision/latest/scale-to-width-down/500?cb=20260622155641&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2392,6 +2421,7 @@
       "description": "La excavadora tiene mayor alcance y dura más. Cuando se activa, el alcance del súper de Moe aumenta 3,33 casillas más al excavar bajo tierra, además de desplazarse dos veces más rápido. Además, el ataque de su forma alternativa tiene el doble de alcance y su duración se triplicará, de 5 a 15 segundos.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/cc/Moe.png/revision/latest/scale-to-width-down/500?cb=20260331230750&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2477,6 +2507,7 @@
       "description": "Los proyectiles del súper atraviesan a los enemigos, vuelven hacia él rápidamente e infligen daño de nuevo. Cuando se activa, las bolas de pintura del Súper de Clancy atravesarán a los enemigos y volverán a él al alcanzar su alcance máximo; al regresar, los proyectiles pueden volver a impactar contra los enemigos, por lo que potencialmente harán el doble de daño. Sin embargo, las bolas de pintura que impacten contra un obstáculo no volverán.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/56/Clancy.png/revision/latest/scale-to-width-down/500?cb=20260616223847&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2562,6 +2593,7 @@
       "description": "Remolino azucarado suelta el doble de bolas de helado. El Súper Hipercargado de Berry crea el doble de charcos de helado por lo ancho, duplicando el tamaño de la zona de efecto. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/e/ed/Berry.png/revision/latest/scale-to-width-down/500?cb=20251201173357&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2647,6 +2679,7 @@
       "description": "La Siembra punzante de Lily ahora rebota en los muros y transporta a Lily y al enemigo al reino de las sombras durante 5 segundos.Cuando se activa, el Súper de Lily rebota en las paredes y, al impactar a enemigos, los transporta al Reino de las Sombras durante 5 segundos, donde quedan aislados de los demás jugadores. La velocidad del proyectil también aumenta considerablemente.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/0a/Lily.png/revision/latest?cb=20240421011636&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2732,6 +2765,7 @@
       "description": "El fuego que escupe el dragón de Draco cubre un área más extensa y mayor distancia. Cuando se activa, tras la transformación de Draco en su forma alternativa, su ataque tiene mayor alcance de fuego en un área más amplia, y atacar en este estado no consume su munición. Cuando se acaba la duración de la hipercarga, el alcance del ataque vuelve a la normalidad. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b5/Draco.png/revision/latest?cb=20240421011758&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2817,6 +2851,7 @@
       "description": "¡Durante la hipercarga, el súper seguirá a Angelo! Cuando se activa, la zona tóxica se mueve junto con Angelo. Esta hipercarga solo afecta a los súper que se usan durante su duración. Al contrario de su descripción, cualquier súper que se use durante la hipercarga afecta a todos los súper que se usan durante la hipercarga. Si se usa más de un súper durante la hipercarga, todos seguirán a Angelo. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/3e/Angelo.png/revision/latest/scale-to-width-down/500?cb=20260621155731&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2889,6 +2924,7 @@
       "description": "Melodie añade hasta 3 notas de hipercarga con Estribillo pegadizo. Estas notas infligen 600 puntos de daño. Cuando se activa, cada vez que Melodie usa una Súper durante la duración de la Hipercarga, una nota de Hipercarga gira a su alrededor en un radio de 2 mosaicos, que actúa de manera idéntica a una nota normal, pero tiene un daño reducido de 600.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/d9/Melodie.png/revision/latest/scale-to-width-down/500?cb=20240225203853&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -2964,6 +3000,7 @@
       "description": "Larry llama un prototipo extra de Lawrie que inflige más daño y tiene más salud que el Lawrie convencional. Sin embargo, los gadgets que afectan a Lawrie solo funcionan con el \"modelo original\". Al activar su Hipercarga, el súper de Larry invocará a dos Lawrie, uno normal y otro mejorado. Este nuevo modelo tendrá 8.000 de salud y hará más daño.",
       "multiplier": "38%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/f/ff/Larry_%26_Lawrie_Skin-Default.png/revision/latest?cb=20260203235730&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3049,6 +3086,7 @@
       "description": "El súper de Kit aturde al enemigo sin afectar a su movilidad o a sus ataques. Cura más a los aliados al subirse a ellos y sus ovillos de lana tienen mayor alcance. Cuando se activa, el Súper de Kit tendrá ciertos beneficios: *Al usarse sobre enemigos, Kit se podrá mover y actuar con normalidad, mientras el enemigo permanece aturdido. Sin embargo, ya no causará daño con el tiempo a los enemigos a los que golpee.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/c4/Kit-Brawler.png/revision/latest/scale-to-width-down/500?cb=20231210133947&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3124,6 +3162,7 @@
       "description": "El súper de Mico aturde a los enemigos cercanos durante 1,5 segundos cuando aterriza. Cuando se activa, el súper de Mico aturdirá a todos los brawlers enemigos que estén en el área de impacto al aterrizar por 1,5 segundos. La Hipercarga no puede activarse mientras Mico esté en el aire y se agota durante el súper, pero los enemigos aún serán aturdidos si el súper fue activado durante la Hipercarga. También obtiene un aumento de velocidad del 20%, un aumento de daño y un escudo del 5%.",
       "multiplier": "50%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/1e/Mico-Skin.png/revision/latest/scale-to-width-down/500?cb=20231213143820&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3131,7 +3170,7 @@
         "star_power_id": 23000637,
         "gadget_id": 23000640,
         "gear": "Health",
-        "win_rate": 65.8
+        "win_rate": 65.9
       }
     ]
   },
@@ -3199,6 +3238,7 @@
       "description": "La próxima embestida de Chuck tiene alcance ilimitado y deja nubes de vapor que inflingen daño. Con esta Hipercarga, Chuck puede desplazarse con su Súper hacia su señal más cercana sin importar la distancia a la que esté, y además, cada dos casillas que recorra, Chuck lanzará por ambos costados nubes de vapor que actúan de forma idéntica a su ataque principal. A menos que utilice su Gadget \"Tren Fantasmal\", un muro anteponiéndose a su trayectoria interrumpirá la embestida.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/a/a6/Chuck_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20230907154111",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3284,6 +3324,7 @@
       "description": "La explosión de vapor deja una marca ardiente que dura 4,5 segundos. Cuando se activa, el Súper, deja un área ardiente en el suelo que dura 4,5 segundos. Inflige 800 puntos de daño por segundo, y puede ser 5 veces mayor si el enemigo permanece en el área. También obtiene un aumento de velocidad del 26% y un aumento de daño del 25%, así como un aumento de escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/70/Pearl_por_defecto.png/revision/latest/scale-to-width-down/500?cb=20260614043114&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3351,6 +3392,7 @@
         "description": "El próximo Ataque comilón solo inflige daño a los enemigos, pero se duplica el daño. El siguiente ataque de Doug solo dañará a los rivales y no curará a sus aliados, pero hará el doble del daño. Un símbolo de gadget brillará sobre la cabeza de Doug indicando el uso de este gadget, así como un joystick de ataque brillante."
       }
     ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/4/4d/Doug_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260326184421",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3422,7 +3464,8 @@
         "gear": "Health",
         "win_rate": 64.9
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/39/Cordelius.png/revision/latest/scale-to-width-down/500?cb=20240305032627&path-prefix=es"
   },
   "16000069": {
     "description_es": "Hank es una gamba soldada que, subida a su tanque, tiene como misión liberar a toda criatura marina de las cocinas y mercados del mundo entero. Chefs, ¡quedáis avisados! Hank es un Brawler Épico que tiene mucha salud, un daño variable, un alcance de ataque variable, y una velocidad de recarga extremadamente rápida. Fue el Brawler N°68 agregado al juego. Su atributo le permite cargar su Súper contra los enemigos que lo dañan. Ataca desde su tanque, que infla un globo de agua que aumenta gradualmente de tamaño e inflige daño según el tamaño cuando explota. Su Súper dispara torpedos en todas direcciones y cura parte de su salud faltante. Su primer gadget, \"Globos de agua\", permite ralentizar a los enemigos con su siguiente ataque. Su segundo Gadget, \"Barricada\", le otorga un escudo temporal.",
@@ -3488,6 +3531,7 @@
       "description": "Hank ataca con torpedos mejorados que se dirigen directamente a su objetivo. Cuando se activa, los torpedos de Hank se desvían hacia los enemigos o hacia una pared si su trayectoria está obstruida. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/7f/Hank_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20230427101653",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3495,7 +3539,7 @@
         "star_power_id": 23000578,
         "gadget_id": 23000579,
         "gear": "Speed",
-        "win_rate": 65.2
+        "win_rate": 65.3
       }
     ]
   },
@@ -3563,6 +3607,7 @@
       "description": "El súper de Maisie también lanza los proyectiles de su ataque base a su alrededor en todas direcciones. Al activar su súper, Maisie lanza 6 cohetes a presión de forma radial similarmente al ataque de Spike y al súper de Hank. Los proyectiles infligen tanto daño y recargan tanto el Super al golpear como su Súper. La Hipercarga de Maisie inflige un daño devastador a quemarropa, donde más nubes y su Super pueden golpear al enemigo.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/f/fe/Maisie.png/revision/latest/scale-to-width-down/500?cb=20230526183340&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3570,7 +3615,7 @@
         "star_power_id": 23000570,
         "gadget_id": 23000572,
         "gear": "Shield",
-        "win_rate": 66.9
+        "win_rate": 67.0
       }
     ]
   },
@@ -3625,6 +3670,7 @@
       "description": "Willow obtiene un escudo de invulnerabilidad al manipular con éxito a un rival, que dura hasta que termina el efecto de la manipulación. Cuando se activa, Willow se vuelve inmune a todo daño al acertar su Súper mientras sus enemigos sean controlados. También obtiene un aumento de velocidad del 20% y un aumento de daño y un escudo del 5%, estos potenciadores se van a transferir al Brawler controlado mientras dure su Súper Hipercargado.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b2/Willow.png/revision/latest/scale-to-width-down/500?cb=20251123215451&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3710,6 +3756,7 @@
       "description": "Unos láseres de seguridad que infligen daño rodean a R-T y sus piernas después de usar su súper hipercargado. Cuando R-T está en su forma dividida, activar la Hipercarga invocará 8 láseres alrededor de la cabeza y 8 láseres alrededor de las piernas de R-T, que orbitarán de 4 en 4 en 2 radios a media y larga distancia de sus posiciones.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/a/a4/R-T_Brawl_Stars.png/revision/latest/scale-to-width-down/500?cb=20230330121240&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3785,6 +3832,7 @@
       "description": "Mandy dispara su súper en tres direcciones distintas. Cuando se activa, Mandy dispara 2 proyectiles adicionales con su Super que viajan en ángulo hacia la izquierda y la derecha del Super original. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/9/95/Mandy_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20230318082746&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3857,6 +3905,7 @@
       "description": "Gray abre dos portales nuevos que lo protegen a él y a sus aliados de los siguientes 1000 puntos de daño al atravesarlos. Cuando se activa, cada vez que Gray o sus aliados usan sus teletransportadores, reciben un escudo que bloquea inicialmente los siguientes 1000 puntos de daño que se les inflijan. El escudo se debilita 50 puntos de salud cada 0,5 segundos, por lo que el daño que puede bloquear disminuye con el tiempo.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/7e/Gray_Idle.png/revision/latest/scale-to-width-down/500?cb=20240205201836&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -3947,7 +3996,8 @@
         "gear": "Shield",
         "win_rate": 64.8
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/06/Chester.png/revision/latest/scale-to-width-down/500?cb=20260326232552&path-prefix=es"
   },
   "16000062": {
     "description_es": "Buster es un brawler de Calidad Mítica (anteriormente de calidad Cromática) que pudo ser desbloqueable al conseguir el nivel 30 del Brawl Pass número 15: Estación fantasmal. Ahora puede ser obtenido por el Camino Starr. Tiene una salud considerable, una velocidad de movimiento rápida, un alcance de ataque medio y un daño moderado a corta distancia, pero una velocidad de recarga moderadamente lenta. Su atributo le permite cargar su Súper con el tiempo si tiene un aliado cerca. Buster ataca proyectando una onda de luz en un cono que inflige más daño de cerca. Su súper es una barrera que bloquea los proyectiles y los convierte en un proyectil de contraataque. Su primer gadget, \"Cinturón de herramientas\", hace que sus aliados cercanos y Buster, recuperen 900 puntos de salud por cada aliado en el área de carga del súper.",
@@ -4013,6 +4063,7 @@
       "description": "El escudo de Buster es ahora de 360 grados y los proyectiles que refleja inflingen más daño. Mientras la Hipercarga de Buster esté activa, su escudo tomará una forma de círculo a su alrededor, y detendrá todos los proyectiles que se dirijan de frente hacia él, y ahora los proyectiles reflejados harán 1680 de daño. Buster también recibe un aumento de daño y de escudo del 5%. También recibirá un aumento de velocidad del 20%, pero se cancelará si se activa el Super.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/1b/Buster_Idle.png/revision/latest/scale-to-width-down/500?cb=20240306193402&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4091,9 +4142,10 @@
         "star_power_id": 23000512,
         "gadget_id": 23000514,
         "gear": "Vision",
-        "win_rate": 63.7
+        "win_rate": 63.6
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/52/Gus.png/revision/latest/scale-to-width-down/500?cb=20240223021753&path-prefix=es"
   },
   "16000060": {
     "description_es": "Sam, antiguo trabajador de la fábrica y actual miembro de la banda del brazo de oro, siempre se asegura de que Belle no se pase de la raya ¡por el bien de la banda! Sam es un brawler Épico que se pudo desbloquear como recompensa de Brawl Pass en el nivel 30 en la temporada 14: Fabrica de robots, o comprándolo con 925 créditos en el camino Starr. Tiene un alcance corto, mucha salud y una producción de daño, movimiento y velocidad de recarga variables. Fue el Brawler N°59 agregado al juego. Su atributo le permite comenzar una partida con su súper ya cargado. Ataca golpeando a los enemigos con dos golpes rápidos que infligen más daño si Sam tiene sus revientanudillos equipados. Para su súper, Sam lanza sus revientanudillos o los hace volar hacia él, dañando a los enemigos en su camino y alterando su ataque. Sam también puede cargar su súper recogiendo sus revientanudillos.",
@@ -4155,6 +4207,7 @@
       "description": "Los revientanudillos de Sam se mueven más rápido y cargarán su súper por completo si golpean a un enemigo mientras la hipercarga está activa. Cuando se activa, los revientanudillos se desplazan más rápido tanto en la ida como en la vuelta, y al dañar a un enemigo en la trayectoria de ida, Sam recargará su Súper al completo, pudiendo volver a recogerlos. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/87/Sam_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20230206220911",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4239,7 +4292,8 @@
         "gear": "Speed",
         "win_rate": 65.9
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/d7/Otis.png/revision/latest/scale-to-width-down/500?cb=20260521155151&path-prefix=es"
   },
   "16000058": {
     "description_es": "Bonnie está llena de energía incontrolable y destructiva, así que nunca para quieta. ¿Su sueño? Salir disparada de su cañón hasta alcanzar la luna. Bonnie es una Brawler Épica que tiene una salud muy alta y un largo alcance en su forma de cañón, pero puede alcanzar una forma alternativa diferente que tiene poca salud y un daño en gran cadencia a corta distancia. Bonnie tiene una velocidad de movimiento lenta en su forma de cañón, pero una velocidad de movimiento muy rápida en su forma alternativa. Fue la Brawler N°57 agregada al juego. En su forma de cañón, dispara una bala de cañón rápida y de largo alcance. Si Bonnie es derrotada, reaparecerá en su forma de cañón. Su Súper dispara a Bonnie fuera del cañón, transformándose en su forma alternativa e infligiendo daño en el área al aterrizar.",
@@ -4301,6 +4355,7 @@
       "description": "Bonnie aturde a los enemigos durante 1 segundos cuando dispara y cuando se baja de Clyde, y además escupe dientes que infligen daño a su alrededor.Cuando se activa, el Súper de Bonnie lanza 6 dientes más pequeños a su alrededor, tanto al lanzar a Bonnie como alrededor de ella al aterrizar. Al igual que el ataque de Spike, el patrón es fijo, con 60 grados entre cada diente, y no gira con la dirección en la que se mueve Bonnie.",
       "multiplier": "43%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/9/90/Bonnie_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20220525143801&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4385,7 +4440,8 @@
         "gear": "Health",
         "win_rate": 65.9
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/84/Janet.png/revision/latest/scale-to-width-down/500?cb=20260619022655&path-prefix=es"
   },
   "16000056": {
     "description_es": "Eve solo tiene un propósito en la vida: cuidar y proteger a sus adorables bebés. Hará lo que haga falta para encontrarles un buen hogar... preferiblemente entre el pelaje de Ruffs. Eve es una Brawler Mítica (anteriormente Cromática) que se pudo obtener como recompensa en el Brawl Pass en el nivel 30 de la temporada 11: El Biodomo; ahora puede ser obtenida en el Camino Starr. Ella tiene una salud moderada y tiene una producción de daño bastante alta. Fue la Brawler N°55 agregada al juego. Su atributo le permite moverse sobre el agua y los agujeros. Para su ataque, dispara tres huevos, cada uno de los cuales causa diferentes cantidades de daño. Su súper deja caer un megahuevo que, después de un tiempo, genera tres crías que se dirigen a los enemigos para envenenarlos. Su primer Gadget, Chao, pescao, hace que Eve salte hacia adelante y deje atrás a una cría.",
@@ -4451,6 +4507,7 @@
       "description": "Retoños ahora genera crías con el paso del tiempo. Cuando se activa, el siguiente megahuevo de Eve genera una cría cada 0,85 segundos en una formación triangular, generando 6 crías durante la desintegración en una formación triangular, siempre y cuando el huevo no reciba daño, además de las crías generadas al expirar. Además, el megahuevo pierde un 16% de su salud máxima por segundo hasta ser destruido, pero dura hasta 6 segundos si no recibe daño.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/3e/Eve_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20250110215642&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4545,7 +4602,8 @@
         "gear": "Shield",
         "win_rate": 65.4
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/c3/Fang.png/revision/latest/scale-to-width-down/500?cb=20260622034022&path-prefix=es"
   },
   "16000053": {
     "description_es": "Al entrar en una sala, Lola atrae todas las miradas. Es experta en montar una escena para conseguir lo que quiere ¡y se enorgullece mucho de ello! Lola es una Brawler Épica la cual estuvo disponible en el Brawl Pass \"Brawlywood\" (temporada 9), pudiéndose conseguir en el nivel 30 del Brawl Pass u obtenerla mediante el Camino Starr. Tiene una salud moderada y una producción de daño constante y consistentemente alta. Fue la 52° Brawler agregada al juego. Ataca disparando seis joyas a larga distancia. Su Súper invoca a su Ego, un clon que se mueve cada vez que Lola se mueve y ataca cada vez que Lola ataca. Su primer Gadget, Pose Glamurosa, inmoviliza momentáneamente a su Ego a cambio de un escudo de reducción de daño significativo. Su segundo Gadget, Doble de riesgo, instantáneamente la hace cambiar de ubicación con su Ego mientras ambos son curados ligeramente.",
@@ -4630,7 +4688,8 @@
         "gear": "Reload Speed",
         "win_rate": 67.6
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/f/fa/Lola.png/revision/latest/scale-to-width-down/500?cb=20260326232805&path-prefix=es"
   },
   "16000052": {
     "description_es": "Meg enfundada en su traje meca, se encarga entre bambalinas de solucionar los problemas de verdad mientras Max y Surge se dedican a entretener al público.Meg es una Brawler Legendaria que tiene mucha salud y daño en su forma avanzada, pero en su forma alternativa tiene muy poco daño y salud. Meg tiene una velocidad de movimiento rápida en su forma base y un ataque de muy largo alcance en ambas formas. Fue la Brawler N°51 agregada al juego. Meg ataca disparando dos proyectiles en rápida sucesión que infligen poco daño a los enemigos. Su Súper le brinda un traje Meca que aumenta su salud y modifica el ataque y el Súper de Meg. El ataque del Meca dispara dos ráfagas paralelas de rayos, mientras que su Super inflige un gran daño en un amplio arco. Su Gadget, Descarga Eléctrica, cura momentáneamente a su meca mientras está activo.",
@@ -4702,6 +4761,7 @@
       "description": null,
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/6/6e/Meg.png/revision/latest/scale-to-width-down/500?cb=20260511223924&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4787,6 +4847,7 @@
       "description": "Roedores colaboradores genera 5 ratas más. Cuando se activa, el siguiente Súper de Ash duplica la cantidad de ratas robóticas, de 5 a 10. Todo lo que cargue su medidor de Súper mientras la Hipercarga esté activa también recargará su medidor de Hipercarga al 5% de la tasa de carga del Súper. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "50%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/4/40/Ash_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20210825173216&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4870,6 +4931,7 @@
       "description": "Los fajos de billetes de Griff se multiplican al final de su trayectoria antes de volver. Los nuevos fajos regresan tras un breve período de tiempo y también atraviesan el entorno. Cuando se activa, el Súper de Griff atravesará los muros y vallas del entorno que viajan más rapido que el Súper normal. Además, crea otros 5 billetes al regresar tras 0,5 segundos de retraso, que también atraviesan enemigos y paredes.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/0f/Griff_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20240111002912&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -4942,6 +5004,7 @@
       "description": "La boya de Buzz ahora puede usarse una vez más si golpea un muro. Cuando se activa, Buzz recargará instantáneamente su Súper si al usarla le acierta a un muro. Esto también incluye a los supers cargados con el Gadget Salvavidas de Repuesto. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "25%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/6/62/Buzz_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20210714170328&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5027,6 +5090,7 @@
       "description": "Grom causa dos explosiones con el súper. La segunda tiene forma de X, inflige daño, rompe muros y hace retroceder a los enemigos. Cuando se activa, el Súper de Grom rebota en el mismo lugar tras la primera explosión y, al impactar de nuevo, se divide en cuatro proyectiles perforantes adicionales en forma de X, que se comportan de forma idéntica a los de la primera explosión. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/0a/Grom_Skin-Default.png/revision/latest?cb=20211215155500&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5102,6 +5166,7 @@
       "description": "Las bombas superviscosas del súper de Squeak ahora saltan y se dividen una vez más. Cuando se activa, el Súper de Squeak rebota 5 casillas hacia adelante cuando aterriza y genera una segunda descarga de bombas superviscosas. El proyectil secundario atraviesa a los enemigos e inflige el daño equivalente a una bomba del ataque principal, pero rebota en las paredes. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/cf/Squeak_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260204161901&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5177,6 +5242,7 @@
       "description": "El disparo de Belle que marca al objetivo sigue al más cercano de forma automática. Cuando se activa, el Súper de Belle se curvará hacia el enemigo más cercano. El Super buscador vuela por 2 casillas adicionales. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "45%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/d9/Belle_Skin-Default.png/revision/latest?cb=20210511003331&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5263,6 +5329,7 @@
       "description": "Mientras tenga la hipercarga activada, Stu puede usar su súper ininterrumpidamente. Cuando se activa, el Super de Stu se recarga instantáneamente al usarlo, lo que le otorga un Super infinito durante la duración de la Hipercarga. Sin embargo, la Hipercarga no cargará su Super si no está cargado al momento de la activación, y patear la pelota en Balón Brawl consumirá el Super y tendrá que cargarlo de nuevo.",
       "multiplier": "3%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b8/Stu_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20210702173253&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5348,6 +5415,7 @@
       "description": "El super de Ruffs inflige un 25% más de daño y su potenciador carga por completo una hipercarga. Cuando se activa, el siguiente Súper de Ruffs infligirá un 25% más de daño cuando impacta. Si Ruffs o un aliado recogen el potenciador, su Hipercarga se cargará instantáneamente. Sin embargo, los Brawlers que ya hayan recogido un potenciador no podrán recogerlo, y los Brawlers sin una Hipercarga equipada solo tendrán las mejoras del potenciador generado por el Súper normal de Ruffs.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/9/99/Coronel_Ruffs_Aspecto.png/revision/latest/scale-to-width-down/500?cb=20260326230014&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5436,6 +5504,7 @@
       "description": "Tras usar el súper, consigue velocidad de carga y velocidad de recarga durante unos segundos. Cuando se activa, después de usar su Super, duplicará la velocidad de carga de Súper y recarga del ataque de Edgar durante 5 segundos. Un brillo rojizo y unos pequeños círculos dorados que rodean a Edgar indican la activación de estos efectos. Aumentan su velocidad de carga de Súper en un 150% y su velocidad de recarga en un 50% durante el resto de la duración de la Hipercarga.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/2/2b/Edgar_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260527220523&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5511,6 +5580,7 @@
       "description": "El súper de Byron lanza el ataque principal hacia todas las direcciones desde el lugar que impacta. Cuando se activa, el Súper de Byron también lanza 6 proyectiles de ataque principal radialmente desde el centro del área de impacto. El patrón es fijo, con 30 grados entre cada dardo, y no gira con la dirección del Súper. Los proyectiles hacen tanto daño/curación como el ataque normal, pero son más lentos y cargan significativamente menos Súper.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/4/41/Byron_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260617203557&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5605,7 +5675,8 @@
         "gear": "Shield",
         "win_rate": 67.7
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/17/Lou.png/revision/latest/scale-to-width-down/500?cb=20260622162644&path-prefix=es"
   },
   "16000040": {
     "description_es": "¡Esto está que arde! Amber siente plena confianza en su habilidad para controlar el fuego, pero es un poco torpe. ¿Su lema? \"Aunque me queme el pelo, ¡el espectáculo es lo primero!\"Amber es una Brawler Legendaria que tiene una salud moderada y una gran cantidad de daño. Fue la Brawler N°40 agregada al juego. Ataca disparando una llamarada de fuego continua y de largo alcance. El super de Amber es un frasco de líquido ígneo que crea un charco inflamable en el suelo que puede encenderse con su ataque principal, cuando se enciende prende fuego a los enemigos que se encuentran en él cual los quema con el tiempo. Su primer Gadget, Ignición, aumenta momentáneamente su velocidad de movimiento mientras derrama un rastro de líquido ígneo detrás de ella que se comporta de manera idéntica al charco de su súper.",
@@ -5681,6 +5752,7 @@
       "description": "El charco que deja el líquido ígneo del súper es mayor. El líquido ígneo sigue ardiendo durante 3 segundos después de que lo prendan en llamas.Cuando se activa, el radio del charco que se forma al caer el frasco de fuego de Amber duplica su radio al caer. Al encenderse, el charco arde durante 3 segundos antes de desaparecer, incendiando a los enemigos que lo tocan durante 5 segundos.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/01/Amber.png/revision/latest/scale-to-width-down/500?cb=20260509015449&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5791,7 +5863,8 @@
         "gear": "Shield",
         "win_rate": 63.5
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/c2/Colette.png/revision/latest/scale-to-width-down/500?cb=20260506233701&path-prefix=es"
   },
   "16000038": {
     "description_es": "Surge, además de expender bebidas, ¡también es el alma de la fiesta! Es todo un máquina en la pista de baile ¡y su música carga al público de energía!Surge es un Brawler Legendario que se podía desbloquear como una recompensa de Brawl Pass en el nivel 30 de la Temporada 2: Verano monstruoso o puede desbloquearse desde el Camino Starr. Tiene una salud moderada, pero un daño alto y un alto daño de ráfaga, ya que puede disparar sus ataques con bastante rapidez, a cambio de un movimiento lento y una velocidad de recarga lenta. Fue el Brawler N°38 agregado al juego. Su ataque principal dispara una bebida que se divide al golpear a un enemigo. Su Súper es un salto en el aire, infligiendo daño y empujando a los enemigos, y también otorgándole varias mejoras a sus ataques y velocidad de movimiento. Su primer Gadget, \"Hiperactividad\", mejora +1 nivel instantáneamente durante 10 segundos.",
@@ -5857,6 +5930,7 @@
       "description": "Los disparos de Surge ahora se dividen siempre y cuentan con mayor alcance. Cuando se activa, al usar su Súper, Surge sube a la fase 5, lo que le otorga a sus disparos un alcance aún mayor que en las fases 3 o 4. Consigue una cuarta mejora sin importar en qué fase estuviera antes, pero vuelve a la fase que tendría normalmente después de que la Hipercarga se acabe.",
       "multiplier": "20%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/1a/Surge.png/revision/latest/scale-to-width-down/500?cb=20260330213511&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -5938,7 +6012,8 @@
         "gear": "Shield",
         "win_rate": 63.5
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/34/Sprout.png/revision/latest/scale-to-width-down/500?cb=20260203162532&path-prefix=es"
   },
   "16000036": {
     "description_es": "Nani, una antigua cámara de seguridad, se encarga de echarle un ojo a Jessie, pero ser capaz de seguirle el ritmo es otro cantar. ¡Vaya con la niña! Nani es una Brawler Épica que tiene poca salud pero un largo alcance y un alto daño, a cambio de una velocidad de recarga moderadamente lenta. Fue la Brawler N°37 agregada al juego. Ella ataca disparando tres orbes de energía en una formación de rombo. Su súper convoca a un dron volador llamado Peep que Nani puede dirigir manualmente hacia los enemigos y explota al contacto, infligiendo un gran daño, empujando a los enemigos, y destruyendo obstáculos en un rango corto. Su primer Gadget, Inseparables, se teletransporta a la ubicación actual de Peep durante su súper. Su segundo Gadget, Devolución al remitente, protege parcialmente a Nani de un solo proyectil que se convierte en un contraataque.",
@@ -6023,7 +6098,8 @@
         "gear": "Shield",
         "win_rate": 61.7
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/e/ea/Nani.png/revision/latest/scale-to-width-down/500?cb=20260619161220&path-prefix=es"
   },
   "16000035": {
     "description_es": "Gale se dedica a retirar la nieve que rodea el Hotel nevado del Señor P con su poderoso quitanieves. Nadie le dijo que tuviera que parar si los clientes se cruzan en su camino... Gale es un Brawler Épico, anteriormente el primer brawler de calidad Cromática. Es un amable anciano que trabaja como conserje en el Snowtel de Señor P junto a Lou. Tiene una salud moderada, una velocidad de recarga muy rápida y un daño constante. Fue el Brawler N°36 agregado al juego. Ataca disparando seis bolas de nieve. Su Súper crea una ráfaga de viento y nieve amplia y de largo alcance que empuja muy lejos a los enemigos hacia atrás. Su primer Gadget, \"Propulsor Aéreo\", genera una plataforma de lanzamiento debajo de él que puede lanzar cualquier objetivo. Su segundo Gadget, \"Tornado\", crea un tornado que evita que los enemigos lo atraviesen.",
@@ -6108,7 +6184,8 @@
         "gear": "Shield",
         "win_rate": 66.1
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/f/fd/Gale.png/revision/latest/scale-to-width-down/500?cb=20250624202240&path-prefix=es"
   },
   "16000034": {
     "description_es": "Jacky es una minera a la que le encanta hablar de sus locas experiencias laborales con un lenguaje de lo más colorido. Por suerte, las palabrotas se ven ahogadas por el sonido de su martillo mecánico. Jacky es una Brawler Superespecial que tiene una salud alta, una buena velocidad de movimiento y una producción de daño moderadamente alta y consistente, pero un alcance muy corto y una recarga moderadamente lenta. Fue la Brawler N°34 agregada al juego. Su atributo le permite cargar su súper de los enemigos que la dañan. Ataca con su martillo neumático, que inflige daño en un área circular a su alrededor. Su súper atrae enemigos en un gran radio. Su primer Gadget, \"Subidón neumático\", aumenta brevemente su velocidad de movimiento. Su segundo Gadget, \"Reconstrucción\", restaura todos los muros destruidos en pequeño radio alrededor de Jacky.",
@@ -6161,6 +6238,7 @@
       "description": "Atracción martilleante ralentiza a los enemigos que se encuentren alrededor de Jacky durante 1,5 segundos. Cuando se activa, los enemigos dentro del área del súper serán ralentizados en 150 puntos durante 1,5 segundos. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/52/Jacky_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260528231330&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6223,6 +6301,7 @@
       "description": "Max arroja a cada miembro del equipo una bebida energética que aumenta su velocidad de movimiento y les otorga un 25% de carga del súper. Cuando se activa, el siguiente súper de Max lanza una bebida energética a sí misma y a todos los aliados, independientemente de si están dentro del alcance de su súper o no. Todos los aliados reciben un aumento de velocidad de movimiento, pero otorgará un 25% de supercarga a los aliados.",
       "multiplier": "45%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/33/Max_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260529222410&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6324,6 +6403,7 @@
       "description": "Cuando activa el súper, Emz empuja a los enemigos hacia la parte exterior de la nube tóxica y los rocía con una buena dosis de laca.Cuando se activa, el súper de Emz empuja a todos los enemigos 4 casillas al limite de su efecto y lanza una ola de su rocío a su alrededor, compuesta por 18 rocíos individuales, cada uno de los cuales inflige 241 de daño. El alcance de los rocíos es de 5 casillas y su daño se ve afectado por su habilidad estelar Karma.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/e/e0/Emz_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20251030205712&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6399,6 +6479,7 @@
       "description": "Los proyectiles del súper de Bea se dividen en dos al alcanzar su distancia máxima (y al impactar), lo que aumenta aún más la distancia y la amplitud de su súper. Cuando se activa, las abejas del Súper de Bea se dividirán en dos proyectiles más pequeños al impactar o al recorrer la máxima distancia, infligiendo la misma cantidad de daño. Estas abejas recorren 5.67 casillas adicionales tras la división.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/73/Bea_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260206021352&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6461,6 +6542,7 @@
       "description": "La velocidad de movimiento de Sandy y sus aliados aumenta un 20% mientras estén dentro de la Tormenta de Arena. Además, silencia a los enemigos durante 0.5 segundos cuando golpea. Mientras la Hipercarga se mantenga activa, el súper de Sandy silenciará a los enemigos durante 0.5 segundos al ser invocada, evitando que los enemigos afectados usen ataques, súper, gadgets o hipercargas, similar a la súper de Otis.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/0/01/Sandy_Skin-Default-0.png/revision/latest?cb=20210111165647&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6546,6 +6628,7 @@
       "description": "La torreta de 8-BIT ahora posee un láser que dispara a los enemigos cercanos. Los disparos infligen 230 puntos de daño. Cuando se activa, 8-Bit despliega su torreta que dispara rayos láser a los enemigos desde 9 casillas. Los disparos en sí causan 230 de daño, pero la rápida velocidad de disparo le da un potencial de daño decente. Además, la salud total de la torreta aumenta a 7400. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/a/a2/8-BIT_Skin-Default.png/revision/latest?cb=20210111145444&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6629,6 +6712,7 @@
       "description": "La bola de chicle de Bibi se divide al golpear a un enemigo. Cuando se activa, el Super de Bibi se divide en dos burbujas grandes al golpear a un objetivo, que viajan en ángulo hacia la izquierda y la derecha y causan la misma cantidad de daño. Recorren 33,33 casillas tras la división. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/c/c4/Bibi_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20231213181021&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6724,7 +6808,8 @@
         "gear": "Shield",
         "win_rate": 64.1
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/71/Carl.png/revision/latest/scale-to-width-down/500?cb=20251030210235&path-prefix=es"
   },
   "16000024": {
     "description_es": "Rosa se dedica a la botánica y siente una fuerte conexión con las plantas. También es boxeadora, ¡y no durará en dar un puñetazo a los especímenes que se pasen de la raya! Rosa es una brawler Especial que tiene mucha salud y una buena cantidad de daño. Fue la 25° Brawler añadida al juego. Su atributo le permite cargar su súper contra los enemigos que la dañan. Su ataque es una ráfaga de tres golpes de corto alcance con sus guantes de boxeo. Su Super le otorga un escudo de reducción de daño momentáneo pero significativo. Su primer gadget, \"Arbustos robustos\", genera arbustos a su alrededor. Su segundo Gadget, \"Ortigas\", ralentiza instantáneamente y daña levemente a todos los enemigos dentro de los arbustos. Su primera Habilidad Estelar, \"Naturaleza viva\", la cura con el tiempo cuando está dentro de los arbustos.",
@@ -6787,6 +6872,7 @@
       "description": "Rosa relentiza a todos los enemigos cercanos mientras su súper esta activo. Cuando se activa, el Súper ralentiza a los enemigos en un radio de 3,33 casillas a su alrededor que se mueve con ella. El área de efecto desaparece cuando su Super está inactivo. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "50%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/86/Rosa.png/revision/latest/scale-to-width-down/500?cb=20260524162556&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6875,6 +6961,7 @@
       "description": "Leon permanece invisible al atacar a sus rivales. Cuando se activa, si Leon ataca mientras usa su Super, permanece invisible. Sin embargo, si usa un Súper Hipercargado y la duración de la Hipercarga termina, el siguiente ataque eliminará su invisibilidad. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/9/95/Leon_default_001.png/revision/latest/scale-to-width-down/500?cb=20260621153335&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -6969,7 +7056,8 @@
         "gear": "Thicc Head",
         "win_rate": 63.3
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/2/29/Tick.png/revision/latest/scale-to-width-down/500?cb=20251026040508&path-prefix=es"
   },
   "16000021": {
     "description_es": "La gente ve a Genio y piensa que no es más que un tipo bajito disfrazado. Lo que no ve es que su personalidad está dividida en dos: una parte en su cuerpo y la otra en su tetera.Genio es un Brawler Mítico que tiene una salud y daño moderados, y un alcance variable, pero una velocidad de recarga lenta. Fue el Brawler N°23 agregado al juego. Para su ataque, su lámpara expulsa una bola de humo que se divide después de cierto alcance. El Súper de Genio atrae a un enemigo y lo arrastra hacia su ubicación. Su primer Gadget, Aléjate Sésamo, hace retroceder a todos los enemigos cercanos y cura a el mismo una pequeña cantidad de salud. Su segundo Gadget, Espíritus Vengativos, dispara múltiples proyectiles que apuntan a los enemigos dentro del alcance y aumentan el daño a medida que viajan. Su Refuerzo Mítico, Háblale a la mano, aumenta el alcance de su súper.",
@@ -7032,6 +7120,7 @@
       "description": "El súper de Genio se divide en 3 manos y cada una agarra a un enemigo. La primera se mueve en línea recta y las otras 2, en diagonal. Cuando se activa, el siguiente súper de Genio dispara 3 manos y cada una puede atraer a un enemigo hacia él, las dos manos nuevas se moverán de forma diagonal a los costados de la dirección de la mano original. Las manos tiran del objetivo hacia Genio más rápido de lo normal y al volver, no destruyen los obstáculos.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/54/Gene_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260309211421&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7115,6 +7204,7 @@
       "description": "El súper de Frank ahora impacta a su alrededor. Cuando se activa, el Súper de Frank se extiende hacia 10 impactos en todas las direcciones a su alrededor. El radio de la onda de choque es ligeramente más corto que el alcance normal del Súper. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/2/2b/Frank.png/revision/latest/scale-to-width-down/500?cb=20260124180843&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7190,6 +7280,7 @@
       "description": "Penny despliega un cañón más grande que dispara 2 balas de cañón a la vez, en lugar de 1. Cuando se activa, el próximo Súper de Penny despliega un cañón más grande que dispara dos balas en rápida sucesión, en lugar de una. El daño por fuego de ambas balas de cañón no se acumula, por lo que el fuego que deja las balas impactadas en una misma zona dañará lo mismo que sólo uno. La segunda bala de cañón se dispara con un retraso de 0,3 segundos después de la primera.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/d6/Penny_Skin-Default.png/revision/latest?cb=20220628190705&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7271,6 +7362,7 @@
       "description": "Durante Tonel Loco, Darryl dispara a su alrededor. Cada disparo inflige 600 puntos de daño. Cuando se activa, Darryl dispara rápidamente 15 balas individuales en círculo durante su super, que son similares a su primer Gadget. Cada bala inflige 600 puntos de daño, tiene un alcance de 4,33 casillas y carga el 12% de su Súper si golpea a un enemigo. La primera bala se dispara en dirección a su Súper, y las demás siguen el orden de las agujas del reloj.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/6/66/Darryl_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20231220021947&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7356,6 +7448,7 @@
       "description": "Gravedad ahora cuenta con un área un 20% mayor. Cuando se activa, el Súper de tara ahora tiene un área un 20% más más y puede alcanzar y atraer a más enemigos. A pesar de su descripción, el aumento del 20% es del diámetro y no del área, por lo que el diámetro de su Súper aumenta de 8 a 9.6 casillas. También hace daño en toda su área en vez de sólo el centro. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "50%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/2/2b/Tara.png/revision/latest/scale-to-width-down/500?cb=20260529221003&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7440,7 +7533,8 @@
         "gear": "Super Turret",
         "win_rate": 65.7
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/da/Pam.png/revision/latest/scale-to-width-down/500?cb=20260621181759&path-prefix=es"
   },
   "16000015": {
     "description_es": "Piper sueña con ser la pastelera local y preparar tartas, galletas y otras delicias dulces para todos... Eso sí, no le preguntes por su pasado. Piper es una Brawler Épica que tiene un alcance muy largo y un daño variable, pero sufre por tener muy poca salud y una velocidad de recarga muy lenta. Fue la Brawler N°16 agregada al juego, y la primera Brawler agragda a partir de una actualización. Su ataque principal de un solo disparo hace más daño cuando está más lejos de un enemigo, por lo que sobresale en apoyar a su equipo como francotiradora. Su Súper le permite saltar lejos de sus enemigos y dañarlos a medida que avanza. Su primer Gadget, Autodisparo, le permite disparar una bala desde una pistola lateral hacia el enemigo más cercano, empujándolo hacia atrás. Su segundo gagdet, Truco Secreto, hace que su siguiente ataque se dirija a los enemigos.",
@@ -7506,6 +7600,7 @@
       "description": "Piper suelta más granadas y despega a mayor velocidad. También destruye el terreno donde aterriza. Cuando se activa, el próximo súper de Piper lanzará 6 bombas en lugar de 4 y viajará mucho más rápido. Cuando aterriza, empuja a los enemigos cercanos 4 casillas hacia atrás y destruye muros y arbustos en un radio de 3 casillas a su alrededor. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/5/5d/Piper_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20240319235905&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7607,6 +7702,7 @@
       "description": "El súper de Bo coloca 5 minas en lugar de 3. Estas minas no reemplazan a las que ya hubiera colocado antes con su súper, asi que es posible tener más de 8 minas a la vez en el mapa. Cuando se activa, el súper coloca 5 minas en el suelo en vez de 3. Estas minas no eliminan las trampas de su Súper normal, pero sí eliminarán las de otro Súper Hipercargado en caso de volver a usarse. Al usar el gadget \"cuerda detonante\", se detonan todas las minas existentes.",
       "multiplier": "40%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/e/ee/Bo_Skin-Default.png/revision/latest?cb=20210111145237&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7701,7 +7797,8 @@
         "gear": "Damage",
         "win_rate": 64.9
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b8/Poco.png/revision/latest/scale-to-width-down/500?cb=20260524162656&path-prefix=es"
   },
   "16000012": {
     "description_es": "Crow no confía en nadie y está rodeado de un aura de misterio. Lo único que se sabe de él es que frecuenta la cafetería con Bull y Bibi. Crow es un Brawler Legendario que tiene poca salud, una velocidad de recarga rápida y un ataque de daño moderadamente bajo que envenena a los enemigos para infligir daño extra con el tiempo con sus dagas de largo alcance. Fue uno de los 15 Brawlers que se lanzaron en el lanzamiento de la primera Beta. Tiene una gran movilidad con su Súper y su velocidad de movimiento muy rápida. Ataca lanzando 3 cuchillos envenenados de largo alcance, cosa que además de causar un daño base, les resta cierta cantidad de vida durante algunos segundos a los enemigos (hasta 4 segundos después de impactar), causando además una reducción en la curación de los rivales de hasta un 50% mientras dure el veneno.",
@@ -7775,6 +7872,7 @@
       "description": "Los afilados cuchillos de Crow se clavan en los enemigos y vuelven a su dueño como un bumerán. Cuando se activan, las dagas de la súper de Crow ahora regresan a él después de alcanzar su alcance máximo, y también pueden atravesar a los enemigos. Este efecto se aplica a las dagas disparadas al saltar y aterrizar. Sin embargo, las dagas no pueden atravesar las paredes y desaparecerán al golpearlas. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "55%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/a/a2/Crow_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260620231625&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7858,6 +7956,7 @@
       "description": "Transfusión vuelve a Mortis, con lo que puede infligir el doble de daño y curar el doble. Cuando se activa, el Súper de Mortis ahora regresa a él, de manera similar al ataque principal de Carl, infligiendo una segunda ola de daño y curación. También se aumenta la velocidad del proyectil. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/b/b2/Mortis_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20251206222147&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -7943,6 +8042,7 @@
       "description": "Una superbomba genera bombas más pequeñas. Cuando se activa, su Súper genera 8 bombas más pequeñas en todas las direcciones al detonar, cada una de las cuales inflige daño a los enemigos atrapados en su radio de explosión. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/6/6e/Dynamike_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20240323182150&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -8028,6 +8128,7 @@
       "description": "La torreta de Jessie tiene un 50% más de salud e inflige un 20% más de daño. Cuando se activa, la salud de la próxima torreta de Jessie aumenta en un 50% y su daño aumenta en un 20%. Sin embargo, la Hipercarga no tiene efecto si la torreta ya está desplegada. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "60%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/1/15/Jessie_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20240305174119&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -8103,14 +8204,15 @@
       "description": "Barley lanza 3 botellas enormes que destruyen todos los arbustos al impactar.Cuando se activa, el Súper de Barley lanza tres botellas grandes de líquido que cubren un área mayor que su Súper normal, con un radio de 3,67 casillas cada una. Los arbustos atrapados en el área son destruidos. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/d/df/Barley.png/revision/latest?cb=20250531012255&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/barley",
         "star_power_id": 23000082,
         "gadget_id": 23000293,
-        "gear": "Shield",
-        "win_rate": 63.1
+        "gear": "Vision",
+        "win_rate": 63.2
       }
     ]
   },
@@ -8188,6 +8290,7 @@
       "description": "Los proyectiles del súper de Rico rebotan aún más lejos. Cuando se activa, los proyectiles del Súper rebotan mucho más lejos de lo habitual, obteniendo 6 casillas de alcance adicional por cada rebote. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/71/Rico_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260202170144&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -8195,7 +8298,7 @@
         "star_power_id": 23000156,
         "gadget_id": 23000409,
         "gear": "Vision",
-        "win_rate": 59.9
+        "win_rate": 60.0
       }
     ]
   },
@@ -8273,6 +8376,7 @@
       "description": "Brock bombardea la zona objetivo con cohetes de forma simultánea en 4 oleadas. Cuando se activa, el siguiente súper de Brock dispara 4 oleadas de 7 cohetes, cada uno de los cuales inflige 1000 de daño. Si Brock tiene equipada la habilidad estelar Más Cohetes, el siguiente súper dispara 5 oleadas de 7 cohetes. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "45%"
     },
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/7/70/Brock_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20240919143724&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
@@ -8363,6 +8467,7 @@
         "gear": "Speed",
         "win_rate": 65.9
       }
-    ]
+    ],
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/a/a4/Mr._P_Skin-Default.png/revision/latest/scale-to-width-down/500?cb=20260529222905&path-prefix=es"
   }
 }

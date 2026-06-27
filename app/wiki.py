@@ -188,6 +188,7 @@ def build_entry(wt: str) -> dict:
         entry["hypercharge"] = {"name": hc_name or None, "description": hc_desc or None,
                                 "multiplier": clean(hc_mult) if hc_mult else None}
     entry["_has_hypercharge"] = has_hc
+    entry["_image_file"] = ib.get("image")  # se resuelve a URL en refresh()
     return entry
 
 
@@ -201,6 +202,47 @@ async def fetch_wikitext(client: httpx.AsyncClient, title: str) -> str | None:
         return None if "error" in data else (data.get("parse") or {}).get("wikitext", {}).get("*")
     except Exception:  # noqa: BLE001
         return None
+
+
+async def fetch_image_url(client: httpx.AsyncClient, filename: str | None, width: int = 500) -> str | None:
+    """Resuelve un fichero de la wiki (p. ej. 'Charlie.png') a su URL real (imagen
+    a cuerpo entero), escalada a `width` px para no servir el original enorme."""
+    if not filename:
+        return None
+    try:
+        r = await client.get(WIKI_API, params={"action": "query", "titles": "File:" + filename,
+                                               "prop": "imageinfo", "iiprop": "url",
+                                               "iiurlwidth": str(width), "format": "json"})
+        for p in ((r.json().get("query") or {}).get("pages") or {}).values():
+            if "missing" in p:
+                continue
+            ii = (p.get("imageinfo") or [{}])[0]
+            if ii.get("thumburl") or ii.get("url"):
+                return ii.get("thumburl") or ii.get("url")
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
+def _img_candidates(name: str, infobox_image: str | None) -> list[str]:
+    """Nombres de fichero a probar: el del infobox (brawlers antiguos) y los
+    convencionales (los nuevos no lo ponen en el infobox; suele ser '{Nombre}.png')."""
+    cands = [infobox_image] if infobox_image else []
+    for base in (name, name.replace(" ", "_")):
+        cands += [f"{base}.png", f"{base} Skin-Default.png", f"{base}_Skin-Default.png"]
+    seen, out = set(), []
+    for c in cands:
+        if c and c not in seen:
+            seen.add(c); out.append(c)
+    return out
+
+
+async def resolve_body_image(client: httpx.AsyncClient, name: str, infobox_image: str | None) -> str | None:
+    for fn in _img_candidates(name, infobox_image):
+        url = await fetch_image_url(client, fn)
+        if url:
+            return url
+    return None
 
 
 # --------------------------- builds de Brawl Time Ninja ---------------------------
@@ -299,8 +341,12 @@ async def refresh(only: set | None = None) -> dict:
                 miss += 1
                 continue
             entry = build_entry(wt)
+            img_file = entry.pop("_image_file", None)
             if entry.pop("_has_hypercharge", False):
                 hc_total += 1
+            url = await resolve_body_image(client, name, img_file)
+            if url:
+                entry["body_image"] = url
             prev = out.get(str(bid)) or {}
             build = await fetch_build(client, name)
             if build:

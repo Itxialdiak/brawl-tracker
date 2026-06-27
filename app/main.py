@@ -951,6 +951,8 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         c = coll_by_id.get(bid)
         name = cat.get("name")
         w = wr_by_name.get((name or "").upper())
+        owned_sp = set(c["star_power_ids"]) if c else set()
+        owned_gd = set(c["gadget_ids"]) if c else set()
         items.append({
             "id": bid, "name": name, "role": cat.get("role"), "rarity": cat.get("rarity"),
             "portrait": cat.get("portrait"),
@@ -959,11 +961,17 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "rank": c["rank"] if c else None,
             "trophies": c["trophies"] if c else None,
             "rank_band": _rank_band(c["trophies"]) if c else None,
-            "owned_star_powers": len(c["star_power_ids"]) if c else 0,
+            "prestige": c.get("prestige_level") if c else None,
+            "star_powers": [{"icon": s.get("icon"), "owned": s.get("id") in owned_sp}
+                            for s in (cat.get("star_powers") or [])],
+            "gadgets": [{"icon": g.get("icon"), "owned": g.get("id") in owned_gd}
+                        for g in (cat.get("gadgets") or [])],
+            "owned_star_powers": len(owned_sp),
             "total_star_powers": len(cat.get("star_powers") or []),
-            "owned_gadgets": len(c["gadget_ids"]) if c else 0,
+            "owned_gadgets": len(owned_gd),
             "total_gadgets": len(cat.get("gadgets") or []),
             "has_hypercharge": bid in hc_ids,
+            "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
             "your_winrate": w["winrate"] if w else None,
             "your_battles": w["total"] if w else 0,
         })
@@ -1038,7 +1046,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
         "id": brawler_id, "name": name,
         "description": extra.get("description_es") or cat.get("description"),
         "role": cat.get("role"), "rarity": cat.get("rarity"),
-        "image_full": cat.get("image_full"), "portrait": cat.get("portrait"),
+        "image_full": extra.get("body_image") or cat.get("image_full"), "portrait": cat.get("portrait"),
         "super": extra.get("super"),
         "star_powers": merge_abilities(cat.get("star_powers"), owned_sp, extra.get("star_powers_es")),
         "gadgets": merge_abilities(cat.get("gadgets"), owned_gd, extra.get("gadgets_es")),
