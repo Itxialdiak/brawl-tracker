@@ -554,7 +554,17 @@
       "name": "Salto Gravitacional",
       "description": "El Primo salta por los aires y al aterrizar da un codazo intergaláctico que atrae a los enemigos hacia el epicentro del impacto. Cuando se activa, el Súper, El Primo atrae a los enemigos en un radio a su alrededor al golpearlos. Los enemigos en los arbustos y los enemigos invisibles como Leon, Sandy, Kit o Kaze Ninja se revelarán si son atraídos. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
-    }
+    },
+    "builds": [
+      {
+        "name": "Mayor win rate (comunidad)",
+        "source": "https://brawltime.ninja/tier-list/brawler/el_primo",
+        "star_power_id": 23000140,
+        "gadget_id": 23000292,
+        "gear": "Health",
+        "win_rate": 64.2
+      }
+    ]
   },
   "16000008": {
     "description_es": "¡Furiosa como una bestia, Nita nunca se retira de una pelea! El oso de peluche que lleva en la cabeza es un claro aviso para sus rivales: ni se os ocurra tocarlo. Nita es una Brawler Especial que tiene una salud moderada y ataques con ondas de choque que tienen un alcance moderado y puede golpear a múltiples enemigos. Fue uno de los 15 Brawlers que se lanzaron en el lanzamiento de la primera Beta. Ella es más notable por la habilidad de su Súper de invocar a un oso. Este oso tiene alta salud y ataques cuerpo a cuerpo rápidos y peligrosos. Su primer Gadget, Garras de oso, aturdirá a todos los enemigos en un área alrededor de su oso. Su segundo Gadget, Piel Protectora, le proporciona a su oso un escudo que reduce el daño recibido. Su primera Habilidad estelar, Hermano oso, cura a su oso cuando ella misma ataca al enemigo, y el oso cura a Nita cuando ataca al enemigo.",
@@ -855,6 +865,16 @@
       {
         "name": "Por el poder del amor y la justicia",
         "description": "Starr Nova dispara una bola de energía que inflige daño a los enemigos y cura 1600 puntos de salud a los aliados. ¡También puede teletransportarse hasta la bola antes de que golpee su objetivo! Al apuntar usando el botón del Gadget, Starr Nova dispara un proyectil que daña a los enemigos y cura a los aliados a su paso."
+      }
+    ],
+    "builds": [
+      {
+        "name": "Mayor win rate (comunidad)",
+        "source": "https://brawltime.ninja/tier-list/brawler/starr_nova",
+        "star_power_id": 23001253,
+        "gadget_id": 23001256,
+        "gear": "Shield",
+        "win_rate": 73.0
       }
     ]
   },
@@ -2943,7 +2963,17 @@
       "name": "No hay dos sin tres",
       "description": "Larry llama un prototipo extra de Lawrie que inflige más daño y tiene más salud que el Lawrie convencional. Sin embargo, los gadgets que afectan a Lawrie solo funcionan con el \"modelo original\". Al activar su Hipercarga, el súper de Larry invocará a dos Lawrie, uno normal y otro mejorado. Este nuevo modelo tendrá 8.000 de salud y hará más daño.",
       "multiplier": "38%"
-    }
+    },
+    "builds": [
+      {
+        "name": "Mayor win rate (comunidad)",
+        "source": "https://brawltime.ninja/tier-list/brawler/larry___lawrie",
+        "star_power_id": 23000660,
+        "gadget_id": 23000661,
+        "gear": "Shield",
+        "win_rate": 65.1
+      }
+    ]
   },
   "16000076": {
     "description_es": "Cansado de firmar autógrafos en los Estudios Starr de Animación, Kit sueña con volver a ser alguien en la industria. Alguien reconocido por su talento más que por su apariencia.Kit es un brawler Legendario que tiene un alcance corto, poca salud y daño, pero una inmensa utilidad con su súper en su modo normal. En su forma alternativa, tiene un largo alcance y un daño muy alto. Fue el 75° brawler añadido al juego. Su atributo le permite cargar su súper con el tiempo. La forma normal de Kit ataca con una garra rápida de corto alcance con un tiempo de ataque y una velocidad de recarga extremadamente rápidos. Con su súper, Kit salta sobre un Brawler enemigo, lo aturde y le causa daño con el tiempo. Si Kit salta sobre un Brawler aliado, lo monta momentáneamente, transformándose en su forma alternativa y curándolo con el tiempo en el proceso.",
@@ -5983,7 +6013,17 @@
       "name": "Peep Crecidito",
       "description": "Peep crece al moverse. Cuando se activa, Peep aumenta de tamaño cuanto más se desplaza y causa más daño si golpea a un enemigo. Activar la Hipercarga mientras el Súper está activo no afectará al Peep activo. El Súper Hipercargado no aumenta el radio de explosión de Peep. Nani también obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "30%"
-    }
+    },
+    "builds": [
+      {
+        "name": "Mayor win rate (comunidad)",
+        "source": "https://brawltime.ninja/tier-list/brawler/nani",
+        "star_power_id": 23000235,
+        "gadget_id": 23000353,
+        "gear": "Shield",
+        "win_rate": 61.7
+      }
+    ]
   },
   "16000035": {
     "description_es": "Gale se dedica a retirar la nieve que rodea el Hotel nevado del Señor P con su poderoso quitanieves. Nadie le dijo que tuviera que parar si los clientes se cruzan en su camino... Gale es un Brawler Épico, anteriormente el primer brawler de calidad Cromática. Es un amable anciano que trabaja como conserje en el Snowtel de Señor P junto a Lou. Tiene una salud moderada, una velocidad de recarga muy rápida y un daño constante. Fue el Brawler N°36 agregado al juego. Ataca disparando seis bolas de nieve. Su Súper crea una ráfaga de viento y nieve amplia y de largo alcance que empuja muy lejos a los enemigos hacia atrás. Su primer Gadget, \"Propulsor Aéreo\", genera una plataforma de lanzamiento debajo de él que puede lanzar cualquier objetivo. Su segundo Gadget, \"Tornado\", crea un tornado que evita que los enemigos lo atraviesen.",
@@ -8313,6 +8353,16 @@
       "name": "Superbotones en acción",
       "description": "La base del Señor P ahora genera botones mucho más poderosos. Puede haber dos de estos superbotones activos al mismo tiempo. Cuando se activa, el Señor P lanzará una base con más salud. Esta genera botones con 4000 de salud y una velocidad de movimiento mucho mayor. Además, Señor P puede tener activos hasta dos botones de la base simultáneamente.",
       "multiplier": "30%"
-    }
+    },
+    "builds": [
+      {
+        "name": "Mayor win rate (comunidad)",
+        "source": "https://brawltime.ninja/tier-list/brawler/mr__p",
+        "star_power_id": 23000205,
+        "gadget_id": 23000349,
+        "gear": "Speed",
+        "win_rate": 65.9
+      }
+    ]
   }
 }

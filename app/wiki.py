@@ -222,9 +222,9 @@ def _bt_walk(obj, rows: list) -> None:
 
 
 def _bt_slug(name: str) -> str:
-    s = name.lower().replace("&", "and")
-    s = re.sub(r"[.'']", "", s)
-    return re.sub(r"\s+", "-", s.strip())
+    # brawltime: minúsculas y cada carácter no alfanumérico (espacio, ".", "&") -> "_";
+    # los guiones que ya van en el nombre se mantienen (8-bit, r-t).
+    return re.sub(r"[^a-z0-9-]", "_", name.lower())
 
 
 async def fetch_build(client: httpx.AsyncClient, name: str) -> dict | None:
