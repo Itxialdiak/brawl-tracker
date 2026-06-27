@@ -1212,28 +1212,45 @@ def _star_rate(sp, el):
     return round(100 * sp / el, 1) if el else None
 
 
+def _multi(val) -> list:
+    """Normaliza un filtro multi-valor (None | 'a,b' | ['a','b']) a lista de strings."""
+    if val is None:
+        return []
+    if isinstance(val, str):
+        return [v.strip() for v in val.split(",") if v.strip()]
+    return [str(v).strip() for v in val if str(v).strip()]
+
+
+def _in(col: str, vals: list):
+    """(sql, params) para `col IN (...)`. ('', []) si no hay valores."""
+    if not vals:
+        return "", []
+    return f"{col} IN ({','.join('?' * len(vals))})", list(vals)
+
+
 def _role_in(filters: dict, col: str = "my_brawler"):
-    """Cláusula para filtrar partidas por rol (primario o secundario del brawler
-    usado): col IN (brawlers con ese rol). (None, []) si no hay filtro de rol."""
-    role = filters.get("role")
-    if not role:
+    """Cláusula para filtrar por uno o varios roles: col IN (unión de brawlers que
+    tienen alguno de esos roles, primario o secundario)."""
+    roles = _multi(filters.get("role"))
+    if not roles:
         return None, []
-    names = brawler_extra.brawlers_with_role(role)
+    names = set()
+    for r in roles:
+        names.update(brawler_extra.brawlers_with_role(r))
     if not names:
         return "1=0", []
-    return f"{col} IN ({','.join('?' * len(names))})", list(names)
+    names = sorted(names)
+    return f"{col} IN ({','.join('?' * len(names))})", names
 
 
 def _build_filters(filters: dict):
     where, params = [], []
     if filters.get("player"):
         where.append("player_tag = ?"); params.append(normalize_tag(filters["player"]))
-    if filters.get("mode"):
-        where.append("mode = ?"); params.append(filters["mode"])
-    if filters.get("map"):
-        where.append("map = ?"); params.append(filters["map"])
-    if filters.get("brawler"):
-        where.append("my_brawler = ?"); params.append(filters["brawler"])
+    for col, key in (("mode", "mode"), ("map", "map"), ("my_brawler", "brawler")):
+        sql, p = _in(col, _multi(filters.get(key)))
+        if sql:
+            where.append(sql); params.extend(p)
     rsql, rparams = _role_in(filters, "my_brawler")
     if rsql:
         where.append(rsql); params.extend(rparams)
@@ -1346,12 +1363,10 @@ def winrate_vs(filters: dict | None = None) -> list[dict]:
     where, params = [], []
     if filters.get("player"):
         where.append("b.player_tag = ?"); params.append(normalize_tag(filters["player"]))
-    if filters.get("mode"):
-        where.append("b.mode = ?"); params.append(filters["mode"])
-    if filters.get("map"):
-        where.append("b.map = ?"); params.append(filters["map"])
-    if filters.get("brawler"):
-        where.append("b.my_brawler = ?"); params.append(filters["brawler"])
+    for col, key in (("b.mode", "mode"), ("b.map", "map"), ("b.my_brawler", "brawler")):
+        sql, p = _in(col, _multi(filters.get(key)))
+        if sql:
+            where.append(sql); params.extend(p)
     rsql, rparams = _role_in(filters, "b.my_brawler")
     if rsql:
         where.append(rsql); params.extend(rparams)
@@ -1474,12 +1489,10 @@ def winrate_with_allies(filters: dict | None = None) -> list[dict]:
     where, params = [], []
     if filters.get("player"):
         where.append("b.player_tag = ?"); params.append(normalize_tag(filters["player"]))
-    if filters.get("mode"):
-        where.append("b.mode = ?"); params.append(filters["mode"])
-    if filters.get("map"):
-        where.append("b.map = ?"); params.append(filters["map"])
-    if filters.get("brawler"):
-        where.append("b.my_brawler = ?"); params.append(filters["brawler"])
+    for col, key in (("b.mode", "mode"), ("b.map", "map"), ("b.my_brawler", "brawler")):
+        sql, p = _in(col, _multi(filters.get(key)))
+        if sql:
+            where.append(sql); params.extend(p)
     rsql, rparams = _role_in(filters, "b.my_brawler")
     if rsql:
         where.append(rsql); params.extend(rparams)

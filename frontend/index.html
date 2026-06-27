@@ -351,6 +351,26 @@
   .filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  /* Filtros multi-selección (dropdown con checkboxes) */
+  .ms-field { min-width: 175px; }
+  .ms { position: relative; }
+  .ms-trigger { width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 11px 30px 11px 12px; color: var(--text); font-size: 14px; font-family: var(--body); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 10px; pointer-events: none; }
+  .ms.open .ms-trigger { border-color: var(--cyan); }
+  .ms-panel { display: none; position: absolute; z-index: 60; top: calc(100% + 5px); left: 0; min-width: 100%; width: max-content; max-width: 280px; background: var(--panel); border: 1px solid var(--border); border-radius: 11px; box-shadow: 0 14px 34px rgba(0,0,0,.55); overflow: hidden; }
+  .ms.open .ms-panel { display: block; }
+  .ms-actions { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
+  .ms-actions button { flex: 1; font-size: 11.5px; padding: 6px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg-elev); color: var(--muted); cursor: pointer; font-family: var(--display); font-weight: 600; }
+  .ms-actions button:hover { color: var(--text); border-color: var(--cyan); }
+  .ms-options { max-height: 290px; overflow-y: auto; padding: 5px; }
+  .ms-opt { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--text); }
+  .ms-opt:hover { background: var(--bg-elev); }
+  .ms-opt input { accent-color: var(--cyan); cursor: pointer; flex: 0 0 auto; width: 15px; height: 15px; }
+  .ms-opt img { width: 26px; height: 26px; border-radius: 5px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
+  .ms-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-empty { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
+  .ms-clear { align-self: flex-end; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 9px; padding: 11px 15px; color: var(--muted); font-size: 13px; font-family: var(--display); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .ms-clear:hover { color: var(--loss); border-color: var(--loss); }
   .scope-note { display: none; font-size: 13px; color: var(--cyan); margin: -6px 0 18px; }
   .scope-note.show { display: block; }
 
@@ -1140,9 +1160,9 @@
   .podium-col.pos1 .podium-img img { max-height:188px; }
   .podium-col.pos2 .podium-img img { max-height:166px; }
   .crown { position:absolute; top:-21px; left:50%; transform:translateX(-50%); font-size:25px; z-index:2; }
-  .podium-base { width:100%; text-align:center; border-radius:10px 10px 0 0; padding:8px 6px 10px; margin-top:2px; background:linear-gradient(180deg,var(--bg-elev),var(--bg)); border:1px solid var(--border); border-bottom:none; }
-  .podium-col.pos1 .podium-base { background:linear-gradient(180deg,rgba(245,184,42,.28),rgba(245,184,42,.05)); border-color:rgba(245,184,42,.5); }
-  .podium-col.pos2 .podium-base { background:linear-gradient(180deg,rgba(184,194,207,.22),rgba(184,194,207,.04)); }
+  .podium-base { width:100%; text-align:center; border-radius:10px 10px 0 0; padding:9px 6px 10px; margin-top:2px; background:linear-gradient(180deg,var(--bg-elev),var(--bg)); border:1px solid var(--border); border-bottom:none; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:72px; box-sizing:border-box; }
+  .podium-col.pos1 .podium-base { background:linear-gradient(180deg,rgba(245,184,42,.28),rgba(245,184,42,.05)); border-color:rgba(245,184,42,.5); min-height:110px; }
+  .podium-col.pos2 .podium-base { background:linear-gradient(180deg,rgba(184,194,207,.22),rgba(184,194,207,.04)); min-height:91px; }
   .podium-col.pos3 .podium-base { background:linear-gradient(180deg,rgba(205,127,50,.22),rgba(205,127,50,.04)); }
   .podium-pos { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; font-family:var(--display); font-weight:800; font-size:12px; color:var(--bg); margin-bottom:3px; }
   .podium-col.pos1 .podium-pos { background:var(--gold); }
@@ -1637,14 +1657,11 @@
       <h2 class="section-title">Analíticas</h2>
       <div id="filters-bar">
         <div class="filters">
-          <div class="field"><label for="f-brawler">Brawler</label>
-            <select id="f-brawler"><option value="">Todos</option></select></div>
-          <div class="field"><label for="f-mode">Modo</label>
-            <select id="f-mode"><option value="">Todos</option></select></div>
-          <div class="field"><label for="f-map">Mapa</label>
-            <select id="f-map"><option value="">Todos</option></select></div>
-          <div class="field"><label for="f-role">Rol</label>
-            <select id="f-role"><option value="">Todos</option></select></div>
+          <div class="field ms-field"><label>Brawler</label><div class="ms" id="ms-brawler"></div></div>
+          <div class="field ms-field"><label>Modo</label><div class="ms" id="ms-mode"></div></div>
+          <div class="field ms-field"><label>Mapa</label><div class="ms" id="ms-map"></div></div>
+          <div class="field ms-field"><label>Rol</label><div class="ms" id="ms-role"></div></div>
+          <button class="ms-clear" type="button" onclick="clearFilters()">✕ Limpiar filtros</button>
         </div>
         <div class="scope-note" id="scope-note"></div>
       </div>
@@ -2254,6 +2271,7 @@ let playersById = {};
 let activeTab = "stats";
 let histOffset = 0, histTotal = 0;
 let ASSETS = { brawlers: {}, modes: {}, maps: {} };
+let filterSel = { brawler: [], mode: [], map: [], role: [] };  // filtros multi-selección
 
 function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function pctColor(w) { if (w == null) return "var(--neutral)"; if (w >= 55) return "var(--win)"; if (w < 45) return "var(--loss)"; return "var(--gold)"; }
@@ -2270,10 +2288,7 @@ function imgTag(url, cls) { return `<img class="${cls}" src="${url}" alt="" load
 function qs() {
   const p = new URLSearchParams();
   if (currentPlayer) p.set("player", currentPlayer);
-  if ($("f-brawler").value) p.set("brawler", $("f-brawler").value);
-  if ($("f-mode").value) p.set("mode", $("f-mode").value);
-  if ($("f-map").value) p.set("map", $("f-map").value);
-  const fr = $("f-role"); if (fr && fr.value) p.set("role", fr.value);
+  ["brawler", "mode", "map", "role"].forEach((k) => { if (filterSel[k].length) p.set(k, filterSel[k].join(",")); });
   return p.toString();
 }
 
@@ -2487,9 +2502,72 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("light
 /* ---------- Filtros / jugadores ---------- */
 async function loadFilters() {
   const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
-  fill($("f-brawler"), f.brawlers); fill($("f-mode"), f.modes, modeName); fill($("f-map"), f.maps);
-  if (f.roles) fill($("f-role"), f.roles);
+  filterSel.brawler = filterSel.brawler.filter((v) => (f.brawlers || []).includes(v));
+  filterSel.mode = filterSel.mode.filter((v) => (f.modes || []).includes(v));
+  filterSel.map = filterSel.map.filter((v) => (f.maps || []).includes(v));
+  filterSel.role = filterSel.role.filter((v) => (f.roles || []).includes(v));
+  buildMs("brawler", f.brawlers || []);
+  buildMs("mode", f.modes || []);
+  buildMs("map", f.maps || []);
+  buildMs("role", f.roles || []);
 }
+/* ---------- Multi-select de filtros (checkboxes + Todos/Ninguno) ---------- */
+function msOption(kind, value) {
+  let label = value, img = "";
+  if (kind === "brawler") { const p = brawlerPortrait(value); if (p) img = `<img src="${p}" alt="" onerror="this.style.display='none'">`; }
+  else if (kind === "mode") { const a = modeAsset(value); if (a && a.icon) img = `<img src="${a.icon}" alt="" onerror="this.style.display='none'">`; label = modeName(value); }
+  return { label, img };  // mapa y rol: solo el nombre
+}
+function msTriggerLabel(key) {
+  const sel = filterSel[key] || [];
+  if (!sel.length) return "Todos";
+  if (sel.length === 1) return msOption(key, sel[0]).label;
+  return sel.length + " seleccionados";
+}
+function buildMs(key, values) {
+  const el = $("ms-" + key);
+  if (!el) return;
+  const sel = filterSel[key] || [];
+  const opts = (values || []).map((v) => {
+    const { label, img } = msOption(key, v);
+    return `<label class="ms-opt"><input type="checkbox" value="${esc(v)}" ${sel.includes(v) ? "checked" : ""} onchange="msToggle('${key}', this.value, this.checked)">${img}<span>${esc(label)}</span></label>`;
+  }).join("");
+  el.innerHTML = `<button class="ms-trigger" type="button" onclick="toggleMs('${key}', event)">${esc(msTriggerLabel(key))}</button>
+    <div class="ms-panel">
+      <div class="ms-actions"><button type="button" onclick="msAll('${key}', true)">✓ Todos</button><button type="button" onclick="msAll('${key}', false)">Ninguno</button></div>
+      <div class="ms-options">${opts || '<div class="ms-empty">Sin opciones todavía</div>'}</div>
+    </div>`;
+}
+function msTrig(key) { const el = $("ms-" + key), t = el && el.querySelector(".ms-trigger"); if (t) t.textContent = msTriggerLabel(key); }
+function toggleMs(key, ev) {
+  if (ev) ev.stopPropagation();
+  const el = $("ms-" + key), open = el.classList.contains("open");
+  document.querySelectorAll(".ms.open").forEach((m) => m.classList.remove("open"));
+  if (!open) el.classList.add("open");
+}
+function msToggle(key, value, checked) {
+  const sel = filterSel[key], i = sel.indexOf(value);
+  if (checked && i < 0) sel.push(value);
+  else if (!checked && i >= 0) sel.splice(i, 1);
+  msTrig(key); onFilterChange();
+}
+function msAll(key, all) {
+  const checks = $("ms-" + key).querySelectorAll(".ms-options input[type=checkbox]");
+  filterSel[key] = all ? Array.from(checks).map((c) => c.value) : [];
+  checks.forEach((c) => { c.checked = all; });
+  msTrig(key); onFilterChange();
+}
+function clearFilters() {
+  let any = false;
+  ["brawler", "mode", "map", "role"].forEach((k) => {
+    if (filterSel[k].length) any = true;
+    filterSel[k] = [];
+    const el = $("ms-" + k);
+    if (el) { el.querySelectorAll("input[type=checkbox]").forEach((c) => { c.checked = false; }); msTrig(k); }
+  });
+  if (any) onFilterChange();
+}
+document.addEventListener("click", (e) => { if (!e.target.closest(".ms")) document.querySelectorAll(".ms.open").forEach((m) => m.classList.remove("open")); });
 function fill(sel, values, labelFn) {
   const c = sel.value;
   sel.innerHTML = '<option value="">Todos</option>' +
@@ -2497,20 +2575,21 @@ function fill(sel, values, labelFn) {
   sel.value = values.includes(c) ? c : "";
 }
 function applyScope() {
-  const b = $("f-brawler").value, m = $("f-mode").value, mp = $("f-map").value, ro = ($("f-role") || {}).value || "";
-  $("panel-brawler").style.display = b ? "none" : "";
-  $("panel-mode").style.display = m ? "none" : "";
-  $("panel-map").style.display = mp ? "none" : "";
-  const pr = $("panel-role"); if (pr) pr.style.display = ro ? "none" : "";
-  const radars = $("role-radars-row"); if (radars) radars.style.display = b ? "none" : "";
-  const donuts = $("mode-donuts-row"); if (donuts) donuts.style.display = m ? "none" : "";
+  const b = filterSel.brawler, m = filterSel.mode, mp = filterSel.map, ro = filterSel.role;
+  // Cada panel de desglose se oculta solo si se filtra UN único valor de esa dimensión.
+  $("panel-brawler").style.display = b.length === 1 ? "none" : "";
+  $("panel-mode").style.display = m.length === 1 ? "none" : "";
+  $("panel-map").style.display = mp.length === 1 ? "none" : "";
+  const pr = $("panel-role"); if (pr) pr.style.display = ro.length === 1 ? "none" : "";
+  const radars = $("role-radars-row"); if (radars) radars.style.display = b.length === 1 ? "none" : "";
+  const donuts = $("mode-donuts-row"); if (donuts) donuts.style.display = m.length === 1 ? "none" : "";
   const parts = [];
-  if (b) parts.push("el brawler " + b);
-  if (m) parts.push("el modo " + modeName(m));
-  if (mp) parts.push("el mapa " + mp);
-  if (ro) parts.push("el rol " + ro);
+  if (b.length) parts.push(b.length === 1 ? "el brawler " + b[0] : b.length + " brawlers");
+  if (m.length) parts.push(m.length === 1 ? "el modo " + modeName(m[0]) : m.length + " modos");
+  if (mp.length) parts.push(mp.length === 1 ? "el mapa " + mp[0] : mp.length + " mapas");
+  if (ro.length) parts.push(ro.length === 1 ? "el rol " + ro[0] : ro.length + " roles");
   const n = $("scope-note");
-  if (parts.length) { n.classList.add("show"); n.textContent = `Viendo solo ${parts.join(" · ")}: el resto del desglose se ajusta a ese filtro.`; }
+  if (parts.length) { n.classList.add("show"); n.textContent = `Viendo ${parts.join(" · ")}: el resto del desglose se ajusta a esos filtros.`; }
   else { n.classList.remove("show"); n.textContent = ""; }
 }
 const ICON_TROPHY = `<svg viewBox="0 0 576 512" fill="currentColor"><path d="M400 0H176c-26.5 0-48.1 21.8-47.1 48.2c.2 5.3 .4 10.6 .7 15.8H24C10.7 64 0 74.7 0 88c0 92.6 33.5 157 78.5 200.7c44.3 43.1 98.3 64.8 138.1 75.8c23.4 6.5 39.4 26 39.4 45.6c0 20.9-17 37.9-37.9 37.9H192c-17.7 0-32 14.3-32 32s14.3 32 32 32H384c17.7 0 32-14.3 32-32s-14.3-32-32-32H359.9C339 448 322 431 322 410.1c0-19.6 16-39.1 39.4-45.6c39.9-11 93.9-32.7 138.2-75.8C544.5 245 578 180.6 578 88c0-13.3-10.7-24-24-24H446.4c.3-5.2 .5-10.5 .7-15.8C448.1 21.8 426.5 0 400 0zM48.9 112h84.4c9.1 90.1 29.2 150.3 51.9 190.6c-24.9-11-50.8-26.5-73.2-48.3c-32-31.1-58-76-63-142.3zM464.1 254.3c-22.4 21.8-48.3 37.3-73.2 48.3c22.7-40.3 42.8-100.5 51.9-190.6h84.4c-5 66.3-31 111.2-63 142.3z"/></svg>`;
@@ -4029,7 +4108,7 @@ async function revertHistory(hid, title) {
 /* ---------- Eventos ---------- */
 $("player-select").addEventListener("change", async () => {
   currentPlayer = $("player-select").value;
-  $("f-brawler").value = ""; $("f-mode").value = ""; $("f-map").value = ""; if ($("f-role")) $("f-role").value = "";
+  filterSel = { brawler: [], mode: [], map: [], role: [] };
   showCoachListView();
   updatePlayerHeader();
   await loadFilters(); applyScope(); await loadStats();
@@ -4044,7 +4123,6 @@ async function onFilterChange() {
   if (activeTab === "report") await loadReport();
   if (activeTab === "history") await loadHistory(true);
 }
-["f-brawler", "f-mode", "f-map", "f-role"].forEach((id) => $(id).addEventListener("change", onFilterChange));
 $("load-more").addEventListener("click", () => loadHistory(false));
 
 $("add-player").addEventListener("click", addPlayer);
@@ -4442,10 +4520,16 @@ function renderRoleRadars(roles) {
 function heatBg(wr) { if (wr >= 55) return "rgba(65,224,138,0.14)"; if (wr < 45) return "rgba(255,93,108,0.14)"; return "rgba(255,200,61,0.12)"; }
 function heatmap(ct) {
   if (!ct.brawlers.length || !ct.modes.length) return `<div class="empty">Sin datos para la tabla cruzada todavía.</div>`;
+  // Orden por win rate medio entre los modos que ha jugado (mayor a menor), aunque ese valor no se muestre.
+  const avgWr = (b) => {
+    const vs = ct.modes.map((m) => ct.cells[`${b}|${m}`]).filter((c) => c && c.winrate != null).map((c) => c.winrate);
+    return vs.length ? vs.reduce((a, x) => a + x, 0) / vs.length : -1;
+  };
+  const brawlers = ct.brawlers.slice().sort((a, b) => avgWr(b) - avgWr(a));
   let h = `<table class="heat"><thead><tr><th></th>`;
   h += ct.modes.map((m) => { const a = modeAsset(m); return `<th>${a && a.icon ? imgTag(a.icon, "heat-mode") : ""}<span>${esc(modeName(m))}</span></th>`; }).join("");
   h += `</tr></thead><tbody>`;
-  for (const b of ct.brawlers) {
+  for (const b of brawlers) {
     const port = brawlerPortrait(b);
     h += `<tr><th class="heat-brawler">${port ? imgTag(port, "heat-port") : ""}<span>${esc(b)}</span></th>`;
     for (const m of ct.modes) {
@@ -4500,7 +4584,7 @@ function showCoachListView() { const d = $("coach-detail-view"), l = $("coach-li
 function backToReportList() { showCoachListView(); loadReports(); }
 async function generateReport() {
   if (!currentPlayer) return;
-  const body = { player: currentPlayer, brawler: $("f-brawler").value || null, mode: $("f-mode").value || null, map: $("f-map").value || null };
+  const body = { player: currentPlayer, brawler: filterSel.brawler.join(",") || null, mode: filterSel.mode.join(",") || null, map: filterSel.map.join(",") || null };
   setCoachButton(true);
   try {
     const r = await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
