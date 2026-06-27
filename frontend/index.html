@@ -558,6 +558,9 @@
 
   /* Informe: gráfica de trofeos */
   .chart-box { margin-top: 6px; }
+  .radar-svg { width: 100%; height: auto; display: block; max-width: 440px; margin: 2px auto 0; overflow: visible; }
+  .radar-lbl { font-family: var(--display); font-weight: 600; font-size: 10.5px; fill: var(--muted); }
+  .radar-val { font-family: var(--body); font-weight: 700; font-size: 9.5px; fill: var(--text); }
   .trophy-svg { width: 100%; height: auto; display: block; }
   .chart-cap { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; }
   .charts-row { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 24px; }
@@ -1509,23 +1512,41 @@
             <select id="f-mode"><option value="">Todos</option></select></div>
           <div class="field"><label for="f-map">Mapa</label>
             <select id="f-map"><option value="">Todos</option></select></div>
-          <div class="field"><label for="f-min">Mín. partidas</label>
-            <input type="number" id="f-min" min="1" value="1" /></div>
+          <div class="field"><label for="f-role">Rol</label>
+            <select id="f-role"><option value="">Todos</option></select></div>
         </div>
         <div class="scope-note" id="scope-note"></div>
       </div>
       <section class="overview" id="overview"></section>
       <div class="highlights" id="highlights"></div>
       <div class="br-rating" id="stats-rating" style="display:none"></div>
-      <div class="grid">
+      <div class="grid grid-5">
         <div class="panel p-brawler" id="panel-brawler"><h2><span class="dot"></span>Win rate por brawler</h2>
           <div class="hint">Rendimiento con cada brawler (V/D · estrella).</div><div class="rows" id="r-brawler"></div></div>
         <div class="panel p-mode" id="panel-mode"><h2><span class="dot"></span>Por modo de juego</h2>
           <div class="hint">Dónde rinde mejor según el modo.</div><div class="rows" id="r-mode"></div></div>
         <div class="panel p-map" id="panel-map"><h2><span class="dot"></span>Por mapa</h2>
           <div class="hint">Haz clic en un mapa para ver su imagen.</div><div class="rows" id="r-map"></div></div>
+        <div class="panel p-role" id="panel-role"><h2><span class="dot"></span>Por rol</h2>
+          <div class="hint">Win rate por rol (primario y secundario).</div><div class="rows" id="r-role"></div></div>
         <div class="panel p-vs"><h2><span class="dot"></span>Contra cada brawler</h2>
           <div class="hint">Win rate y copas medias del rival.</div><div class="rows" id="r-vs"></div></div>
+      </div>
+      <div class="charts-row" id="role-radars-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Preferencia de rol</h2>
+          <div class="hint">Qué roles usas más (cada brawler pesa en su rol principal y secundario).</div>
+          <div class="chart-box" id="role-pref-radar"></div></div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Estilo de juego</h2>
+          <div class="hint">Con qué roles tienes mejor win rate (con los que mejor juegas).</div>
+          <div class="chart-box" id="role-style-radar"></div></div>
+      </div>
+      <div class="charts-row" id="mode-donuts-row">
+        <div class="panel chart-sq"><h2><span class="dot"></span>Modos más jugados</h2>
+          <div class="hint">Reparto de tus partidas por modo de juego.</div>
+          <div class="chart-box" id="mode-play-donut"></div></div>
+        <div class="panel chart-sq"><h2><span class="dot"></span>Mejores modos · win rate</h2>
+          <div class="hint">Comparativa de tu win rate por modo.</div>
+          <div class="chart-box" id="mode-wr-donut"></div></div>
       </div>
       <div class="grid grid-5">
         <div class="panel"><h2><span class="dot"></span>Mejores aliados</h2>
@@ -1551,14 +1572,6 @@
         <div class="panel chart-sq"><h2><span class="dot"></span>Forma reciente · win rate</h2>
           <div class="hint">Win rate en ventana móvil (50% = línea de puntos).</div>
           <div class="chart-box" id="winrate-chart"></div></div>
-      </div>
-      <div class="charts-row" id="mode-donuts-row">
-        <div class="panel chart-sq"><h2><span class="dot"></span>Modos más jugados</h2>
-          <div class="hint">Reparto de tus partidas por modo de juego.</div>
-          <div class="chart-box" id="mode-play-donut"></div></div>
-        <div class="panel chart-sq"><h2><span class="dot"></span>Mejores modos · win rate</h2>
-          <div class="hint">Comparativa de tu win rate por modo.</div>
-          <div class="chart-box" id="mode-wr-donut"></div></div>
       </div>
     </div>
 
@@ -2069,7 +2082,7 @@
     <div class="lightbox-inner"><img id="lb-img" src="" alt="" /><div class="cap" id="lb-cap"></div></div>
   </div>
 
-  <footer>Los datos se acumulan mientras el tracker está en marcha. La API solo guarda las 25 últimas partidas de cada jugador. Imágenes: Brawlify.</footer>
+  <footer>Los datos se acumulan mientras el tracker está en marcha. La API solo guarda las 25 últimas partidas de cada jugador.</footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -2100,6 +2113,7 @@ function qs() {
   if ($("f-brawler").value) p.set("brawler", $("f-brawler").value);
   if ($("f-mode").value) p.set("mode", $("f-mode").value);
   if ($("f-map").value) p.set("map", $("f-map").value);
+  const fr = $("f-role"); if (fr && fr.value) p.set("role", fr.value);
   return p.toString();
 }
 
@@ -2156,7 +2170,7 @@ function applyCollapse(rowsEl, threshold = 6) {
   else { rowsEl.classList.remove("collapsed"); btn.style.display = "none"; }
 }
 function render(el, data, kind) {
-  const min = parseInt($("f-min").value) || 1;
+  const min = 1;
   const f = data.filter((d) => d.total >= min);
   // Orden por win rate: "contra cada brawler" de menor a mayor; el resto de mayor a menor.
   const asc = kind === "vs";
@@ -2185,12 +2199,15 @@ async function loadOverview() {
 }
 async function loadPanels() {
   const base = qs();
-  const [b, m, mp, vs] = await Promise.all([
+  const [b, m, mp, vs, roles] = await Promise.all([
     getJSON("/api/winrate?by=brawler&" + base), getJSON("/api/winrate?by=mode&" + base),
     getJSON("/api/winrate?by=map&" + base), getJSON("/api/vs?" + base),
+    getJSON("/api/roles?" + base),
   ]);
   render($("r-brawler"), b, "brawler"); render($("r-mode"), m, "mode");
   render($("r-map"), mp, "map"); render($("r-vs"), vs, "vs");
+  render($("r-role"), roles, "role");
+  renderRoleRadars(roles);
   renderModeDonuts(m);
 }
 async function loadStats() { await Promise.all([loadOverview(), loadPanels(), loadStatsReport(), loadStatsRating()]); }
@@ -2310,6 +2327,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("lightbo
 async function loadFilters() {
   const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
   fill($("f-brawler"), f.brawlers); fill($("f-mode"), f.modes, modeName); fill($("f-map"), f.maps);
+  if (f.roles) fill($("f-role"), f.roles);
 }
 function fill(sel, values, labelFn) {
   const c = sel.value;
@@ -2318,15 +2336,17 @@ function fill(sel, values, labelFn) {
   sel.value = values.includes(c) ? c : "";
 }
 function applyScope() {
-  const b = $("f-brawler").value, m = $("f-mode").value, mp = $("f-map").value;
+  const b = $("f-brawler").value, m = $("f-mode").value, mp = $("f-map").value, ro = ($("f-role") || {}).value || "";
   $("panel-brawler").style.display = b ? "none" : "";
   $("panel-mode").style.display = m ? "none" : "";
   $("panel-map").style.display = mp ? "none" : "";
+  const pr = $("panel-role"); if (pr) pr.style.display = ro ? "none" : "";
   const donuts = $("mode-donuts-row"); if (donuts) donuts.style.display = m ? "none" : "";
   const parts = [];
   if (b) parts.push("el brawler " + b);
   if (m) parts.push("el modo " + modeName(m));
   if (mp) parts.push("el mapa " + mp);
+  if (ro) parts.push("el rol " + ro);
   const n = $("scope-note");
   if (parts.length) { n.classList.add("show"); n.textContent = `Viendo solo ${parts.join(" · ")}: el resto del desglose se ajusta a ese filtro.`; }
   else { n.classList.remove("show"); n.textContent = ""; }
@@ -3735,7 +3755,7 @@ async function revertHistory(hid, title) {
 /* ---------- Eventos ---------- */
 $("player-select").addEventListener("change", async () => {
   currentPlayer = $("player-select").value;
-  $("f-brawler").value = ""; $("f-mode").value = ""; $("f-map").value = "";
+  $("f-brawler").value = ""; $("f-mode").value = ""; $("f-map").value = ""; if ($("f-role")) $("f-role").value = "";
   showCoachListView();
   updatePlayerHeader();
   await loadFilters(); applyScope(); await loadStats();
@@ -3750,8 +3770,7 @@ async function onFilterChange() {
   if (activeTab === "report") await loadReport();
   if (activeTab === "history") await loadHistory(true);
 }
-["f-brawler", "f-mode", "f-map"].forEach((id) => $(id).addEventListener("change", onFilterChange));
-$("f-min").addEventListener("input", loadPanels);
+["f-brawler", "f-mode", "f-map", "f-role"].forEach((id) => $(id).addEventListener("change", onFilterChange));
 $("load-more").addEventListener("click", () => loadHistory(false));
 
 $("add-player").addEventListener("click", addPlayer);
@@ -3933,7 +3952,7 @@ function donutChart(items, centerLabel) {
 function renderModeDonuts(modeData) {
   const playEl = $("mode-play-donut"), wrEl = $("mode-wr-donut");
   if (!playEl || !wrEl) return;
-  const min = parseInt($("f-min").value) || 1;
+  const min = 1;
   const data = (modeData || []).filter((d) => d.label && d.total >= min);
   if (!data.length) {
     const e = `<div class="empty">Sin datos suficientes todavía.</div>`;
@@ -3945,6 +3964,57 @@ function renderModeDonuts(modeData) {
   const byWr = data.filter((d) => d.winrate != null).sort((a, b) => b.winrate - a.winrate)
     .map((d, i) => ({ label: d.label, value: Math.max(1, d.winrate), display: d.winrate + "%", color: modeColor(d.label, i) }));
   wrEl.innerHTML = byWr.length ? donutChart(byWr, "win rate") : `<div class="empty">Sin win rate por modo todavía.</div>`;
+}
+
+/* ---------- Radares de rol (Preferencia de rol / Estilo de juego) ---------- */
+// Orden alrededor del radar pensado para que roles parecidos queden contiguos:
+// frontline -> cuerpo a cuerpo -> daño -> rango -> lanzado -> control -> apoyo.
+const ROLE_ORDER = ["Tanque", "Agresor", "Asesino", "Destructor", "Tiro de Élite",
+                    "Artillería", "Lanzador", "Control", "Invocador", "Apoyo", "Curador"];
+const ROLE_SHORT = { "Tiro de Élite": "T. Élite" };
+function roleRadar(data, key, color, gid) {
+  const by = {}; (data || []).forEach((d) => { by[d.label] = d; });
+  const N = ROLE_ORDER.length, cx = 180, cy = 162, R = 98;
+  const vals = ROLE_ORDER.map((r) => { const d = by[r]; return d && d[key] != null ? +d[key] : 0; });
+  const maxV = key === "winrate" ? 100 : Math.max(...vals, 1);
+  const ang = (i) => -Math.PI / 2 + i * 2 * Math.PI / N;
+  const pt = (i, f) => [cx + R * f * Math.cos(ang(i)), cy + R * f * Math.sin(ang(i))];
+  const fmt = (i) => { const d = by[ROLE_ORDER[i]]; if (!d) return ""; return key === "winrate" ? (d.winrate == null ? "—" : d.winrate + "%") : d.usage_pct + "%"; };
+  let rings = "";
+  for (let g = 1; g <= 4; g++) {
+    const pts = ROLE_ORDER.map((_, i) => pt(i, g / 4).map((v) => v.toFixed(1)).join(",")).join(" ");
+    rings += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,${g === 4 ? 0.14 : 0.06})" stroke-width="1"/>`;
+  }
+  let spokes = "", labels = "";
+  ROLE_ORDER.forEach((role, i) => {
+    const [ex, ey] = pt(i, 1);
+    spokes += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="rgba(255,255,255,0.05)"/>`;
+    const [lx, ly] = pt(i, 1.16);
+    const c = Math.cos(ang(i));
+    const anchor = Math.abs(c) < 0.34 ? "middle" : (c > 0 ? "start" : "end");
+    const v = fmt(i);
+    labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-lbl">${esc(ROLE_SHORT[role] || role)}${v ? `<tspan x="${lx.toFixed(1)}" dy="11" class="radar-val">${v}</tspan>` : ""}</text>`;
+  });
+  const poly = vals.map((v, i) => pt(i, v / maxV).map((x) => x.toFixed(1)).join(",")).join(" ");
+  const dots = vals.map((v, i) => { if (v <= 0) return ""; const [x, y] = pt(i, v / maxV); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${color}"/>`; }).join("");
+  return `<svg viewBox="0 0 360 320" class="radar-svg">
+    <defs><radialGradient id="${gid}" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.5"/><stop offset="100%" stop-color="${color}" stop-opacity="0.06"/>
+    </radialGradient></defs>
+    ${rings}${spokes}
+    <polygon points="${poly}" fill="url(#${gid})" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}${labels}</svg>`;
+}
+function renderRoleRadars(roles) {
+  const pref = $("role-pref-radar"), style = $("role-style-radar");
+  if (!pref || !style) return;
+  const data = roles || [];
+  if (!data.some((d) => d.total > 0)) {
+    const e = `<div class="empty">Sin datos suficientes todavía.</div>`;
+    pref.innerHTML = e; style.innerHTML = e; return;
+  }
+  pref.innerHTML = roleRadar(data, "usage_pct", "#3dd9e8", "radGradPref");
+  style.innerHTML = roleRadar(data, "winrate", "#f5b82a", "radGradStyle");
 }
 
 function heatBg(wr) { if (wr >= 55) return "rgba(65,224,138,0.14)"; if (wr < 45) return "rgba(255,93,108,0.14)"; return "rgba(255,200,61,0.12)"; }

@@ -93,3 +93,40 @@ def role_secondary(name: str) -> str | None:
 def role_primary_fallback(name: str) -> str | None:
     """Rol primario para brawlers que la wiki aún no clasifica (Clase=None)."""
     return (_load_roles().get("primary_fallback") or {}).get(name)
+
+
+# --- Índice de roles por brawler (data/roles_index.json) ---------------------
+# { NOMBRE_MAYUS: [rol_primario, rol_secundario] }. Generado por gen_roles_index.py.
+
+_RINDEX_PATH = os.path.join(os.path.dirname(__file__), "data", "roles_index.json")
+_rindex_cache: dict = {"data": None, "mtime": None}
+
+
+def _load_roles_index() -> dict:
+    try:
+        mtime = os.path.getmtime(_RINDEX_PATH)
+    except OSError:
+        return {}
+    if _rindex_cache["data"] is None or mtime != _rindex_cache["mtime"]:
+        try:
+            with open(_RINDEX_PATH, encoding="utf-8") as f:
+                _rindex_cache["data"] = json.load(f)
+            _rindex_cache["mtime"] = mtime
+        except Exception:  # noqa: BLE001
+            return _rindex_cache["data"] or {}
+    return _rindex_cache["data"] or {}
+
+
+def roles_of(brawler_name: str) -> list:
+    """Roles (primario + secundario) de un brawler por su nombre (case-insensitive)."""
+    return list(_load_roles_index().get((brawler_name or "").upper()) or [])
+
+
+def brawlers_with_role(role: str) -> list:
+    """Nombres (MAYÚS) de brawlers con ese rol como primario o secundario."""
+    return [name for name, rs in _load_roles_index().items() if role in rs]
+
+
+def all_roles() -> list:
+    """Todos los roles distintos del índice (orden alfabético)."""
+    return sorted({r for rs in _load_roles_index().values() for r in rs})

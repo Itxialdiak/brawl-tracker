@@ -149,6 +149,29 @@ async def _event_notifier():
 WIKI_UPDATE_INTERVAL = 24 * 3600  # una vez al día
 
 
+async def _rebuild_roles_index():
+    """Reconstruye data/roles_index.json (NOMBRE->[roles]) desde el catálogo + el
+    dataset recién scrapeado, para que el filtro/agregación por rol no se
+    desincronice de los roles que muestra la pestaña Brawlers."""
+    try:
+        cat = (await assets.get_brawler_catalog()).get("by_id") or {}
+        index = {}
+        for bid, c in cat.items():
+            name = c.get("name")
+            if not name:
+                continue
+            primary = brawler_extra.get(bid).get("role") or brawler_extra.role_primary_fallback(name) or c.get("role")
+            secondary = brawler_extra.role_secondary(name)
+            roles = ([primary] if primary else []) + ([secondary] if secondary and secondary != primary else [])
+            if roles:
+                index[name.upper()] = roles
+        path = os.path.join(os.path.dirname(__file__), "data", "roles_index.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(index, f, ensure_ascii=False)
+    except Exception as e:  # noqa: BLE001
+        print(f"[roles_index] no se pudo regenerar: {e}")
+
+
 async def _wiki_updater():
     """Revisa a diario la wiki de Brawl Stars y Brawl Time Ninja, y regenera el
     dataset de brawlers (stats, súper, hipercarga, descripción y builds) si tiene
@@ -160,6 +183,7 @@ async def _wiki_updater():
                 (time.time() - os.path.getmtime(wiki.OUT_PATH)) < 20 * 3600
             if not fresh:
                 res = await wiki.refresh()
+                await _rebuild_roles_index()
                 print(f"[wiki] dataset de brawlers actualizado (wiki + builds): {res}")
         except Exception as e:  # noqa: BLE001
             print(f"[wiki] error actualizando el dataset: {e}")
@@ -363,42 +387,54 @@ def api_remove_player(tag: str, user: dict = Depends(auth.require_user)):
 
 # --------------------------- Estadísticas ---------------------------
 
-def _filters(player, mode, map_, brawler, vs):
-    return {"player": player, "mode": mode, "map": map_, "brawler": brawler, "vs": vs}
+def _filters(player, mode, map_, brawler, vs, role=None):
+    return {"player": player, "mode": mode, "map": map_, "brawler": brawler, "vs": vs, "role": role}
 
 
 @app.get("/api/overview")
 def api_overview(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
-                 brawler: str = Query(None), vs: str = Query(None),
+                 brawler: str = Query(None), vs: str = Query(None), role: str = Query(None),
                  user: dict = Depends(auth.require_user)):
     _require_follow(user, player)
-    return db.overview(_filters(player, mode, map, brawler, vs))
+    return db.overview(_filters(player, mode, map, brawler, vs, role))
 
 
 @app.get("/api/winrate")
 def api_winrate(by: str = Query("brawler"), player: str = Query(None), mode: str = Query(None),
                 map: str = Query(None), brawler: str = Query(None), vs: str = Query(None),
-                user: dict = Depends(auth.require_user)):
+                role: str = Query(None), user: dict = Depends(auth.require_user)):
     _require_follow(user, player)
     try:
-        return db.winrate_by(by, _filters(player, mode, map, brawler, vs))
+        return db.winrate_by(by, _filters(player, mode, map, brawler, vs, role))
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
 @app.get("/api/vs")
 def api_vs(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
-           brawler: str = Query(None), user: dict = Depends(auth.require_user)):
+           brawler: str = Query(None), role: str = Query(None),
+           user: dict = Depends(auth.require_user)):
     _require_follow(user, player)
-    return db.winrate_vs(_filters(player, mode, map, brawler, None))
+    return db.winrate_vs(_filters(player, mode, map, brawler, None, role))
 
 
 @app.get("/api/report")
 def api_report(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
-               brawler: str = Query(None), user: dict = Depends(auth.require_user)):
+               brawler: str = Query(None), role: str = Query(None),
+               user: dict = Depends(auth.require_user)):
     """Cálculos derivados para el Informe (destacados, datos cruzados, serie de trofeos)."""
     _require_follow(user, player)
-    return db.report_analytics(_filters(player, mode, map, brawler, None))
+    return db.report_analytics(_filters(player, mode, map, brawler, None, role))
+
+
+@app.get("/api/roles")
+def api_roles(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
+              brawler: str = Query(None), user: dict = Depends(auth.require_user)):
+    """Win rate y uso por ROL (cada brawler cuenta en su rol primario y secundario).
+    No aplica el filtro de rol: siempre devuelve el desglose completo, para los
+    radares de 'Preferencia de Rol'/'Estilo de Juego' y el panel 'Por rol'."""
+    _require_follow(user, player)
+    return db.winrate_by_role(_filters(player, mode, map, brawler, None, None))
 
 
 @app.get("/api/filters")

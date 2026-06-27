@@ -21,6 +21,8 @@ import json
 import secrets
 from datetime import datetime, timezone, timedelta
 
+from . import brawler_extra  # índice de roles (para filtrar/agregar por rol)
+
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "..", "brawl_stats.db"))
 
 GROUP_COLUMNS = {"brawler": "my_brawler", "mode": "mode", "map": "map"}
@@ -1132,6 +1134,18 @@ def _star_rate(sp, el):
     return round(100 * sp / el, 1) if el else None
 
 
+def _role_in(filters: dict, col: str = "my_brawler"):
+    """Cláusula para filtrar partidas por rol (primario o secundario del brawler
+    usado): col IN (brawlers con ese rol). (None, []) si no hay filtro de rol."""
+    role = filters.get("role")
+    if not role:
+        return None, []
+    names = brawler_extra.brawlers_with_role(role)
+    if not names:
+        return "1=0", []
+    return f"{col} IN ({','.join('?' * len(names))})", list(names)
+
+
 def _build_filters(filters: dict):
     where, params = [], []
     if filters.get("player"):
@@ -1142,6 +1156,9 @@ def _build_filters(filters: dict):
         where.append("map = ?"); params.append(filters["map"])
     if filters.get("brawler"):
         where.append("my_brawler = ?"); params.append(filters["brawler"])
+    rsql, rparams = _role_in(filters, "my_brawler")
+    if rsql:
+        where.append(rsql); params.extend(rparams)
     if filters.get("vs"):
         where.append("id IN (SELECT battle_id FROM opponents WHERE brawler = ?)"); params.append(filters["vs"])
     return (("WHERE " + " AND ".join(where)) if where else ""), params
@@ -1224,6 +1241,28 @@ def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
     return out
 
 
+def winrate_by_role(filters: dict | None = None) -> list[dict]:
+    """Win rate agregado por ROL. Cada brawler aporta sus partidas a su rol primario
+    Y secundario (p. ej. un brawler [Control, Lanzador] suma a ambos roles), igual que
+    el filtro por rol. Devuelve además 'usage_pct' = peso de cada rol sobre el total."""
+    rows = winrate_by("brawler", filters)
+    agg: dict = {}
+    for b in rows:
+        for role in brawler_extra.roles_of(b["label"]):
+            a = agg.setdefault(role, {"wins": 0, "losses": 0, "undecided": 0,
+                                      "total": 0, "trophy_delta": 0})
+            a["wins"] += b["wins"] or 0
+            a["losses"] += b["losses"] or 0
+            a["undecided"] += b.get("undecided") or 0
+            a["total"] += b["total"] or 0
+            a["trophy_delta"] += b.get("trophy_delta") or 0
+    grand = sum(a["total"] for a in agg.values()) or 1  # cada partida cuenta 1 vez por rol
+    out = [{"label": role, **a, "winrate": _winrate(a["wins"], a["losses"]),
+            "usage_pct": round(100 * a["total"] / grand, 1)} for role, a in agg.items()]
+    out.sort(key=lambda r: r["total"], reverse=True)
+    return out
+
+
 def winrate_vs(filters: dict | None = None) -> list[dict]:
     filters = filters or {}
     where, params = [], []
@@ -1235,6 +1274,9 @@ def winrate_vs(filters: dict | None = None) -> list[dict]:
         where.append("b.map = ?"); params.append(filters["map"])
     if filters.get("brawler"):
         where.append("b.my_brawler = ?"); params.append(filters["brawler"])
+    rsql, rparams = _role_in(filters, "b.my_brawler")
+    if rsql:
+        where.append(rsql); params.extend(rparams)
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
     conn = get_conn()
     rows = conn.execute(
@@ -1274,7 +1316,10 @@ def distinct_values(player: str | None = None) -> dict:
             return [r[0] for r in conn.execute(q, (normalize_tag(player),))]
         return [r[0] for r in conn.execute(f"SELECT DISTINCT {col} FROM battles WHERE {col} IS NOT NULL ORDER BY {col}")]
 
-    out = {"modes": col_distinct("mode"), "maps": col_distinct("map"), "brawlers": col_distinct("my_brawler")}
+    brawlers = col_distinct("my_brawler")
+    roles = sorted({r for b in brawlers for r in brawler_extra.roles_of(b)})
+    out = {"modes": col_distinct("mode"), "maps": col_distinct("map"),
+           "brawlers": brawlers, "roles": roles}
     conn.close()
     return out
 
@@ -1313,6 +1358,9 @@ def winrate_with_allies(filters: dict | None = None) -> list[dict]:
         where.append("b.map = ?"); params.append(filters["map"])
     if filters.get("brawler"):
         where.append("b.my_brawler = ?"); params.append(filters["brawler"])
+    rsql, rparams = _role_in(filters, "b.my_brawler")
+    if rsql:
+        where.append(rsql); params.extend(rparams)
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
     conn = get_conn()
     rows = conn.execute(
