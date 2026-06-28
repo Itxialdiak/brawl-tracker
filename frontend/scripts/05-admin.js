@@ -181,10 +181,16 @@ async function loadAdminPlayers() {
     const players = d.players || [];
     if (!players.length) { wrap.innerHTML = '<div class="admin-empty">No hay jugadores trackeados.</div>'; return; }
     wrap.innerHTML = players.map((p) => {
-      const orphan = (p.followers || 0) === 0, name = p.name || p.tag;
-      return `<div class="user-row ${orphan ? "orphan" : ""}">
-        <div class="user-name">${esc(name)}<span class="pl-tag">${esc(p.tag)}</span>${orphan ? '<span class="orphan-badge">huérfano</span>' : ""}${p.active ? "" : '<span class="off-badge">inactivo</span>'}</div>
-        <div class="pl-meta">${(p.battles || 0).toLocaleString("es-ES")} partidas · ${p.followers} seguidor${p.followers === 1 ? "" : "es"}</div>
+      const review = !!p.last_error, orphan = (p.followers || 0) === 0, name = p.name || p.tag;
+      const cls = review ? "needs-review" : (orphan ? "orphan" : "");
+      const badges = (review ? '<span class="review-badge" title="Revísalo o bórralo">necesita revisión</span>' : "")
+        + (orphan ? '<span class="orphan-badge">huérfano</span>' : "")
+        + (p.active ? "" : '<span class="off-badge">inactivo</span>');
+      const meta = `${(p.battles || 0).toLocaleString("es-ES")} partidas · ${p.followers} seguidor${p.followers === 1 ? "" : "es"}`
+        + (review ? ` · <span class="pl-err">⚠ ${esc(p.last_error)}</span>` : "");
+      return `<div class="user-row ${cls}">
+        <div class="user-name">${esc(name)}<span class="pl-tag">${esc(p.tag)}</span>${badges}</div>
+        <div class="pl-meta">${meta}</div>
         <div class="user-actions"><button class="danger" onclick="delAdminPlayer('${esc(p.tag)}', '${esc(name)}')">Borrar</button></div>
       </div>`;
     }).join("");

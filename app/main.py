@@ -45,7 +45,7 @@ from .config import REGISTRATION_OPEN, REPORT_QUOTA_ENABLED, MONTHLY_REPORT_LIMI
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
-_last_poll = {"new": None, "players": None, "error": None, "at": None}
+_last_poll = {"new": None, "players": None, "error": None, "not_found": None, "at": None}
 
 
 _last_profile_refresh: dict = {}  # tag -> timestamp del último refresco de perfil
@@ -75,16 +75,23 @@ async def _poll_player(tag: str) -> int:
 
 async def _poll_all() -> dict:
     tags = await asyncio.to_thread(db.active_player_tags)
-    total_new, errors = 0, []
+    total_new, errors, dead = 0, [], []
     for tag in tags:
         try:
             total_new += await _poll_player(tag)
+            await asyncio.to_thread(db.clear_player_error, tag)
+        except brawl_api.NotFound:
+            dead.append(tag)  # tag inexistente en la API: se omite, no es un error real
+            await asyncio.to_thread(db.set_player_error, tag, "El tag no existe en la API de Brawl Stars (404).")
         except Exception as e:  # noqa: BLE001
             errors.append(f"{tag}: {e}")
     _last_poll.update(new=total_new, players=len(tags),
                       error="; ".join(errors) if errors else None,
+                      not_found=dead or None,
                       at=datetime.now(timezone.utc).isoformat())
     msg = f"[poll] {len(tags)} jugador(es), {total_new} partidas nuevas"
+    if dead:
+        msg += f" | tags inexistentes (omitidos): {', '.join(dead)}"
     if errors:
         msg += f" | errores: {'; '.join(errors)}"
     print(msg)

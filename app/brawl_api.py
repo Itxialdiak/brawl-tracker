@@ -22,6 +22,11 @@ BASE = os.environ.get("BRAWL_API_BASE", "https://api.brawlstars.com/v1").rstrip(
 TOKEN = os.environ.get("BRAWL_API_TOKEN", "")
 
 
+class NotFound(RuntimeError):
+    """La API devuelve 404: el jugador/recurso no existe (tag mal escrito o cuenta
+    borrada/renombrada). Se trata aparte de los errores reales (red, token, IP)."""
+
+
 def using_proxy() -> bool:
     return "royaleapi.dev" in BASE
 
@@ -49,7 +54,8 @@ async def _get(path: str) -> dict:
             detail = j.get("message") or j.get("reason") or r.text
         except Exception:
             pass
-        raise RuntimeError(f"HTTP {r.status_code} ({BASE}): {detail}")
+        msg = f"HTTP {r.status_code} ({BASE}): {detail}"
+        raise NotFound(msg) if r.status_code == 404 else RuntimeError(msg)
     return r.json()
 
 

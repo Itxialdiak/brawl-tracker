@@ -180,6 +180,7 @@ def init_db():
     # Migración de bases antiguas: añade columnas nuevas si faltan.
     _ensure_column(cur, "players", "icon_id", "INTEGER")
     _ensure_column(cur, "players", "club_name", "TEXT")
+    _ensure_column(cur, "players", "last_error", "TEXT")  # último fallo de sondeo (404 / tag inexistente)
     _ensure_column(cur, "users", "country", "TEXT")
     _ensure_column(cur, "users", "ranking_order", "TEXT")
     _ensure_column(cur, "users", "is_admin", "INTEGER DEFAULT 0")
@@ -272,14 +273,30 @@ def list_players_admin() -> list[dict]:
     conn = get_conn()
     rows = conn.execute(
         """
-        SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name,
+        SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name, p.last_error,
                (SELECT COUNT(*) FROM battles b WHERE b.player_tag = p.tag) AS battles,
                (SELECT COUNT(*) FROM user_players up WHERE up.player_tag = p.tag) AS followers
-        FROM players p ORDER BY followers ASC, battles DESC, p.added_at DESC
+        FROM players p ORDER BY (p.last_error IS NOT NULL) DESC, followers ASC, battles DESC, p.added_at DESC
         """
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def set_player_error(tag: str, error: str) -> None:
+    """Marca un jugador con el fallo de su último sondeo (p. ej. tag inexistente / 404),
+    para que el panel de administración lo resalte como 'necesita revisión'."""
+    conn = get_conn()
+    conn.execute("UPDATE players SET last_error=? WHERE tag=?", (error, normalize_tag(tag)))
+    conn.commit(); conn.close()
+
+
+def clear_player_error(tag: str) -> None:
+    """Quita la marca de fallo cuando el jugador vuelve a sondearse bien."""
+    conn = get_conn()
+    conn.execute("UPDATE players SET last_error=NULL WHERE tag=? AND last_error IS NOT NULL",
+                 (normalize_tag(tag),))
+    conn.commit(); conn.close()
 
 
 def admin_remove_player(tag: str, delete_battles: bool = False) -> None:

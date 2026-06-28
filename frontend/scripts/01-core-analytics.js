@@ -393,6 +393,7 @@ async function loadStatus() {
   $("status").innerHTML = txt;
   if (!s.configured) { $("banner").classList.add("show"); $("banner").innerHTML = "Falta <code>BRAWL_API_TOKEN</code> en el <code>.env</code>. Configúralo y reinicia."; }
   else if (lp.error) { $("banner").classList.add("show"); $("banner").innerHTML = "Último sondeo con error: <code>" + esc(lp.error) + "</code>"; }
+  else if (lp.not_found && lp.not_found.length) { $("banner").classList.add("show"); $("banner").innerHTML = "Estos tags ya no existen en la API de Brawl Stars y se omiten en el sondeo: <code>" + esc(lp.not_found.join(", ")) + "</code>. Quítalos (en el desplegable de jugador o en Administración → Jugadores) para que no vuelva a aparecer este aviso."; }
   else { $("banner").classList.remove("show"); }
 }
 
