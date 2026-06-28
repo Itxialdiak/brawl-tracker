@@ -905,9 +905,23 @@ def log_ai_usage(kind: str, input_tokens: int, output_tokens: int) -> None:
     conn.commit(); conn.close()
 
 
-def admin_metrics() -> dict:
+# Tarifas de la API de IA por MILLÓN de tokens (USD): (entrada, salida). La salida = 5× la entrada.
+_AI_PRICES = {"haiku": (1.0, 5.0), "sonnet": (3.0, 15.0), "opus": (5.0, 25.0)}
+_USD_TO_EUR = 0.92      # conversión aproximada USD -> EUR
+
+
+def _ai_price(model: str):
+    """(precio_entrada, precio_salida) por millón de tokens según el modelo."""
+    m = (model or "").lower()
+    for k, v in _AI_PRICES.items():
+        if k in m:
+            return v
+    return _AI_PRICES["sonnet"]
+
+
+def admin_metrics(model: str = "claude-sonnet-4-6") -> dict:
     """Métricas globales del panel de admin: usuarios, jugadores, partidas, informes
-    y consumo de tokens de IA (total/mes/semana/día)."""
+    y consumo de IA (tokens entrada/salida + coste estimado en € según el modelo)."""
     conn = get_conn()
     _ensure_ai_usage(conn)
 
@@ -926,16 +940,22 @@ def admin_metrics() -> dict:
         reports = 0
     now = datetime.now(timezone.utc)
 
+    p_in, p_out = _ai_price(model)
+
     def toks(cutoff=None):
-        if cutoff is not None:
-            r = one("SELECT COALESCE(SUM(input_tokens+output_tokens),0), COUNT(*) FROM ai_usage WHERE at>=?",
-                    (cutoff.isoformat(),))
-        else:
-            r = one("SELECT COALESCE(SUM(input_tokens+output_tokens),0), COUNT(*) FROM ai_usage")
-        return {"tokens": r[0], "requests": r[1]}
+        where = " WHERE at>=?" if cutoff is not None else ""
+        params = (cutoff.isoformat(),) if cutoff is not None else ()
+        r = one("SELECT COALESCE(SUM(input_tokens),0), COALESCE(SUM(output_tokens),0), COUNT(*) "
+                "FROM ai_usage" + where, params)
+        inp, out = r[0], r[1]
+        cost_usd = inp / 1_000_000 * p_in + out / 1_000_000 * p_out
+        return {"input": inp, "output": out, "tokens": inp + out, "requests": r[2],
+                "cost_eur": round(cost_usd * _USD_TO_EUR, 4)}
 
     ai = {"total": toks(), "month": toks(now - timedelta(days=30)),
-          "week": toks(now - timedelta(days=7)), "day": toks(now - timedelta(days=1))}
+          "week": toks(now - timedelta(days=7)), "day": toks(now - timedelta(days=1)),
+          "model": model, "price_in_eur": round(p_in * _USD_TO_EUR, 2),
+          "price_out_eur": round(p_out * _USD_TO_EUR, 2)}
     conn.close()
     return {"users": users, "players": players, "active_players": active, "orphans": orphans,
             "battles": battles, "reports": reports, "ai": ai}

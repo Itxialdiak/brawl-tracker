@@ -221,20 +221,23 @@ async function loadAdminMetrics() {
     const m = await getJSON("/api/admin/metrics");
     const fmt = (n) => (n || 0).toLocaleString("es-ES");
     const card = (label, value, sub) => `<div class="metric-card"><div class="metric-v">${value}</div><div class="metric-l">${label}</div>${sub ? `<div class="metric-s">${sub}</div>` : ""}</div>`;
-    const tok = (o) => `${fmt((o || {}).tokens)} <small>tok</small>`;
-    const reqs = (o) => `${fmt((o || {}).requests)} peticiones`;
+    const eur = (o) => { const c = (o || {}).cost_eur || 0; return (c ? (c < 1 ? c.toFixed(4) : c.toFixed(2)) : "0") + " €"; };
+    const tokSub = (o) => `${fmt((o || {}).tokens)} tok · ${fmt((o || {}).requests)} pet.`;
     const general = card("Usuarios", fmt(m.users)) +
       card("Jugadores trackeados", fmt(m.active_players), `${fmt(m.orphans)} huérfanos · ${fmt(m.players)} en total`) +
       card("Partidas en BD", fmt(m.battles)) +
       card("Informes IA generados", fmt(m.reports));
     const ai = m.ai || {};
-    const aiCards = card("Total", tok(ai.total), reqs(ai.total)) +
-      card("Este mes", tok(ai.month), reqs(ai.month)) +
-      card("Esta semana", tok(ai.week), reqs(ai.week)) +
-      card("Hoy", tok(ai.day), reqs(ai.day));
-    wrap.innerHTML = `<div class="metrics-grid">${general}</div>
-      <h4 class="metrics-sub">Consumo de IA · tokens en peticiones a Claude</h4>
-      <div class="metrics-grid">${aiCards}</div>`;
+    const aiCards = card("Total", eur(ai.total), tokSub(ai.total)) +
+      card("Este mes", eur(ai.month), tokSub(ai.month)) +
+      card("Esta semana", eur(ai.week), tokSub(ai.week)) +
+      card("Hoy", eur(ai.day), tokSub(ai.day));
+    const modelName = (ai.model || "claude").replace("claude-", "").replace(/-/g, " ");
+    wrap.innerHTML = `<h4 class="metrics-sub">Métricas de la aplicación</h4>
+      <div class="metrics-grid">${general}</div>
+      <h4 class="metrics-sub">Métricas de Consumo · coste estimado de la IA</h4>
+      <div class="metrics-grid">${aiCards}</div>
+      <p class="hint" style="margin-top:10px;font-size:.78rem">Estimado con tarifas de <b>${esc(modelName)}</b> (${(ai.price_in_eur || 0).toFixed(2)} € entrada / ${(ai.price_out_eur || 0).toFixed(2)} € salida por millón de tokens; la salida cuesta 5× la entrada) y conversión aproximada USD→EUR.</p>`;
   } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
 }
 

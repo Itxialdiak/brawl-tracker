@@ -1524,3 +1524,16 @@
 .br-rec-card .nt { font-size: .67rem; opacity: .6; margin-top: 3px; line-height: 1.25; }
 .rec-empty { grid-column: 1/-1; font-size: .77rem; opacity: .5; padding: 16px; text-align: center; border: 1px dashed rgba(255,255,255,.12); border-radius: 10px; }
 @media (max-width: 760px) { .br-rec-cards { grid-template-columns: repeat(3, 1fr); } }
+
+
+/* === buffs / nerfs === */
+.chg-flag { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 6px; font-size: .72rem; font-weight: 800; line-height: 1; color: #0a0a1f; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
+.chg-flag.buff { background: #5be38a; }
+.chg-flag.nerf { background: #ff6b7e; }
+.chg-flag.rework { background: #6bc6ff; }
+.chg-flag.sm { position: absolute; top: -5px; left: -5px; min-width: 16px; height: 16px; font-size: .64rem; }
+.br-change { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 10px 14px; border-radius: 12px; font-size: .85rem; border: 1px solid rgba(255,255,255,.1); }
+.br-change.buff { background: rgba(91,227,138,.12); border-color: rgba(91,227,138,.35); }
+.br-change.nerf { background: rgba(255,107,126,.12); border-color: rgba(255,107,126,.35); }
+.br-change.rework { background: rgba(107,198,255,.12); border-color: rgba(107,198,255,.35); }
+.br-change small { opacity: .6; }

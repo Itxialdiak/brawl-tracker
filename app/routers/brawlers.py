@@ -5,7 +5,7 @@ import asyncio
 import re
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
-from .. import db, assets, brawler_extra, auth
+from .. import db, assets, brawler_extra, auth, buffs
 from ..api_common import _require_follow, _get_player_cached
 
 router = APIRouter()
@@ -87,6 +87,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     wr = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
     wr_by_name = {(r["label"] or "").upper(): r for r in wr}
     hc_ids = brawler_extra.hypercharge_ids()
+    bchanges = (await buffs.get_buffs()).get("changes") or {}   # buffs/nerfs recientes (no bloquea)
 
     items = []
     temporary = []
@@ -122,6 +123,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
             "your_winrate": w["winrate"] if w else None,
             "your_battles": w["total"] if w else 0,
+            "change": bchanges.get((name or "").upper()),
         }
         if brawler_extra.is_temporary(bid, name):    # colab temporal: a su apartado aparte
             item["temporary"] = True
@@ -226,13 +228,18 @@ async def api_recommendations(player: str = Query(None), kind: str = Query("comm
     catalog = await assets.get_brawler_catalog()
     if kind == "global":
         tl = await tierlist.global_tierlist()
-        community = None
     else:
         tl = await asyncio.to_thread(tierlist.get, "community")
-        community = await asyncio.to_thread(db.community_meta)
     collection = await asyncio.to_thread(db.get_collection, tag)
     wr_rows = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
-    return recommendations.build(kind, catalog, tl, community, collection, wr_rows)
+    changes = (await buffs.get_buffs()).get("changes") or {}
+    return recommendations.build(kind, catalog, tl, collection, wr_rows, changes)
+
+
+@router.get("/api/buffs")
+async def api_buffs(user: dict = Depends(auth.require_user)):
+    """Buffs/nerfs recientes por brawler (de las notas de parche, vía IA, no bloqueante)."""
+    return await buffs.get_buffs()
 
 
 @router.get("/api/account-rating")
@@ -318,6 +325,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
         "skin": skin,
         "gears_owned": len(c["gear_ids"]) if c else 0,
         "has_hypercharge": (name or "").upper() not in _NO_HYPERCHARGE,
+        "change": buffs.changes_map().get((name or "").upper()),
         "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
         "hypercharge": extra.get("hypercharge"),
         "stats_by_level": extra.get("stats_by_level"),

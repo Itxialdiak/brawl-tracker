@@ -8,6 +8,8 @@ const RANK_LABELS = { wood: "Madera", bronze: "Bronce", silver: "Plata", gold: "
 const RARITY_ORDER = { "Common": 0, "Rare": 1, "Super Rare": 2, "Epic": 3, "Mythic": 4, "Legendary": 5, "Ultra Legendary": 6 };
 
 function rankBadge(band) { return band ? `<span class="rank-badge ${band}" title="${RANK_LABELS[band] || ""}"></span>` : ""; }
+function chgIcon(k) { return k === "buff" ? "▲" : k === "nerf" ? "▼" : "↻"; }
+function chgLabel(k) { return k === "buff" ? "Buff reciente" : k === "nerf" ? "Nerf reciente" : "Rework reciente"; }
 function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return "var(--gold)"; if (v >= 25) return "var(--cyan)"; return "var(--muted)"; }
 
 async function loadBrawlers() {
@@ -226,8 +228,9 @@ function renderRecGroup(g) {
   const cards = (g.brawlers || []).map((b) => {
     const por = b.portrait ? `<img src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
     const tier = b.tier ? `<span class="rec-tier tier-${b.tier}">${b.tier}</span>` : "";
+    const chgFlag = b.change ? `<span class="chg-flag sm ${b.change.kind}" title="${esc(b.change.note || "")}">${chgIcon(b.change.kind)}</span>` : "";
     return `<div class="br-rec-card" onclick="showBrawlerDetail(${b.id})" title="${esc(b.name)}">
-      <div class="por">${por}${tier}</div>
+      <div class="por">${por}${tier}${chgFlag}</div>
       <div class="nm">${esc(b.name)}</div>
       <div class="nt">${esc(b.note || "")}</div>
     </div>`;
@@ -274,8 +277,10 @@ function renderBrawlerCard(b) {
     }
     loadout = items ? `<div class="br-loadout">${items}</div>` : "";
   }
+  const chg = b.change;
+  const buffFlag = chg ? `<span class="chg-flag ${chg.kind}" title="${esc(chg.note || chgLabel(chg.kind))}">${chgIcon(chg.kind)}</span>` : "";
   return `<div class="br-card ${b.owned ? "" : "locked"}" onclick="showBrawlerDetail(${b.id})">
-    ${pw}<div class="topright">${badge}${prestige}</div>
+    ${pw}<div class="topright">${buffFlag}${badge}${prestige}</div>
     ${por}
     <div class="nm">${esc(b.name)}</div>
     <div class="role">${b.role ? esc(b.role.toUpperCase()) : "—"}</div>
@@ -403,6 +408,8 @@ function renderBrawlerDetail(d) {
       `</div></div>`;
   }
 
+  const chg = d.change;
+  const chgHtml = chg ? `<div class="br-change ${chg.kind}"><span class="chg-flag ${chg.kind}">${chgIcon(chg.kind)}</span> <b>${chgLabel(chg.kind)}</b>${chg.note ? " · " + esc(chg.note) : ""}${chg.date ? ` <small>(${esc(chg.date)})</small>` : ""}</div>` : "";
   $("br-detail").innerHTML = `
     <div class="br-d-top">
       <div class="br-d-img"><div class="br-d-rarity" style="background:${rarColor};color:#0a0a1f">${esc(rar.name || "")}</div>${img}${d.skin && d.skin.name ? `<div class="br-d-skin">🎨 ${esc(d.skin.name)}</div>` : ""}</div>
@@ -414,6 +421,7 @@ function renderBrawlerDetail(d) {
         ${yourStats}
       </div>
     </div>
+    ${chgHtml}
     ${attackHtml}${passiveHtml}${superHtml}
     ${statsHtml}
     <div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>

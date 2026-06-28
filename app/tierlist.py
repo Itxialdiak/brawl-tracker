@@ -183,26 +183,76 @@ def _global_baseline() -> dict:
     return b
 
 
+def _load_global_store() -> dict | None:
+    try:
+        with open(_GLOBAL_STORE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _save_global_store(data: dict) -> None:
+    try:
+        os.makedirs(os.path.dirname(_GLOBAL_STORE), exist_ok=True)
+        with open(_GLOBAL_STORE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _age_seconds(data: dict) -> float:
+    """Antigüedad (s) de una tier list guardada según su campo 'updated' (ISO)."""
+    try:
+        up = (data or {}).get("updated")
+        return (time.time() - datetime.fromisoformat(up).timestamp()) if up else 1e12
+    except Exception:  # noqa: BLE001
+        return 1e12
+
+
+_refreshing = {"global": False}
+
+
+async def _refresh_global() -> None:
+    """Regenera la tier list global con la IA y la guarda. Corre en segundo plano."""
+    try:
+        data = await _global_compute(await _catalog_names())
+        if data:
+            _save_global_store(data)
+            _cache["global"] = (time.time(), data)
+    except Exception as e:  # noqa: BLE001
+        print(f"[tierlist global refresh] {e}")
+    finally:
+        _refreshing["global"] = False
+
+
+def _schedule_global_refresh() -> None:
+    """Lanza la regeneración en segundo plano si no hay otra en curso (no bloquea)."""
+    import asyncio
+    if _refreshing["global"]:
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    _refreshing["global"] = True
+    loop.create_task(_refresh_global())
+
+
 async def global_tierlist() -> dict:
+    """Responde SIEMPRE rápido: usa la versión en memoria o la guardada en disco. Si está
+    caducada (>24 h) o no existe, devuelve igualmente lo mejor disponible (o la de
+    referencia) y dispara la regeneración con IA EN SEGUNDO PLANO, sin bloquear la petición."""
     now = time.time()
     c = _cache.get("global")
-    if c and now - c[0] < _GLOBAL_TTL:
+    if c and now - c[0] < 600:                  # cache de memoria (10 min) -> instantáneo
         return c[1]
-    data = await _global_compute(await _catalog_names())
-    if data:
-        try:
-            os.makedirs(os.path.dirname(_GLOBAL_STORE), exist_ok=True)
-            with open(_GLOBAL_STORE, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False)
-        except Exception:  # noqa: BLE001
-            pass
-    else:
-        try:
-            with open(_GLOBAL_STORE, encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:  # noqa: BLE001
-            data = _global_baseline()
+    stored = _load_global_store()
+    if stored and _age_seconds(stored) < _GLOBAL_TTL:
+        _cache["global"] = (now, stored)        # guardada y fresca -> instantáneo, sin IA
+        return stored
+    data = stored or _global_baseline()         # caducada/ausente: responde ya y refresca detrás
     _cache["global"] = (now, data)
+    _schedule_global_refresh()
     return data
 
 

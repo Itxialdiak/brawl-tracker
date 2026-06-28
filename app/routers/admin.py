@@ -147,5 +147,6 @@ def api_admin_player_delete(tag: str, delete_battles: bool = Query(False),
 
 @router.get("/api/admin/metrics")
 def api_admin_metrics(admin: dict = Depends(auth.require_admin)):
-    """Usuarios, jugadores, partidas, informes y consumo de tokens de IA."""
-    return db.admin_metrics()
+    """Usuarios, jugadores, partidas, informes y consumo de IA (tokens + coste en €)."""
+    from .. import coach
+    return db.admin_metrics(coach.MODEL)
