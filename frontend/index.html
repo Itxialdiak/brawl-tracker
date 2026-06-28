@@ -336,8 +336,9 @@
   <header>
     <nav class="section-nav">
       <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawl Sensei</button>
-      <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
+      <button class="snav" data-section="tierlists" onclick="showSection('tierlists')">Tier Lists</button>
       <button class="snav" data-section="leagues" onclick="showSection('leagues')">Eventos</button>
+      <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
       <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
     <div class="toolbar">
@@ -477,16 +478,17 @@
         <p class="hint" style="margin-bottom:14px">Eventos en rotación ahora mismo, separados en <b>Copas</b> y <b>Competitivo</b> y ordenados por tu win rate. Para cada mapa te propongo tus tres mejores brawlers según tu historial.</p>
         <div id="rotation-grid"></div>
       </div>
-      <div class="grid">
-        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
-          <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
-          <div class="heat-wrap" id="heatmap"></div></div>
-      </div>
+      <div id="versatile-top13"></div>
       <div class="hub-block" id="hub-block" style="display:none">
         <h2 class="section-title" style="font-size:16px">Hub de Modos</h2>
         <p class="hint" style="margin-bottom:14px">Elige un modo para ver tu rendimiento, el meta de la comunidad (BrawlSensei) y todos sus mapas.</p>
         <div class="hub-buttons" id="hub-buttons"></div>
         <div class="hub-content" id="hub-content"></div>
+      </div>
+      <div class="grid">
+        <div class="panel" style="grid-column:1/-1"><h2><span class="dot"></span>Brawler × modo · win rate</h2>
+          <div class="hint">Con qué brawler rindes mejor en cada modo. Verde = vas fino, rojo = flojeas.</div>
+          <div class="heat-wrap" id="heatmap"></div></div>
       </div>
     </div>
 
@@ -649,6 +651,17 @@
   </section>
 
   <!-- ===================== SECCIÓN: GUÍA DE ESTRATEGIA (wiki) ===================== -->
+  <section class="app-section" id="section-tierlists">
+    <h2 class="section-title">Tier Lists</h2>
+    <p class="hint" style="max-width:720px">El meta de Brawl Stars en dos clasificaciones: la <b>Comunitaria</b> (generada con el rendimiento y el uso de todos los jugadores de BrawlSensei) y la <b>Global</b> (meta externo).</p>
+    <div class="tl-toggle">
+      <button class="tl-tab active" data-tl="community" onclick="loadTierlist('community')">Comunitaria</button>
+      <button class="tl-tab" data-tl="global" onclick="loadTierlist('global')">Global</button>
+    </div>
+    <p class="hint" id="tl-sub" style="margin:2px 0 14px"></p>
+    <div id="tl-board"></div>
+  </section>
+
   <section class="app-section" id="section-guide">
     <div class="wiki-layout">
       <aside class="wiki-nav" id="wiki-nav">
@@ -1104,6 +1117,15 @@
       <button class="modal-close" onclick="closeEvModal('reto-completed-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
       <h3 class="modal-title" id="reto-completed-title">Retos cumplidos</h3>
       <div id="reto-completed-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="hl-modal" onclick="if(event.target===this)closeEvModal('hl-modal')">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeEvModal('hl-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title" id="hl-modal-title">Top brawlers</h3>
+      <div class="modal-sub" id="hl-modal-sub"></div>
+      <div class="hl-list" id="hl-modal-body"></div>
     </div>
   </div>
 

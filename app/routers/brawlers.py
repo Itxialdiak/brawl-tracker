@@ -120,6 +120,50 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "brawlers": items, "top_brawlers": top_brawlers}
 
 
+@router.get("/api/versatile")
+async def api_versatile(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
+                        brawler: str = Query(None), role: str = Query(None),
+                        user: dict = Depends(auth.require_user)):
+    """Top 13 brawlers más VERSÁTILES: mayor win rate medio entre los modos jugados (el
+    mismo orden que la tabla Brawler × Modo), con retrato y cuerpo entero para el podio."""
+    tag = _require_follow(user, player)
+    f = {"player": tag, "mode": mode, "map": map, "brawler": brawler, "role": role}
+    vers = await asyncio.to_thread(db.versatile_brawlers, f, 13)
+    catalog = await assets.get_brawler_catalog()
+    by_id = catalog.get("by_id") or {}
+    by_name = {(c.get("name") or "").upper(): bid for bid, c in by_id.items()}
+    coll_by_id = {c["brawler_id"]: c for c in await asyncio.to_thread(db.get_collection, tag)}
+    from .. import skins
+    out = []
+    for pos, v in enumerate(vers):
+        bid = by_name.get((v["name"] or "").upper())
+        cat = by_id.get(bid) or {}
+        tb = {"id": bid, "name": cat.get("name") or v["name"], "avg_winrate": v["avg_winrate"],
+              "modes_played": v["modes_played"], "total": v["total"], "portrait": cat.get("portrait")}
+        if pos < 3 and bid:
+            ex = brawler_extra.get(bid)
+            image_full = ex.get("body_image") or cat.get("image_full")
+            c = coll_by_id.get(bid)
+            if c and c.get("skin_id") and c.get("skin_name"):
+                try:
+                    skin_url = skins.get_image(c["skin_id"]) or await skins.resolve_and_cache(c["skin_id"], cat.get("name"), c["skin_name"])
+                    if skin_url:
+                        image_full = skin_url
+                except Exception:  # noqa: BLE001
+                    pass
+            tb["image_full"] = image_full
+        out.append(tb)
+    return {"versatile": out}
+
+
+@router.get("/api/tierlist")
+def api_tierlist(kind: str = Query("community"), user: dict = Depends(auth.require_user)):
+    """Tier List del meta: 'community' (generada con los datos de BrawlSensei) o
+    'global' (meta externo)."""
+    from .. import tierlist
+    return tierlist.get(kind)
+
+
 @router.get("/api/account-rating")
 async def api_account_rating(player: str = Query(None), user: dict = Depends(auth.require_user)):
     """Solo el rating de cuenta (para mostrarlo también en Estadísticas, sin cargar

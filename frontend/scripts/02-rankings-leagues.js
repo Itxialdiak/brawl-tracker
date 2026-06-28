@@ -353,6 +353,7 @@ function showSection(name) {
   if (name === "guide") loadWikiTree();
   if (name === "admin") { loadAdminPending(); }
   if (name === "leagues") loadLeagues();
+  if (name === "tierlists") loadTierlist("community");
 }
 
 /* ---------- Pestañas ---------- */

@@ -419,6 +419,7 @@ const MODE_ES = {
   heist: "Atraco", hotZone: "Zona Restringida", knockout: "Noqueo", duels: "Duelos",
   soloShowdown: "Supervivencia (solo)", duoShowdown: "Supervivencia (dúo)",
   trioShowdown: "Supervivencia (trío)", brawlHockey: "Brawl Hockey", wipeout: "Destrucción",
+  siege: "Arena", Siege: "Arena",
   // Códigos crudos de la API (rotación) que difieren del canónico que guardamos:
   airHockey: "Brawl Hockey", deathmatch5v5: "Destrucción",
 };

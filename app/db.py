@@ -2640,3 +2640,32 @@ def delete_report(report_id: int) -> None:
     conn = get_conn()
     conn.execute("DELETE FROM reports WHERE id=?", (report_id,))
     conn.commit(); conn.close()
+
+
+def versatile_brawlers(filters, limit=13):
+    """Top brawlers por win rate MEDIO entre los modos jugados (versatilidad): el mismo
+    criterio con el que se ordena la tabla Brawler x Modo. Solo nombre + media (el router
+    lo enriquece con retrato/cuerpo entero)."""
+    where_sql, params = _build_filters(filters or {})
+    extra = "AND" if where_sql else "WHERE"
+    conn = get_conn()
+    rows = conn.execute(
+        f"SELECT my_brawler AS brawler, mode, "
+        f"SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins, "
+        f"SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses, COUNT(*) AS total "
+        f"FROM battles {where_sql} {extra} my_brawler IS NOT NULL AND mode IS NOT NULL "
+        f"GROUP BY my_brawler, mode", params).fetchall()
+    conn.close()
+    agg = {}
+    for r in rows:
+        wr = _winrate(r["wins"], r["losses"])
+        if wr is None:
+            continue
+        d = agg.setdefault(r["brawler"], {"wrs": [], "total": 0})
+        d["wrs"].append(wr)
+        d["total"] += r["total"]
+    out = [{"name": b, "avg_winrate": round(sum(d["wrs"]) / len(d["wrs"]), 1),
+            "modes_played": len(d["wrs"]), "total": d["total"]}
+           for b, d in agg.items() if d["wrs"]]
+    out.sort(key=lambda x: (-x["avg_winrate"], -x["modes_played"], -x["total"], x["name"]))
+    return out[:limit]

@@ -494,7 +494,7 @@
   .rot-cat-label:first-child { margin-top: 0; }
   .rot-cat-label span { font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); letter-spacing: 0; }
   /* Hub de Modos */
-  .hub-block { margin-top: 26px; }
+  .hub-block { margin: 26px 0; }
   .hub-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 12px; margin-bottom: 18px; }
   .hub-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 13px 10px; background: var(--panel); border: 1px solid var(--border); border-top: 3px solid var(--mc, var(--cyan)); border-radius: 12px; cursor: pointer; transition: transform .12s, background .15s, box-shadow .15s; }
   .hub-btn:hover { transform: translateY(-2px); background: var(--bg-elev); }
@@ -1266,7 +1266,7 @@
   .donut-svg { width:150px; height:150px; flex-shrink:0; }
   .donut-center-n { fill:var(--text); font-family:var(--display); font-weight:700; font-size:30px; text-anchor:middle; }
   .donut-center-l { fill:var(--muted); font-size:11px; text-anchor:middle; text-transform:uppercase; letter-spacing:.5px; }
-  .donut-legend { flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px; max-height:172px; overflow-y:auto; }
+  .donut-legend { flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px; }
   .dleg-row { display:flex; align-items:center; gap:8px; font-size:12.5px; }
   .dleg-dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
   .dleg-row img { width:18px; height:18px; object-fit:contain; flex-shrink:0; }
@@ -1459,3 +1459,35 @@
     .sq-brawler-opts { grid-template-columns: 1fr; }
     .sq-select, .sq-dd { max-width: none; }
   }
+
+
+  /* Modal Top 15 de destacados (Analíticas) */
+  .hl-clickable { cursor: pointer; transition: border-color .15s, transform .1s; }
+  .hl-clickable:hover { border-color: var(--cyan); transform: translateY(-1px); }
+  #hl-modal .modal-card { max-width: 760px; width: 92vw; }
+  .hl-list { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+  .hl-list.single { grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto; }
+  .hl-row-ic { width: 26px; height: 26px; flex: 0 0 auto; }
+  @media (max-width: 620px) { .hl-list { grid-template-columns: 1fr; } }
+  .hl-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--bg-elev); border-radius: 9px; }
+  .hl-rank { width: 22px; text-align: center; font-family: var(--display); color: var(--muted); font-size: 13px; flex: 0 0 auto; }
+  .hl-row img { width: 30px; height: 30px; border-radius: 7px; flex: 0 0 auto; }
+  .hl-row-name { flex: 1; font-size: 13.5px; }
+  .hl-row-val { font-weight: 700; font-size: 13px; white-space: nowrap; }
+
+
+  /* ===================== Tier Lists ===================== */
+  .tl-toggle { display: flex; gap: 8px; margin: 6px 0 12px; }
+  .tl-tab { background: var(--bg-elev); color: var(--muted); border: 1px solid var(--border); border-radius: 10px; padding: 9px 16px; font-family: var(--display); text-transform: uppercase; letter-spacing: .6px; font-size: 13px; cursor: pointer; }
+  .tl-tab.active { color: #0a0a1f; background: linear-gradient(135deg, var(--cyan), var(--blue)); border-color: transparent; }
+  .tl-row { display: flex; align-items: stretch; margin-bottom: 4px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .tl-label { width: 60px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 28px; font-weight: 800; color: #16131f; }
+  .tier-S .tl-label { background: #ff7b7b; } .tier-A .tl-label { background: #ffb067; }
+  .tier-B .tl-label { background: #ffd277; } .tier-C .tl-label { background: #ffe98a; }
+  .tier-D .tl-label { background: #c2e98e; } .tier-F .tl-label { background: #8fdf97; }
+  .tl-cells { flex: 1; display: flex; flex-wrap: wrap; gap: 3px; padding: 5px; background: var(--bg-elev); align-content: flex-start; min-height: 56px; }
+  .tl-brawler { width: 52px; height: 52px; border-radius: 7px; overflow: hidden; background: var(--panel); display: flex; align-items: center; justify-content: center; }
+  .tl-brawler img { width: 100%; height: 100%; object-fit: cover; }
+  .tl-noimg { font-family: var(--display); color: var(--muted); font-size: 18px; }
+  .tl-empty-row { color: var(--muted); font-size: 13px; padding: 8px; }
+  @media (max-width: 640px) { .tl-label { width: 44px; font-size: 22px; } .tl-brawler { width: 44px; height: 44px; } }

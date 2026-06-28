@@ -151,6 +151,28 @@ function renderTop13() {
     ${restHtml ? `<div class="top-mini-row">${restHtml}</div>` : ""}</div>`;
 }
 
+/* ==== Tier Lists (sección) ==== */
+const TL_TIERS = ["S", "A", "B", "C", "D", "F"];
+async function loadTierlist(kind) {
+  document.querySelectorAll(".tl-tab").forEach((b) => b.classList.toggle("active", b.dataset.tl === kind));
+  const board = $("tl-board");
+  if (board) board.innerHTML = `<div class="empty">Cargando…</div>`;
+  let d;
+  try { d = await getJSON("/api/tierlist?kind=" + kind); } catch (e) { return; }
+  if ($("tl-sub")) $("tl-sub").textContent = d.criteria || d.note || "";
+  const any = TL_TIERS.some((t) => (d.tiers[t] || []).length);
+  if (!any) { if (board) board.innerHTML = `<div class="empty">${esc(d.note || "Sin datos todavía.")}</div>`; return; }
+  if (board) board.innerHTML = TL_TIERS.map((t) => {
+    const cells = (d.tiers[t] || []).map((b) => {
+      const p = brawlerPortrait(b.name);
+      const img = p ? `<img src="${p}" alt="" onerror="this.style.display='none'">` : `<span class="tl-noimg">${esc((b.name || "?")[0])}</span>`;
+      const tip = b.winrate != null ? `${b.name} · ${b.winrate}% WR · uso ${b.pick_rate}%` : b.name;
+      return `<div class="tl-brawler" title="${esc(tip)}">${img}</div>`;
+    }).join("");
+    return `<div class="tl-row tier-${t}"><div class="tl-label">${t}</div><div class="tl-cells">${cells || '<span class="tl-empty-row">—</span>'}</div></div>`;
+  }).join("");
+}
+
 function brComparator(a, b) {
   const byTro = (b.trophies || 0) - (a.trophies || 0);
   switch (brSort) {

@@ -39,6 +39,16 @@ def api_vs(player: str = Query(None), mode: str = Query(None), map: str = Query(
     return db.winrate_vs(_filters(player, mode, map, brawler, None, role))
 
 
+@router.get("/api/allies")
+def api_allies(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
+               brawler: str = Query(None), role: str = Query(None),
+               user: dict = Depends(auth.require_user)):
+    """Win rate con cada brawler aliado (cuando van en tu equipo). Para el modal de
+    'Mejores aliados' de Analíticas."""
+    _require_follow(user, player)
+    return db.winrate_with_allies(_filters(player, mode, map, brawler, None, role))
+
+
 @router.get("/api/report")
 def api_report(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
                brawler: str = Query(None), role: str = Query(None),
