@@ -175,3 +175,29 @@ def _condition_effort(c, player_tag):
         p = max(0.2, min(0.9, wr / 100.0))
         return min(1.0, -math.log10(max(1e-6, p ** target)) / 6.0)
     return 0.5
+
+
+# --------------------------- Gating del Sensei ---------------------------
+# Tras un informe, no se puede pedir otro hasta haber cumplido casi todos sus retos
+# (quedan <= SENSEI_GATE_REMAINING activos), o hasta que pasen SENSEI_GATE_DAYS días, o si
+# eres admin. "Resetear entrenamiento" (abandonar los activos) requiere los días o ser admin.
+
+SENSEI_GATE_REMAINING = 4
+SENSEI_GATE_DAYS = 10
+
+
+def sensei_gate(user_id, is_admin=False):
+    """¿Puede el usuario pedir un nuevo informe al Sensei? Devuelve el estado del candado."""
+    active = db.count_active_sensei_retos(user_id)
+    last_at = db.last_sensei_reto_at(user_id)
+    days = None
+    if last_at:
+        try:
+            days = (datetime.now(timezone.utc) - datetime.fromisoformat(last_at)).days
+        except Exception:  # noqa: BLE001
+            days = None
+    fresh = last_at is None
+    can = bool(is_admin or fresh or active <= SENSEI_GATE_REMAINING or (days is not None and days >= SENSEI_GATE_DAYS))
+    can_reset = bool(is_admin or (days is not None and days >= SENSEI_GATE_DAYS))
+    return {"can_generate": can, "active": active, "threshold": SENSEI_GATE_REMAINING,
+            "days_since": days, "gate_days": SENSEI_GATE_DAYS, "can_reset": can_reset, "is_admin": bool(is_admin)}

@@ -356,7 +356,7 @@ function showSection(name) {
 }
 
 /* ---------- Pestañas ---------- */
-const FILTER_TABS = { stats: "tab-stats", coach: "tab-coach" };  // dónde tienen sentido los filtros
+const FILTER_TABS = { stats: "tab-stats" };  // filtros compartidos solo en Analíticas (el Sensei tiene su propio cuestionario)
 function placeFilters(name) {
   const fb = $("filters-bar");
   if (!fb) return;
@@ -377,7 +377,7 @@ function switchTab(name) {
   if (name === "history") loadHistory(true);
   if (name === "report") { loadReport(); loadRotation(); }
   if (name === "rankings") loadRankings();
-  if (name === "coach") { showCoachListView(); loadReports(); }
+  if (name === "coach") { showCoachListView(); loadSenseiQuiz(); loadReports(); }
   if (name === "brawlers") loadBrawlers();
   if (name === "retos") loadRetos();
 }

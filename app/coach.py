@@ -11,7 +11,7 @@ El modelo se puede cambiar con ANTHROPIC_MODEL (por defecto claude-sonnet-4-6).
 from __future__ import annotations
 
 import os
-from . import db
+from . import db, retos
 
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
@@ -24,15 +24,19 @@ def configured() -> bool:
 
 
 SYSTEM = (
-    "Eres un entrenador experto de Brawl Stars. Analizas las estadísticas REALES "
-    "de un jugador y das consejos accionables, concretos y honestos, en castellano. "
-    "Básate en los datos que te dan; no inventes cifras ni partidas. Puedes usar "
-    "conocimiento general del juego (estilo de cada brawler, posicionamiento, control "
-    "de mapa, gestión de rangos) pero conéctalo siempre con los patrones del jugador. "
-    "Señala fortalezas, debilidades, malos emparejamientos, mapas y modos flojos, y qué "
-    "brawlers potenciar o dejar de pickear. Estructura la respuesta en secciones cortas "
-    "con un título en **negrita** cada una. No uses tablas. Si una muestra es pequeña, "
-    "dilo en vez de sacar conclusiones tajantes."
+    "Eres un Sensei (maestro entrenador) de Brawl Stars: cercano, motivador y honesto. "
+    "Analizas las estadísticas REALES de un alumno y le devuelves un plan de mejora en "
+    "castellano. Básate SOLO en los datos que te dan; no inventes cifras ni partidas. "
+    "Puedes usar conocimiento general del juego (estilo de cada brawler, posicionamiento, "
+    "control de mapa, gestión de rangos) pero conéctalo siempre con los patrones del alumno "
+    "y, cuando te lo den, con el meta comunitario. El informe tiene TRES partes, cada una con "
+    "su título en **negrita**: (1) un apartado APRECIATIVO que reconozca méritos y logros "
+    "reales del alumno según los datos (sé específico, motiva); (2) ÁREAS DE MEJORA concretas "
+    "(debilidades, malos emparejamientos, mapas y modos flojos, brawlers a dejar de pickear) "
+    "con ejemplos claros de cómo corregirlas; (3) QUÉ PRACTICAR: pasos accionables y medibles, "
+    "tanto para corregir lo flojo como para potenciar y asentar lo que ya hace bien. No uses "
+    "tablas. Si una muestra es "
+    "pequeña, dilo en vez de sacar conclusiones tajantes. Sé concreto y breve en cada sección."
 )
 
 
@@ -41,15 +45,17 @@ def scope_label_from(filters: dict) -> str:
     if filters.get("brawler"): parts.append(filters["brawler"])
     if filters.get("mode"): parts.append(f"modo {filters['mode']}")
     if filters.get("map"): parts.append(f"mapa {filters['map']}")
+    if filters.get("role"): parts.append(f"rol {filters['role']}")
     return " · ".join(parts) if parts else "Cuenta entera"
 
 
-def build_summary(player: str, brawler=None, mode=None, map=None) -> dict:
+def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> dict:
     """Reúne las estadísticas relevantes en texto compacto para el prompt."""
     f = {"player": player}
     if brawler: f["brawler"] = brawler
     if mode: f["mode"] = mode
     if map: f["map"] = map
+    if role: f["role"] = role
     ov = db.overview(f)
     by_mode = db.winrate_by("mode", f)
     by_map = db.winrate_by("map", f)
@@ -111,20 +117,33 @@ def build_summary(player: str, brawler=None, mode=None, map=None) -> dict:
         L.append("(Nota: ten en cuenta las copas: perder contra un rival con muchas más copas que el jugador "
                  "es esperable; perder contra uno de copas similares o menores sí señala un problema de match-up.)")
 
+    # Meta comunitario (BrawlSensei) como contexto para el Sensei.
+    try:
+        cm = db.community_meta(mode) if mode else db.community_meta()
+        cmb = [b for b in cm.get("brawlers", []) if (b.get("games") or 0) >= 5 and b.get("winrate") is not None]
+        if cmb:
+            top = sorted(cmb, key=lambda b: -b["winrate"])[:8]
+            L.append(f"Meta comunitario ({'en ' + mode if mode else 'general'}, win rate medio {cm.get('winrate', 's/d')}%): "
+                     + "; ".join(f"{b['brawler']} {b['winrate']}% (uso {b['pick_rate']}%)" for b in top))
+    except Exception:  # noqa: BLE001
+        pass
+
     return {"total": ov["total"], "text": "\n".join(L)}
 
 
-async def generate_report(player: str, filters: dict) -> tuple[str, str]:
-    """Genera (nombre, contenido) de un informe. El nombre lo decide Claude según el ámbito."""
+async def generate_report(player: str, filters: dict) -> tuple[str, str, list]:
+    """Genera (nombre, contenido, retos) de un informe del Sensei. El nombre lo decide
+    Claude; los retos son misiones medibles (validadas contra el catálogo de métricas).
+    Si Claude no devuelve un JSON de retos válido, se usan retos deterministas."""
     label = scope_label_from(filters)
     if not API_KEY:
         raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env. Saca una en https://console.anthropic.com y reinicia.")
 
-    summary = build_summary(player, filters.get("brawler"), filters.get("mode"), filters.get("map"))
+    summary = build_summary(player, filters.get("brawler"), filters.get("mode"), filters.get("map"), filters.get("role"))
     if summary["total"] < MIN_BATTLES:
         content = (f"Aún hay muy pocos datos ({summary['total']} partidas) en este ámbito ({label}) "
                    "para un análisis útil. Deja el tracker corriendo y juega más partidas, o amplía los filtros.")
-        return f"Informe · {label}", content
+        return f"Informe · {label}", content, []
 
     try:
         from anthropic import AsyncAnthropic
@@ -133,15 +152,23 @@ async def generate_report(player: str, filters: dict) -> tuple[str, str]:
 
     client = AsyncAnthropic(api_key=API_KEY)
     msg = await client.messages.create(
-        model=MODEL, max_tokens=1600, system=SYSTEM,
+        model=MODEL, max_tokens=3000, system=SYSTEM,
         messages=[{
             "role": "user",
             "content": (
                 f"Ámbito del informe: {label}.\n"
-                "En la PRIMERA línea escribe exactamente 'TÍTULO: ' seguido de un nombre corto y "
-                "descriptivo para este informe según el ámbito (por ejemplo 'Informe general', "
-                "'Análisis de Shelly', 'Rendimiento en Atrapagemas', 'Shelly en Mina Rocosa'). "
-                "Desde la segunda línea en adelante, el análisis y los consejos.\n\n"
+                "En la PRIMERA línea escribe exactamente 'TÍTULO: ' seguido de un nombre corto, temático y "
+                "evocador (NO uses 'Informe general'; por ejemplo 'La senda de Shelly', 'Maestría en "
+                "Atrapagemas', 'El muro de los rivales veloces'). Desde la segunda línea, el informe "
+                "(apreciación, áreas de mejora y qué practicar).\n\n"
+                "Al final del todo, en una línea aparte, escribe exactamente '<<<RETOS>>>' y debajo SOLO un "
+                "JSON válido (sin markdown, sin ```): un array de 8 a 20 retos personalizados (más cuantas más "
+                "cosas haya que mejorar), repartidos EXACTAMENTE mitad y mitad: una mitad de MEJORA (corregir lo "
+                "que el alumno hace mal) y la otra mitad POTENCIATIVOS (asentar y reforzar lo que ya hace bien). "
+                "Objetivos realistas y alcanzables jugando, basados en mis datos reales, y orientados a mejorar "
+                "justo las métricas de las que habla el informe. Cada reto: {\"name\": str, "
+                "\"theme\": \"1-2 palabras\", \"description\": str, \"difficulty\": 1-5, \"conditions\": [...]}.\n"
+                + _retos_spec() + "\n\n"
                 "Estas son mis estadísticas en Brawl Stars:\n\n" + summary["text"]
             ),
         }],
@@ -151,7 +178,15 @@ async def generate_report(player: str, filters: dict) -> tuple[str, str]:
     except Exception:  # noqa: BLE001
         pass
     text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
-    return _split_title(text, label)
+
+    report_text, retos_json = text, ""
+    if "<<<RETOS>>>" in text:
+        report_text, retos_json = text.split("<<<RETOS>>>", 1)
+    name, body = _split_title(report_text.strip(), label)
+    new_retos = _parse_retos(retos_json)
+    if len(new_retos) < 3:
+        new_retos = fallback_retos(player, filters)
+    return name, body, new_retos[:20]
 
 
 def _split_title(text: str, fallback: str) -> tuple[str, str]:
@@ -161,6 +196,86 @@ def _split_title(text: str, fallback: str) -> tuple[str, str]:
         body = "\n".join(lines[1:]).strip()
         return (name or f"Informe · {fallback}"), body
     return f"Informe · {fallback}", text
+
+
+# --------------------------- Retos generados por el informe ---------------------------
+
+def _retos_spec() -> str:
+    """Texto para el prompt: qué métricas puede usar Claude (las únicas verificables)."""
+    lines = ["Métricas permitidas para las condiciones (USA SOLO ESTAS; son las únicas que la app puede "
+             "verificar desde las partidas, NUNCA datos manuales como daño infligido):"]
+    for key, m in retos.METRICS.items():
+        extra = ' — admite "min_games"' if m.get("min_games") else ""
+        lines.append(f'- "{key}": {m["label"]}{extra}.')
+    lines.append('Cada condición es un objeto: {"metric": <clave de arriba>, "target": <número>, '
+                 '"scope": {"brawler"?: "NOMBRE", "mode"?: "gemGrab", "map"?: "Nombre"}, "min_games"?: <entero>}. '
+                 'El "scope" es opcional; usa los nombres EXACTOS de brawler/modo/mapa que aparecen en mis datos.')
+    return "\n".join(lines)
+
+
+def _parse_retos(raw: str) -> list:
+    """Extrae y valida la lista de retos del JSON de Claude. Descarta lo que no cuadre
+    con el catálogo de métricas."""
+    import json as _json
+    raw = (raw or "").strip()
+    i, j = raw.find("["), raw.rfind("]")
+    if i == -1 or j == -1 or j < i:
+        return []
+    try:
+        items = _json.loads(raw[i:j + 1])
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for it in items if isinstance(items, list) else []:
+        if not isinstance(it, dict):
+            continue
+        ok, _ = retos.validate_conditions(it.get("conditions"))
+        if not ok:
+            continue
+        try:
+            diff = int(it.get("difficulty") or 3)
+        except (TypeError, ValueError):
+            diff = 3
+        out.append({"name": str(it.get("name") or "Reto del Sensei")[:80],
+                    "theme": str(it.get("theme") or "Sensei")[:30],
+                    "description": str(it.get("description") or ""),
+                    "difficulty": min(5, max(1, diff)),
+                    "conditions": it["conditions"]})
+    return out
+
+
+def fallback_retos(player: str, filters: dict) -> list:
+    """Retos deterministas desde los datos del jugador (red de seguridad si Claude no
+    devuelve un JSON válido). Mitad para potenciar fortalezas, mitad para corregir debilidades."""
+    f = {"player": player}
+    for k in ("brawler", "mode", "map"):
+        if filters.get(k):
+            f[k] = filters[k]
+    out = []
+    played = [r for r in db.winrate_by("brawler", f) if (r.get("total") or 0) >= 4 and r.get("winrate") is not None]
+    strong = sorted(played, key=lambda r: -r["winrate"])[:3]
+    weak = sorted(played, key=lambda r: r["winrate"])[:3]
+    for r in strong:
+        out.append({"name": f"Domina con {r['label']}", "theme": "Fortaleza",
+                    "description": f"Sigues ganando con {r['label']} ({r['winrate']}%). Mantén el nivel.",
+                    "difficulty": 2, "conditions": [{"metric": "wins", "target": 10, "scope": {"brawler": r["label"]}}]})
+    for r in weak:
+        out.append({"name": f"Mejora con {r['label']}", "theme": "Debilidad",
+                    "description": f"Tu win rate con {r['label']} es {r['winrate']}%. Súbelo con práctica.",
+                    "difficulty": 4, "conditions": [{"metric": "winrate", "target": min(99, int(r["winrate"]) + 10),
+                                                     "min_games": 15, "scope": {"brawler": r["label"]}}]})
+    for r in sorted([r for r in db.winrate_by("mode", f) if r.get("winrate") is not None and (r.get("total") or 0) >= 4],
+                    key=lambda r: r["winrate"])[:2]:
+        out.append({"name": f"Remonta en {r['label']}", "theme": "Modo",
+                    "description": f"En {r['label']} vas al {r['winrate']}%. Gana partidas para mejorarlo.",
+                    "difficulty": 3, "conditions": [{"metric": "wins", "target": 8, "scope": {"mode": r["label"]}}]})
+    out.append({"name": "Constancia", "theme": "Hábito",
+                "description": "Juega para mantener datos frescos y medir tu progreso.",
+                "difficulty": 1, "conditions": [{"metric": "games", "target": 25}]})
+    out.append({"name": "Caza de estrellas", "theme": "Impacto",
+                "description": "Sé decisivo y llévate la estrella del partido.",
+                "difficulty": 3, "conditions": [{"metric": "star_player", "target": 10}]})
+    return out
 
 
 # --------------------------- Fase 6: resumen de evento para seguidores ---------------------------

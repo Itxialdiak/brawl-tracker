@@ -1387,3 +1387,70 @@
     .retos-counters { grid-template-columns: 1fr; }
     .rc-row3 { grid-template-columns: 1fr; }
   }
+
+
+  /* ============================ Sensei (dojo) ============================ */
+  .dojo { display: flex; gap: 18px; align-items: stretch; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px; margin-bottom: 18px; }
+  .dojo-portrait { flex: 0 0 auto; }
+  .dojo-img { width: 110px; height: 110px; border-radius: 16px; object-fit: cover; border: 1px solid var(--border);
+    box-shadow: 0 6px 22px rgba(0,0,0,.3); display: block; }
+  .dojo-img.fallback { display: flex; align-items: center; justify-content: center; font-size: 56px;
+    background: radial-gradient(circle at 50% 35%, rgba(245,184,42,.18), var(--bg-elev)); }
+  .dojo-speech { flex: 1; min-width: 0; }
+  .dojo-welcome { font-family: var(--display); font-size: 16px; line-height: 1.5; margin-bottom: 12px; }
+  .dojo-q { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .dojo-quiz { margin-bottom: 12px; }
+  .dojo-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .dojo-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .dojo-btn.gated { opacity: .6; cursor: not-allowed; }
+  .dojo-btn .btn-label { line-height: 1; }
+  .dojo-gate { margin-top: 12px; padding: 11px 13px; border-radius: 10px; background: rgba(245,184,42,.08);
+    border: 1px solid rgba(245,184,42,.3); font-size: 13px; line-height: 1.5; display: flex; align-items: center;
+    gap: 10px; flex-wrap: wrap; }
+  .gate-msg { color: var(--text); }
+  .gate-reset { font-size: 12px; padding: 6px 10px; }
+
+  /* cajas de informe con botones descargar / borrar */
+  .report-item { justify-content: space-between; align-items: center; cursor: default; gap: 10px; }
+  .report-item-main { display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0; cursor: pointer; }
+  .report-item.ready .report-item-main:hover .report-name { color: var(--cyan); }
+  .report-item-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .ri-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: transparent;
+    cursor: pointer; font-size: 14px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+    transition: background .12s, border-color .12s, color .12s; }
+  .ri-btn.dl { color: var(--cyan); }
+  .ri-btn.dl:hover { background: rgba(63,225,255,.14); border-color: var(--cyan); }
+  .ri-btn.del { color: var(--loss); }
+  .ri-btn.del:hover { background: rgba(255,77,115,.14); border-color: var(--loss); }
+
+  @media (max-width: 640px) {
+    .dojo { flex-direction: column; align-items: center; text-align: center; }
+    .dojo-img { width: 96px; height: 96px; }
+  }
+
+
+  /* ===== Sensei: cuestionario del maestro + textos ===== */
+  .dojo-welcome { font-family: var(--body); font-size: 13.5px; line-height: 1.6; color: var(--text); }
+  .dojo-welcome p { margin-bottom: 9px; }
+  .dojo-welcome p:last-child { margin-bottom: 0; color: var(--muted); }
+  .dojo-q { font-size: 13px; color: var(--muted); margin: 2px 0 14px; }
+  .dojo-pre { font-family: var(--display); font-size: 15px; margin: 8px 0 12px; color: var(--gold); }
+  .sq-q { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; }
+  .sq-label { font-size: 14px; color: var(--text); }
+  .sq-select { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-family: var(--body); font-size: 14px; max-width: 440px; }
+  .sq-dd { max-width: 440px; }
+  .sq-dd.ms .ms-trigger { width: 100%; }
+  /* dropdown de brawler: ancho y en 3 columnas en PC, 1 en móvil */
+  .sq-brawler-panel { width: min(660px, 88vw); }
+  .sq-brawler-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+
+  /* botón rojo del modal de confirmación */
+  .btn.danger { background: linear-gradient(135deg, var(--loss), #c0263f); border: none; }
+
+  @media (max-width: 640px) {
+    .sq-brawler-panel { width: 88vw; }
+    .sq-brawler-opts { grid-template-columns: 1fr; }
+    .sq-select, .sq-dd { max-width: none; }
+  }

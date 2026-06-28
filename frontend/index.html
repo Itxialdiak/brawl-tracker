@@ -547,13 +547,42 @@
     <div class="tab-content" id="tab-coach">
       <h2 class="section-title">Sensei</h2>
       <div id="coach-list-view">
-        <div class="panel coach">
-          <div class="hint">Genera un informe con el jugador y los filtros (brawler / modo / mapa) seleccionados arriba. Claude lo analiza y le pone nombre según el ámbito. Se guarda y puedes consultarlo cuando quieras; mientras se genera puedes seguir navegando por la app.</div>
-          <div class="row-top">
-            <button class="btn" id="coach-btn">Analizar mis datos</button>
-            <span class="coach-hint" id="coach-hint"></span>
+        <div class="dojo">
+          <div class="dojo-portrait">
+            <img src="/static/media/sensei.png" alt="El Sensei" class="dojo-img" id="dojo-img" onerror="senseiImgFallback(this)">
+          </div>
+          <div class="dojo-speech" id="dojo-welcome">
+            <p>Has cruzado el umbral del dojo. Aquí te espera <b>Brawl Sensei</b>, un viejo zorro que estudia tu forma de jugar, te señala el camino a la mejora y te enseña a recorrerlo por tu cuenta.</p>
+            <p>Antes de nada, te hará unas preguntas. No es papeleo: necesita saber qué te interesa y qué quieres pulir para preparar una lección hecha a tu medida, porque no enseña igual a quien persigue copas que a quien sueña con dominar un modo.</p>
+            <p>Entonces se sienta a leer tu juego (lo que tus batallas dicen de ti) y te imparte la lección: un resumen claro de tus fortalezas, tus malos hábitos y cuál es tu siguiente paso, junto con unos retos pensados para que entrenes justo eso.</p>
+            <p>Y queda la norma del dojo: el maestro no malgasta su sabiduría con quien no practica. Hasta que no superes los retos de tu última lección, no habrá otra. Y si pretendes saltarte el trabajo, tendrás que armarte de paciencia… el maestro se retira diez días antes de volver a recibirte. Así que respira hondo, vuelve al tatami y termina tus tareas. Aquí se progresa entrenando, no pidiendo clases.</p>
           </div>
         </div>
+        <div class="dojo-quiz" id="dojo-quiz">
+          <p class="dojo-q">El Sensei te pregunta <span class="hint-inline">— responde a lo que te interese, o déjalo en blanco para un análisis de toda tu cuenta</span></p>
+          <div class="sq-q">
+            <label class="sq-label">¿Sobre qué brawlers quieres consultar?</label>
+            <div class="sq-dd ms" id="sq-brawler"></div>
+          </div>
+          <div class="sq-q">
+            <label class="sq-label">¿Algún modo de juego en particular?</label>
+            <select class="sq-select" id="sq-mode"><option value="">Cualquiera</option></select>
+          </div>
+          <div class="sq-q">
+            <label class="sq-label">¿Te preocupa algún mapa en especial?</label>
+            <select class="sq-select" id="sq-map"><option value="">Cualquiera</option></select>
+          </div>
+          <div class="sq-q">
+            <label class="sq-label">¿Quieres explorar algún estilo en particular?</label>
+            <select class="sq-select" id="sq-role"><option value="">Cualquiera</option></select>
+          </div>
+        </div>
+        <p class="dojo-pre">Ahora, en base a tus intereses, prepararé una lección para ti.</p>
+        <div class="row-top dojo-actions">
+          <button class="btn dojo-btn" id="coach-btn">Preparar lección</button>
+          <span class="coach-hint" id="coach-hint"></span>
+        </div>
+        <div class="dojo-gate" id="dojo-gate" style="display:none"></div>
         <div class="report-list" id="report-list"></div>
       </div>
       <div id="coach-detail-view" style="display:none">
@@ -1075,6 +1104,18 @@
       <button class="modal-close" onclick="closeEvModal('reto-completed-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
       <h3 class="modal-title" id="reto-completed-title">Retos cumplidos</h3>
       <div id="reto-completed-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirm-modal" onclick="if(event.target===this)closeConfirm()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeConfirm()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title" id="confirm-title">¿Seguro?</h3>
+      <p class="modal-sub" id="confirm-msg"></p>
+      <div class="modal-actions">
+        <button class="ghost" onclick="closeConfirm()">Cancelar</button>
+        <button class="btn danger" id="confirm-ok">Borrar</button>
+      </div>
     </div>
   </div>
 

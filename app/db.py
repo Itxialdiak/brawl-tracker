@@ -2589,3 +2589,37 @@ def reto_metric(player_tag, since, until, metric, scope) -> float:
         return val or 0
     finally:
         conn.close()
+
+
+def count_active_sensei_retos(user_id) -> int:
+    conn = get_conn()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM reto_participants rp JOIN retos r ON r.id=rp.reto_id "
+        "WHERE rp.user_id=? AND rp.status='active' AND r.source='sensei'", (user_id,)).fetchone()[0]
+    conn.close()
+    return n
+
+
+def last_sensei_reto_at(user_id):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT MAX(created_at) AS t FROM retos WHERE source='sensei' AND target_user_id=?", (user_id,)).fetchone()
+    conn.close()
+    return row["t"] if row else None
+
+
+def reset_sensei_training(user_id) -> int:
+    """Abandona los retos del Sensei activos del usuario (reinicia el entrenamiento)."""
+    conn = get_conn()
+    cur = conn.execute(
+        "UPDATE reto_participants SET status='abandoned' WHERE user_id=? AND status='active' "
+        "AND reto_id IN (SELECT id FROM retos WHERE source='sensei')", (user_id,))
+    n = cur.rowcount
+    conn.commit(); conn.close()
+    return n
+
+
+def delete_report(report_id: int) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM reports WHERE id=?", (report_id,))
+    conn.commit(); conn.close()

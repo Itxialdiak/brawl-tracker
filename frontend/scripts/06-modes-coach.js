@@ -13,7 +13,7 @@ $("player-select").addEventListener("change", async () => {
   if (activeTab === "rankings") loadRankings();
   if (activeTab === "history") await loadHistory(true);
   brawlersData = null; if (activeTab === "brawlers") loadBrawlers();
-  loadReports();
+  senseiSel = { brawler: [] }; loadSenseiQuiz(); loadReports();
 });
 async function onFilterChange() {
   applyScope(); await loadStats();
@@ -440,17 +440,109 @@ function heatmap(ct) {
   return h + `</tbody></table>`;
 }
 
-/* ---------- Consejos: informes guardados + generación en segundo plano ---------- */
+/* ---------- Sensei: informes + retos generados + candado de entrenamiento ---------- */
 let reportPollTimer = null;
+let senseiGate = null;
+
+function senseiImgFallback(img) {
+  // Si no existe media/sensei.png, deja un dojo con emoji en su lugar.
+  const ph = document.createElement("div");
+  ph.className = "dojo-img fallback";
+  ph.textContent = "🥋";
+  img.replaceWith(ph);
+}
+
+/* ----- Cuestionario del Sensei (dropdowns propios, no los filtros compartidos) ----- */
+let senseiSel = { brawler: [] };
+
+async function loadSenseiQuiz() {
+  if (!currentPlayer) return;
+  let f;
+  try { f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer)); } catch (e) { return; }
+  senseiSel.brawler = senseiSel.brawler.filter((v) => (f.brawlers || []).includes(v));
+  buildSenseiBrawler(f.brawlers || []);
+  fillSenseiSelect("sq-mode", f.modes || [], (v) => (typeof modeName === "function" ? modeName(v) : v));
+  fillSenseiSelect("sq-map", f.maps || [], (v) => v);
+  fillSenseiSelect("sq-role", f.roles || [], (v) => v);
+}
+function fillSenseiSelect(id, values, labelFn) {
+  const el = $(id);
+  if (!el) return;
+  const cur = el.value;
+  el.innerHTML = `<option value="">Cualquiera</option>` + (values || []).map((v) => `<option value="${esc(v)}">${esc(labelFn(v))}</option>`).join("");
+  if ((values || []).includes(cur)) el.value = cur;
+}
+function senseiBrawlerLabel() {
+  const s = senseiSel.brawler;
+  return !s.length ? "Todos" : s.length === 1 ? msOption("brawler", s[0]).label : s.length + " seleccionados";
+}
+function buildSenseiBrawler(values) {
+  const el = $("sq-brawler");
+  if (!el) return;
+  const sel = senseiSel.brawler;
+  const opts = (values || []).map((v) => {
+    const o = msOption("brawler", v);
+    return `<label class="ms-opt"><input type="checkbox" value="${esc(v)}" ${sel.includes(v) ? "checked" : ""} onchange="senseiBrawlerToggle(this.value, this.checked)">${o.img}<span>${esc(o.label)}</span></label>`;
+  }).join("");
+  el.innerHTML = `<button class="ms-trigger" type="button" onclick="toggleSenseiBrawler(event)">${esc(senseiBrawlerLabel())}</button>
+    <div class="ms-panel sq-brawler-panel">
+      <div class="ms-actions"><button type="button" onclick="senseiBrawlerAll(true)">✓ Todos</button><button type="button" onclick="senseiBrawlerAll(false)">Ninguno</button></div>
+      <div class="ms-options sq-brawler-opts">${opts || '<div class="ms-empty">Sin datos todavía</div>'}</div>
+    </div>`;
+}
+function toggleSenseiBrawler(ev) {
+  if (ev) ev.stopPropagation();
+  const el = $("sq-brawler"), open = el.classList.contains("open");
+  document.querySelectorAll(".ms.open").forEach((m) => m.classList.remove("open"));
+  if (!open) el.classList.add("open");
+}
+function senseiBrawlerToggle(v, ch) {
+  const s = senseiSel.brawler, i = s.indexOf(v);
+  if (ch && i < 0) s.push(v); else if (!ch && i >= 0) s.splice(i, 1);
+  const t = $("sq-brawler").querySelector(".ms-trigger"); if (t) t.textContent = senseiBrawlerLabel();
+}
+function senseiBrawlerAll(all) {
+  const checks = $("sq-brawler").querySelectorAll(".ms-options input");
+  senseiSel.brawler = all ? Array.from(checks).map((c) => c.value) : [];
+  checks.forEach((c) => { c.checked = all; });
+  const t = $("sq-brawler").querySelector(".ms-trigger"); if (t) t.textContent = senseiBrawlerLabel();
+}
+
+/* ----- Modal de confirmación genérico ----- */
+function confirmModal(message, onYes, okLabel) {
+  $("confirm-msg").textContent = message;
+  const ok = $("confirm-ok");
+  ok.textContent = okLabel || "Borrar";
+  ok.onclick = () => { closeConfirm(); if (onYes) onYes(); };
+  openEvModal("confirm-modal");
+}
+function closeConfirm() { closeEvModal("confirm-modal"); }
 
 async function loadReports() {
   if (!currentPlayer) return;
-  let reports;
-  try { reports = await getJSON("/api/reports?player=" + encodeURIComponent(currentPlayer)); } catch (e) { return; }
+  let reports, status;
+  try {
+    [reports, status] = await Promise.all([
+      getJSON("/api/reports?player=" + encodeURIComponent(currentPlayer)),
+      getJSON("/api/sensei/status").catch(() => null),
+    ]);
+  } catch (e) { return; }
+  senseiGate = status && status.gate ? status.gate : null;
   renderReportList(reports);
   const generating = reports.some((r) => r.status === "generating");
   setCoachButton(generating);
+  renderSenseiGate(generating);
   if (generating) startReportPolling(); else stopReportPolling();
+}
+
+function renderSenseiGate(generating) {
+  const g = $("dojo-gate");
+  if (!g) return;
+  if (generating || !senseiGate || senseiGate.can_generate) { g.style.display = "none"; g.innerHTML = ""; return; }
+  g.style.display = "";
+  let html = `<span class="gate-msg">🔒 El maestro no da otra lección hasta que practiques: tienes <b>${senseiGate.active}</b> tareas pendientes (deben bajar a ${senseiGate.threshold}).</span>`;
+  if (senseiGate.can_reset) html += ` <button class="ghost danger gate-reset" onclick="resetSenseiTraining()">Resetear misiones</button>`;
+  g.innerHTML = html;
 }
 function renderReportList(reports) {
   const el = $("report-list");
@@ -461,10 +553,18 @@ function renderReportList(reports) {
 function reportItem(r) {
   const date = fmtDateTime(r.created_at);
   if (r.status === "generating")
-    return `<div class="report-item generating"><span class="report-date">${date}</span><span class="report-name gen">Generando informe<span class="dots"></span></span></div>`;
-  if (r.status === "error")
-    return `<div class="report-item error" onclick="openReport(${r.id})"><span class="report-date">${date}</span><span class="report-name err">Error al generar · ver detalle</span></div>`;
-  return `<div class="report-item ready" onclick="openReport(${r.id})"><span class="report-date">${date}</span><span class="report-name">${esc(r.name || r.scope_label || "Informe")}</span></div>`;
+    return `<div class="report-item generating"><span class="report-date">${date}</span><span class="report-name gen">El Sensei medita<span class="dots"></span></span></div>`;
+  const isErr = r.status === "error";
+  const name = isErr
+    ? `<span class="report-name err">Error al generar · ver detalle</span>`
+    : `<span class="report-name">${esc(r.name || r.scope_label || "Informe")}</span>`;
+  return `<div class="report-item ${isErr ? "error" : "ready"}">
+    <div class="report-item-main" onclick="openReport(${r.id})"><span class="report-date">${date}</span>${name}</div>
+    <div class="report-item-actions">
+      ${isErr ? "" : `<button class="ri-btn dl" title="Descargar informe maquetado" onclick="event.stopPropagation();downloadReport(${r.id})">⭳</button>`}
+      <button class="ri-btn del" title="Borrar informe" onclick="event.stopPropagation();askDeleteReport(${r.id})">🗑</button>
+    </div>
+  </div>`;
 }
 async function openReport(id) {
   let r;
@@ -481,20 +581,66 @@ function showCoachListView() { const d = $("coach-detail-view"), l = $("coach-li
 function backToReportList() { showCoachListView(); loadReports(); }
 async function generateReport() {
   if (!currentPlayer) return;
-  const body = { player: currentPlayer, brawler: filterSel.brawler.join(",") || null, mode: filterSel.mode.join(",") || null, map: filterSel.map.join(",") || null };
+  const body = {
+    player: currentPlayer,
+    brawler: senseiSel.brawler.join(",") || null,
+    mode: ($("sq-mode") && $("sq-mode").value) || null,
+    map: ($("sq-map") && $("sq-map").value) || null,
+    role: ($("sq-role") && $("sq-role").value) || null,
+  };
   setCoachButton(true);
   try {
     const r = await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json();
-    if (!r.ok) { alert(data.error || "No se pudo iniciar el informe."); setCoachButton(false); return; }
-  } catch (e) { alert("Error de red al iniciar el informe."); setCoachButton(false); return; }
+    if (!r.ok) { wikiToast(data.error || "No se pudo consultar al Sensei.", "err"); await loadReports(); return; }
+  } catch (e) { wikiToast("Error de red al consultar al Sensei.", "err"); setCoachButton(false); return; }
+  wikiToast("El Sensei medita tu informe y tus retos…", "ok");
   await loadReports();
 }
 function setCoachButton(generating) {
   const btn = $("coach-btn");
   if (!btn) return;
-  btn.disabled = generating;
-  btn.innerHTML = generating ? `<span class="spinner"></span>Analizando` : "Analizar mis datos";
+  const gated = senseiGate && !senseiGate.can_generate && !generating;
+  btn.disabled = generating || gated;
+  btn.classList.toggle("gated", !!gated);
+  btn.innerHTML = generating ? `<span class="spinner"></span><span class="btn-label">Preparando</span>`
+    : gated ? "Tienes tareas" : "Preparar lección";
+}
+
+async function downloadReport(id) {
+  let r;
+  try { r = await getJSON("/api/reports/" + id); } catch (e) { return; }
+  const title = r.name || r.scope_label || "Informe del Sensei";
+  const bodyHTML = esc(r.content || "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(title)} · Brawl Sensei</title>`
+    + `<style>body{font-family:system-ui,Segoe UI,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.65;color:#1a1a2e;background:#f6f5ff}`
+    + `h1{font-size:25px;color:#5b54ff;margin:0 0 4px} .meta{color:#8a86a8;font-size:13px;margin-bottom:24px}`
+    + `strong{color:#c64ff0} .card{background:#fff;border:1px solid #ececff;border-radius:16px;padding:30px 34px;box-shadow:0 6px 26px rgba(80,60,200,.08)}</style>`
+    + `</head><body><div class="card"><h1>🥋 ${esc(title)}</h1>`
+    + `<div class="meta">${esc(r.scope_label || "")} · ${fmtDateTime(r.created_at)} · Brawl Sensei</div><div>${bodyHTML}</div></div></body></html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "sensei-" + (title.replace(/[^\wáéíóúñ]+/gi, "_").toLowerCase().slice(0, 40) || "informe") + ".html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function askDeleteReport(id) {
+  confirmModal("¿Borrar este informe del Sensei? No se puede deshacer (los retos que generó seguirán en la sección Retos).", async () => {
+    const r = await fetch("/api/reports/" + id, { method: "DELETE" });
+    if (!r.ok) { wikiToast("No se pudo borrar el informe.", "err"); return; }
+    loadReports();
+  }, "Borrar informe");
+}
+
+async function resetSenseiTraining() {
+  if (!confirm("¿Resetear el entrenamiento? Se abandonarán tus retos del Sensei activos para poder pedir un informe nuevo.")) return;
+  const r = await fetch("/api/sensei/reset", { method: "POST" });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { wikiToast(d.error || "No se pudo resetear.", "err"); return; }
+  wikiToast("Entrenamiento reseteado. El Sensei te espera.", "ok");
+  loadReports();
 }
 function startReportPolling() { if (!reportPollTimer) reportPollTimer = setInterval(loadReports, 3000); }
 function stopReportPolling() { if (reportPollTimer) { clearInterval(reportPollTimer); reportPollTimer = null; } }
