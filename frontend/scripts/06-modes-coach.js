@@ -13,7 +13,7 @@ $("player-select").addEventListener("change", async () => {
   if (activeTab === "rankings") loadRankings();
   if (activeTab === "history") await loadHistory(true);
   brawlersData = null; if (activeTab === "brawlers") loadBrawlers();
-  senseiSel = { brawler: [] }; loadSenseiQuiz(); loadReports();
+  senseiSel = { brawler: [], mode: [], map: [], role: [] }; loadSenseiQuiz(); loadReports();
 });
 async function onFilterChange() {
   applyScope(); await loadStats();
@@ -553,59 +553,55 @@ function senseiImgFallback(img) {
 }
 
 /* ----- Cuestionario del Sensei (dropdowns propios, no los filtros compartidos) ----- */
-let senseiSel = { brawler: [] };
+let senseiSel = { brawler: [], mode: [], map: [], role: [] };
 
 async function loadSenseiQuiz() {
   if (!currentPlayer) return;
   let f;
   try { f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer)); } catch (e) { return; }
-  senseiSel.brawler = senseiSel.brawler.filter((v) => (f.brawlers || []).includes(v));
-  buildSenseiBrawler(f.brawlers || []);
-  fillSenseiSelect("sq-mode", f.modes || [], (v) => (typeof modeName === "function" ? modeName(v) : v));
-  fillSenseiSelect("sq-map", f.maps || [], (v) => v);
-  fillSenseiSelect("sq-role", f.roles || [], (v) => v);
+  const av = { brawler: f.brawlers || [], mode: f.modes || [], map: f.maps || [], role: f.roles || [] };
+  ["brawler", "mode", "map", "role"].forEach((k) => {
+    senseiSel[k] = (senseiSel[k] || []).filter((v) => av[k].includes(v));
+    buildSenseiMs(k, av[k]);
+  });
 }
-function fillSenseiSelect(id, values, labelFn) {
-  const el = $(id);
+function senseiMsLabel(kind) {
+  const s = senseiSel[kind] || [];
+  if (!s.length) return kind === "brawler" ? "Todos" : "Cualquiera";
+  return s.length === 1 ? msOption(kind, s[0]).label : s.length + " seleccionados";
+}
+function buildSenseiMs(kind, values) {
+  const el = $("sq-" + kind);
   if (!el) return;
-  const cur = el.value;
-  el.innerHTML = `<option value="">Cualquiera</option>` + (values || []).map((v) => `<option value="${esc(v)}">${esc(labelFn(v))}</option>`).join("");
-  if ((values || []).includes(cur)) el.value = cur;
-}
-function senseiBrawlerLabel() {
-  const s = senseiSel.brawler;
-  return !s.length ? "Todos" : s.length === 1 ? msOption("brawler", s[0]).label : s.length + " seleccionados";
-}
-function buildSenseiBrawler(values) {
-  const el = $("sq-brawler");
-  if (!el) return;
-  const sel = senseiSel.brawler;
+  const sel = senseiSel[kind] || (senseiSel[kind] = []);
   const opts = (values || []).map((v) => {
-    const o = msOption("brawler", v);
-    return `<label class="ms-opt"><input type="checkbox" value="${esc(v)}" ${sel.includes(v) ? "checked" : ""} onchange="senseiBrawlerToggle(this.value, this.checked)">${o.img}<span>${esc(o.label)}</span></label>`;
+    const o = msOption(kind, v);
+    return `<label class="ms-opt"><input type="checkbox" value="${esc(v)}" ${sel.includes(v) ? "checked" : ""} onchange="senseiMsToggle('${kind}', this.value, this.checked)">${o.img}<span>${esc(o.label)}</span></label>`;
   }).join("");
-  el.innerHTML = `<button class="ms-trigger" type="button" onclick="toggleSenseiBrawler(event)">${esc(senseiBrawlerLabel())}</button>
-    <div class="ms-panel sq-brawler-panel">
-      <div class="ms-actions"><button type="button" onclick="senseiBrawlerAll(true)">✓ Todos</button><button type="button" onclick="senseiBrawlerAll(false)">Ninguno</button></div>
-      <div class="ms-options sq-brawler-opts">${opts || '<div class="ms-empty">Sin datos todavía</div>'}</div>
+  const panelCls = kind === "brawler" ? "sq-brawler-panel" : (kind === "mode" ? "sq-ms-panel narrow" : "sq-ms-panel");
+  const optsCls = kind === "brawler" ? "sq-brawler-opts" : (kind === "mode" ? "sq-opts-1" : "sq-opts-2");
+  el.innerHTML = `<button class="ms-trigger" type="button" onclick="toggleSenseiMs('${kind}', event)">${esc(senseiMsLabel(kind))}</button>
+    <div class="ms-panel ${panelCls}">
+      <div class="ms-actions"><button type="button" onclick="senseiMsAll('${kind}', true)">✓ Todos</button><button type="button" onclick="senseiMsAll('${kind}', false)">Ninguno</button></div>
+      <div class="ms-options ${optsCls}">${opts || '<div class="ms-empty">Sin datos todavía</div>'}</div>
     </div>`;
 }
-function toggleSenseiBrawler(ev) {
+function toggleSenseiMs(kind, ev) {
   if (ev) ev.stopPropagation();
-  const el = $("sq-brawler"), open = el.classList.contains("open");
+  const el = $("sq-" + kind), open = el.classList.contains("open");
   document.querySelectorAll(".ms.open").forEach((m) => m.classList.remove("open"));
   if (!open) el.classList.add("open");
 }
-function senseiBrawlerToggle(v, ch) {
-  const s = senseiSel.brawler, i = s.indexOf(v);
+function senseiMsToggle(kind, v, ch) {
+  const s = senseiSel[kind], i = s.indexOf(v);
   if (ch && i < 0) s.push(v); else if (!ch && i >= 0) s.splice(i, 1);
-  const t = $("sq-brawler").querySelector(".ms-trigger"); if (t) t.textContent = senseiBrawlerLabel();
+  const t = $("sq-" + kind).querySelector(".ms-trigger"); if (t) t.textContent = senseiMsLabel(kind);
 }
-function senseiBrawlerAll(all) {
-  const checks = $("sq-brawler").querySelectorAll(".ms-options input");
-  senseiSel.brawler = all ? Array.from(checks).map((c) => c.value) : [];
+function senseiMsAll(kind, all) {
+  const checks = $("sq-" + kind).querySelectorAll(".ms-options input");
+  senseiSel[kind] = all ? Array.from(checks).map((c) => c.value) : [];
   checks.forEach((c) => { c.checked = all; });
-  const t = $("sq-brawler").querySelector(".ms-trigger"); if (t) t.textContent = senseiBrawlerLabel();
+  const t = $("sq-" + kind).querySelector(".ms-trigger"); if (t) t.textContent = senseiMsLabel(kind);
 }
 
 /* ----- Modal de confirmación genérico ----- */
@@ -684,9 +680,9 @@ async function generateReport() {
   const body = {
     player: currentPlayer,
     brawler: senseiSel.brawler.join(",") || null,
-    mode: ($("sq-mode") && $("sq-mode").value) || null,
-    map: ($("sq-map") && $("sq-map").value) || null,
-    role: ($("sq-role") && $("sq-role").value) || null,
+    mode: senseiSel.mode.join(",") || null,
+    map: senseiSel.map.join(",") || null,
+    role: senseiSel.role.join(",") || null,
   };
   setCoachButton(true);
   try {

@@ -1570,8 +1570,10 @@ def winrate_with_allies(filters: dict | None = None) -> list[dict]:
     return out
 
 
-def crosstab(filters: dict | None = None, top_brawlers: int = 8) -> dict:
-    """Tabla cruzada brawler x modo con win rate (para el mapa de calor)."""
+def crosstab(filters: dict | None = None, top_brawlers: int | None = None) -> dict:
+    """Tabla cruzada brawler x modo con win rate (para el mapa de calor). Por defecto
+    incluye TODOS los brawlers con alguna partida (ordenados por nº de partidas); la tabla
+    crece lo necesario. `top_brawlers` opcional para acotar."""
     filters = filters or {}
     where_sql, params = _build_filters(filters)
     conn = get_conn()
@@ -1591,7 +1593,8 @@ def crosstab(filters: dict | None = None, top_brawlers: int = 8) -> dict:
         btot[r["brawler"]] = btot.get(r["brawler"], 0) + r["total"]
         mset[r["mode"]] = mset.get(r["mode"], 0) + r["total"]
         cells[f"{r['brawler']}|{r['mode']}"] = {"winrate": _winrate(r["wins"], r["losses"]), "total": r["total"]}
-    brawlers = [b for b, _ in sorted(btot.items(), key=lambda kv: -kv[1])][:top_brawlers]
+    ranked = [b for b, _ in sorted(btot.items(), key=lambda kv: -kv[1])]
+    brawlers = ranked[:top_brawlers] if top_brawlers else ranked
     modes = [m for m, _ in sorted(mset.items(), key=lambda kv: -kv[1])]
     return {"brawlers": brawlers, "modes": modes, "cells": cells}
 

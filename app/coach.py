@@ -72,7 +72,7 @@ def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> 
     L.append(
         f"Global: {ov['total']} partidas, win rate {wr if wr is not None else 's/d'}%, "
         f"{ov['wins']}V-{ov['losses']}D, balance de trofeos {ov['trophy_delta']:+d}, "
-        f"jugador estrella {ov['star_rate'] if ov['star_rate'] is not None else 's/d'}%."
+        f"jugador estelar {ov['star_rate'] if ov['star_rate'] is not None else 's/d'}%."
     )
     if ov.get("annotated"):
         L.append(
@@ -86,7 +86,7 @@ def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> 
                      key=lambda r: -r["total"])[:12]
         if top:
             L.append("Por brawler (más jugados): " + "; ".join(
-                f"{r['label']} {r['winrate']}% en {r['total']}p (estrella {r['star_rate'] if r['star_rate'] is not None else 's/d'}%)"
+                f"{r['label']} {r['winrate']}% en {r['total']}p (estelar {r['star_rate'] if r['star_rate'] is not None else 's/d'}%)"
                 for r in top))
 
     mok = [r for r in by_mode if r["winrate"] is not None]
@@ -273,7 +273,7 @@ def fallback_retos(player: str, filters: dict) -> list:
                 "description": "Juega para mantener datos frescos y medir tu progreso.",
                 "difficulty": 1, "conditions": [{"metric": "games", "target": 25}]})
     out.append({"name": "Caza de estrellas", "theme": "Impacto",
-                "description": "Sé decisivo y llévate la estrella del partido.",
+                "description": "Sé decisivo y conviértete en el jugador estelar.",
                 "difficulty": 3, "conditions": [{"metric": "star_player", "target": 10}]})
     return out
 

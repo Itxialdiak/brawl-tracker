@@ -42,7 +42,7 @@ function retoCondText(c) {
   const sc = c.scope || {};
   const bits = [];
   if (sc.brawler) bits.push("con " + (Array.isArray(sc.brawler) ? sc.brawler.join(", ") : sc.brawler));
-  if (sc.mode) bits.push("en " + (Array.isArray(sc.mode) ? sc.mode.join(", ") : sc.mode));
+  if (sc.mode) bits.push("en " + (Array.isArray(sc.mode) ? sc.mode.map(modeName).join(", ") : modeName(sc.mode)));
   if (sc.map) bits.push("en " + (Array.isArray(sc.map) ? sc.map.join(", ") : sc.map));
   const s = bits.length ? " " + bits.join(" ") : "";
   const t = parseInt(c.target, 10) || 0;
@@ -53,9 +53,17 @@ function retoCondText(c) {
     case "win_streak": return `Encadena ${t} victorias${s}`;
     case "distinct_brawlers": return `Gana con ${t} brawlers distintos${s}`;
     case "trophies": return `Suma ${t} copas${s}`;
-    case "star_player": return `Sé estrella del partido ${t} veces${s}`;
+    case "star_player": return `Sé jugador estelar ${t} veces${s}`;
     default: return c.metric;
   }
+}
+// Traduce nombres de modo crudos (heist, hotZone…) que aparezcan en texto libre (p. ej. el
+// nombre de un reto generado por el Sensei) a su nombre en español.
+function translateModes(text) {
+  if (!text) return text;
+  let out = String(text);
+  for (const k in MODE_ES) out = out.replace(new RegExp("\\b" + k + "\\b", "gi"), MODE_ES[k]);
+  return out;
 }
 
 /* ---------- carga de la pestaña ---------- */
@@ -127,7 +135,7 @@ function retoCardHTML(r, mine) {
       ${r.theme ? `<span class="reto-theme-chip">${esc(r.theme)}</span>` : ""}
       ${statusTag}${relTag}
     </div>
-    <div class="reto-card-name">${esc(r.name)}</div>
+    <div class="reto-card-name">${esc(translateModes(r.name))}</div>
     <div class="reto-card-diff">${stars(diff)} <span class="reto-diff-l">${RETO_DIFF[diff]}</span></div>
     <div class="reto-card-conds">${condSummary(r.conditions)}</div>
     ${progHTML}
@@ -204,9 +212,9 @@ function renderRetoDetail(d) {
       ${d.source === "sensei" ? `<span class="reto-tag sensei">🥋 del Sensei</span>` : ""}
       ${d.status === "closed" ? `<span class="reto-tag closed">Cerrado</span>` : ""}
     </div>
-    <h3 class="rcd-name">${esc(d.name)}</h3>
+    <h3 class="rcd-name">${esc(translateModes(d.name))}</h3>
     ${diffBlock}
-    ${d.description ? `<p class="rcd-desc">${esc(d.description)}</p>` : ""}
+    ${d.description ? `<p class="rcd-desc">${esc(translateModes(d.description))}</p>` : ""}
     ${d.time_limit_days ? `<div class="hint-inline">⏳ Plazo: ${d.time_limit_days} días desde que te apuntas.</div>` : ""}
     <h4 class="rcd-h">Condiciones <span class="hint-inline">(se verifican solas desde tus partidas)</span></h4>
     <div class="rcd-conds">${condsHTML}</div>

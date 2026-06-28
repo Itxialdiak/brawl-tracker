@@ -30,8 +30,8 @@ METRICS = {
                           "help": "Gana al menos una vez con cierto número de brawlers diferentes."},
     "trophies":          {"label": "Sumar copas",                   "unit": "copas",     "scope": True,  "min_games": False,
                           "help": "Suma copas netas (lo que ganas menos lo que pierdes) durante el reto."},
-    "star_player":       {"label": "Ser estrella del partido",      "unit": "veces",     "scope": True,  "min_games": False,
-                          "help": "Te nombran estrella del partido el número de veces indicado."},
+    "star_player":       {"label": "Ser jugador estelar",      "unit": "veces",     "scope": True,  "min_games": False,
+                          "help": "Te nombran jugador estelar el número de veces indicado."},
 }
 
 MAX_CONDITIONS = 8
@@ -81,7 +81,7 @@ def describe_condition(c) -> str:
         "win_streak": f"Encadena {ti} victorias seguidas{scope}",
         "distinct_brawlers": f"Gana con {ti} brawlers distintos{scope}",
         "trophies": f"Suma {ti} copas{scope}",
-        "star_player": f"Sé estrella del partido {ti} veces{scope}",
+        "star_player": f"Sé jugador estelar {ti} veces{scope}",
     }.get(metric, f"{METRICS.get(metric, {}).get('label', '?')}: {t}")
 
 
