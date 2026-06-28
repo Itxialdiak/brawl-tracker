@@ -1267,3 +1267,123 @@
   .dleg-row img { width:18px; height:18px; object-fit:contain; flex-shrink:0; }
   .dleg-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dleg-val { font-family:var(--display); font-weight:700; color:var(--muted); }
+
+
+  /* ============================ Retos ============================ */
+  .retos-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 22px; }
+  .reto-counter { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px;
+    color: var(--text); font-family: var(--body); transition: border-color .15s, transform .1s; }
+  .reto-counter:hover { border-color: var(--cyan); transform: translateY(-1px); }
+  .reto-counter.sensei:hover { border-color: var(--gold); }
+  .reto-counter .rc-n { font-family: var(--display); font-size: 30px; font-weight: 700; line-height: 1; }
+  .reto-counter.sensei .rc-n { color: var(--gold); }
+  .reto-counter.comm .rc-n { color: var(--cyan); }
+  .reto-counter .rc-l { font-size: 12px; color: var(--muted); text-align: center; }
+
+  .retos-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 10px; flex-wrap: wrap; }
+  .reto-section-h { font-family: var(--display); text-transform: uppercase; letter-spacing: 1px; font-size: 15px; }
+  .retos-filters { display: flex; gap: 8px; }
+  .retos-filters select { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; padding: 7px 10px; font-family: var(--body); font-size: 12.5px; }
+
+  .reto-group { margin-bottom: 16px; }
+  .reto-group-h { font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+  .reto-count { display: inline-block; background: var(--border); color: var(--text); border-radius: 20px;
+    padding: 1px 8px; font-size: 11px; margin-left: 4px; }
+  .reto-theme { margin-bottom: 14px; }
+  .reto-theme-h { font-family: var(--display); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--magenta); margin-bottom: 8px; }
+  .lg-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+
+  .reto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .reto-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 13px;
+    cursor: pointer; transition: border-color .15s, transform .1s; display: flex; flex-direction: column; gap: 7px; }
+  .reto-card:hover { border-color: var(--cyan); transform: translateY(-1px); }
+  .reto-card-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 18px; }
+  .reto-theme-chip { font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--magenta);
+    border: 1px solid var(--border); border-radius: 20px; padding: 1px 8px; }
+  .reto-card-name { font-family: var(--display); font-size: 15px; font-weight: 600; line-height: 1.2; }
+  .reto-card-diff { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
+  .reto-stars { color: var(--gold); letter-spacing: 1px; }
+  .reto-stars .off { color: var(--border); }
+  .reto-card-conds { display: flex; flex-wrap: wrap; gap: 4px; }
+  .reto-cond-chip { font-size: 10.5px; color: var(--muted); background: var(--bg-elev); border-radius: 7px; padding: 2px 7px; }
+  .reto-card-foot { display: flex; gap: 10px; margin-top: 2px; font-size: 11px; color: var(--muted); }
+  .reto-meta-i { display: inline-flex; align-items: center; gap: 3px; }
+
+  .reto-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; border-radius: 20px; padding: 1px 8px; font-weight: 600; }
+  .reto-tag.done { background: rgba(54,224,160,.16); color: var(--win); }
+  .reto-tag.active { background: rgba(63,225,255,.14); color: var(--cyan); }
+  .reto-tag.closed { background: var(--border); color: var(--muted); }
+  .reto-tag.sensei { background: rgba(245,184,42,.16); color: var(--gold); }
+
+  .reto-bar { height: 6px; background: var(--bg-elev); border-radius: 6px; overflow: hidden; }
+  .reto-bar span { display: block; height: 100%; background: var(--cyan); border-radius: 6px; }
+  .reto-bar.done span { background: var(--win); }
+
+  /* detalle */
+  .rcd-head { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+  .rcd-name { font-family: var(--display); font-size: 22px; margin-bottom: 8px; }
+  .rcd-diff { font-size: 13px; margin-bottom: 4px; }
+  .hint-inline { color: var(--muted); font-size: 12px; }
+  .rcd-desc { color: var(--muted); font-size: 13.5px; line-height: 1.5; margin: 8px 0; }
+  .rcd-h { font-family: var(--display); text-transform: uppercase; letter-spacing: 1px; font-size: 12px;
+    color: var(--muted); margin: 16px 0 8px; }
+  .rcd-conds { display: flex; flex-direction: column; gap: 8px; }
+  .rcd-cond { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+  .rcd-cond.done { border-color: rgba(54,224,160,.4); }
+  .rcd-cond-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 6px; }
+  .rcd-cond.done .rcd-cond-top { margin-bottom: 0; }
+  .rcd-val { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .rcd-val.done { color: var(--win); }
+  .rcd-avance { margin: 12px 0; padding: 11px 13px; border-radius: 10px; background: rgba(63,225,255,.08);
+    border: 1px solid var(--border); font-size: 13px; line-height: 1.5; }
+  .rcd-avance.ok { background: rgba(54,224,160,.1); border-color: rgba(54,224,160,.35); }
+  .rcd-avance.exp { background: rgba(255,77,115,.1); border-color: rgba(255,77,115,.35); }
+  .rcd-parts { display: flex; flex-direction: column; gap: 5px; }
+  .rcd-part { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 10px;
+    background: var(--bg-elev); border-radius: 8px; }
+  .rcd-part-st { font-size: 11.5px; color: var(--muted); }
+  .rcd-part-st.completed { color: var(--win); }
+  .reto-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .reto-join-sel { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; padding: 8px 10px; font-family: var(--body); }
+  .ghost.danger { color: var(--loss); border-color: rgba(255,77,115,.3); }
+
+  /* crear */
+  .reto-help-btn { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border);
+    background: transparent; color: var(--cyan); cursor: pointer; font-weight: 700; font-size: 12px; vertical-align: middle; }
+  .reto-help { background: rgba(63,225,255,.07); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 13px; font-size: 12.5px; line-height: 1.55; color: var(--muted); margin: 10px 0; }
+  .reto-form { display: flex; flex-direction: column; gap: 11px; margin-top: 10px; }
+  .rc-row { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .rc-row input, .rc-row textarea { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; padding: 9px 11px; font-family: var(--body); font-size: 13.5px; resize: vertical; }
+  .rc-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .rc-row3 label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .rc-row3 select, .rc-row3 input { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; padding: 9px 10px; font-family: var(--body); font-size: 13px; }
+  .rc-h { font-family: var(--display); text-transform: uppercase; letter-spacing: 1px; font-size: 12px;
+    color: var(--text); margin-top: 6px; }
+  .rc-cond { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; opacity: .6; }
+  .rc-cond.on { opacity: 1; border-color: var(--cyan); background: rgba(63,225,255,.05); }
+  .rc-cond-on { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; }
+  .rc-cond-fields { display: none; flex-wrap: wrap; gap: 12px; margin: 9px 0 2px; }
+  .rc-cond.on .rc-cond-fields { display: flex; }
+  .rc-f { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .rc-f input { width: 92px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 5px 8px; font-family: var(--body); font-size: 13px; }
+  .rc-cond-help { font-size: 11.5px; color: var(--muted); margin-top: 4px; display: none; }
+  .rc-cond.on .rc-cond-help { display: block; }
+
+  /* cumplidos */
+  .reto-done-item { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; margin-bottom: 7px; }
+  .reto-done-item summary { cursor: pointer; font-size: 13.5px; }
+  .reto-done-date { color: var(--muted); font-size: 11.5px; margin-right: 6px; }
+
+  @media (max-width: 640px) {
+    .retos-counters { grid-template-columns: 1fr; }
+    .rc-row3 { grid-template-columns: 1fr; }
+  }

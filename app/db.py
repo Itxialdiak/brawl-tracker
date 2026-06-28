@@ -148,6 +148,19 @@ def init_db():
             score_a INTEGER, score_b INTEGER, winner TEXT, evidence_battle_id TEXT, roster_a TEXT, roster_b TEXT,
             scheduled_at TEXT, created_at TEXT, updated_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS retos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            creator_id INTEGER, source TEXT DEFAULT 'user', report_id INTEGER, target_user_id INTEGER,
+            name TEXT, theme TEXT, description TEXT, conditions TEXT,
+            difficulty_declared INTEGER, visibility TEXT DEFAULT 'public', time_limit_days INTEGER,
+            status TEXT DEFAULT 'open', share_token TEXT, created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS reto_participants (
+            reto_id INTEGER NOT NULL, user_id INTEGER NOT NULL, player_tag TEXT,
+            role TEXT DEFAULT 'participant', assigned_difficulty INTEGER,
+            status TEXT DEFAULT 'active', joined_at TEXT, completed_at TEXT,
+            PRIMARY KEY (reto_id, user_id)
+        );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
@@ -159,6 +172,9 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_allies_battle     ON allies(battle_id);
         CREATE INDEX IF NOT EXISTS idx_brcoll_player     ON brawler_collection(player_tag);
         CREATE INDEX IF NOT EXISTS idx_ematches_event    ON event_matches(event_id);
+        CREATE INDEX IF NOT EXISTS idx_retopart_reto     ON reto_participants(reto_id);
+        CREATE INDEX IF NOT EXISTS idx_retopart_user     ON reto_participants(user_id);
+        CREATE INDEX IF NOT EXISTS idx_retos_status      ON retos(status);
         """
     )
     # Migración de bases antiguas: añade columnas nuevas si faltan.
@@ -2333,3 +2349,243 @@ def clear_matches(eid) -> None:
     conn = get_conn()
     conn.execute("DELETE FROM event_matches WHERE event_id=?", (eid,))
     conn.commit(); conn.close()
+
+
+# =============================== Retos (sección social) ===============================
+# Las CONDICIONES de un reto se guardan como JSON (lista). Cada condición es medible
+# SOLO con datos que la app ya recoge (battles): {metric, target, scope?, min_games?}.
+# El progreso se calcula sobre las partidas del jugador DESDE que se apuntó (joined_at).
+# El motor de cálculo (progreso, dificultad) vive en app/retos.py; aquí solo BD + queries.
+
+def _reto_row(r) -> dict | None:
+    if not r:
+        return None
+    d = dict(r)
+    try:
+        d["conditions"] = json.loads(d.get("conditions") or "[]")
+    except Exception:
+        d["conditions"] = []
+    return d
+
+
+def create_reto(creator_id, name, theme, description, conditions, difficulty_declared,
+                visibility="public", time_limit_days=None, source="user",
+                report_id=None, target_user_id=None) -> int:
+    token = secrets.token_urlsafe(9)
+    conn = get_conn()
+    cur = conn.execute(
+        """INSERT INTO retos (creator_id, source, report_id, target_user_id, name, theme,
+              description, conditions, difficulty_declared, visibility, time_limit_days,
+              status, share_token, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (creator_id, source, report_id, target_user_id, (name or "Reto").strip()[:80],
+         (theme or "").strip()[:30], (description or "").strip(),
+         json.dumps(conditions or []), difficulty_declared,
+         visibility if visibility in ("public", "invite") else "public",
+         time_limit_days, "open", token, datetime.now(timezone.utc).isoformat()))
+    rid = cur.lastrowid
+    conn.commit(); conn.close()
+    return rid
+
+
+def get_reto(rid: int) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM retos WHERE id=?", (rid,)).fetchone()
+    conn.close()
+    return _reto_row(row)
+
+
+def get_reto_by_token(token: str) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM retos WHERE share_token=?", (token,)).fetchone()
+    conn.close()
+    return _reto_row(row)
+
+
+def reto_creator(rid: int):
+    conn = get_conn()
+    row = conn.execute("SELECT creator_id FROM retos WHERE id=?", (rid,)).fetchone()
+    conn.close()
+    return row["creator_id"] if row else None
+
+
+def update_reto(rid: int, fields: dict) -> None:
+    allowed = {"name", "theme", "description", "conditions", "difficulty_declared",
+               "visibility", "time_limit_days", "status"}
+    sets, params = [], []
+    for k, v in (fields or {}).items():
+        if k not in allowed:
+            continue
+        sets.append(f"{k}=?")
+        params.append(json.dumps(v) if k == "conditions" else v)
+    if not sets:
+        return
+    params.append(rid)
+    conn = get_conn()
+    conn.execute(f"UPDATE retos SET {', '.join(sets)} WHERE id=?", params)
+    conn.commit(); conn.close()
+
+
+def delete_reto(rid: int) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM retos WHERE id=?", (rid,))
+    conn.execute("DELETE FROM reto_participants WHERE reto_id=?", (rid,))
+    conn.commit(); conn.close()
+
+
+def join_reto(rid, user_id, player_tag, role="participant", assigned_difficulty=None) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    conn.execute(
+        """INSERT INTO reto_participants (reto_id, user_id, player_tag, role, assigned_difficulty, status, joined_at)
+           VALUES (?,?,?,?,?,?,?)
+           ON CONFLICT(reto_id, user_id) DO UPDATE SET
+             player_tag=excluded.player_tag, role=excluded.role,
+             assigned_difficulty=excluded.assigned_difficulty""",
+        (rid, user_id, normalize_tag(player_tag) if player_tag else None, role,
+         assigned_difficulty, "active", now))
+    conn.commit(); conn.close()
+
+
+def leave_reto(rid, user_id) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM reto_participants WHERE reto_id=? AND user_id=?", (rid, user_id))
+    conn.commit(); conn.close()
+
+
+def reto_participant(rid, user_id) -> dict | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM reto_participants WHERE reto_id=? AND user_id=?", (rid, user_id)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def list_reto_participants(rid) -> list:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT rp.*, p.name AS player_name FROM reto_participants rp "
+        "LEFT JOIN players p ON p.tag = rp.player_tag WHERE rp.reto_id=? ORDER BY rp.joined_at", (rid,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def set_reto_status(rid, user_id, status, completed_at=None) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE reto_participants SET status=?, completed_at=? WHERE reto_id=? AND user_id=?",
+                 (status, completed_at, rid, user_id))
+    conn.commit(); conn.close()
+
+
+def count_completed_retos(user_id, source=None) -> int:
+    conn = get_conn()
+    q = ("SELECT COUNT(*) FROM reto_participants rp JOIN retos r ON r.id=rp.reto_id "
+         "WHERE rp.user_id=? AND rp.status='completed'")
+    params = [user_id]
+    if source:
+        q += " AND r.source=?"; params.append(source)
+    n = conn.execute(q, params).fetchone()[0]
+    conn.close()
+    return n
+
+
+def list_completed_retos(user_id, source=None) -> list:
+    conn = get_conn()
+    q = ("SELECT r.*, rp.completed_at AS my_completed FROM reto_participants rp "
+         "JOIN retos r ON r.id=rp.reto_id WHERE rp.user_id=? AND rp.status='completed'")
+    params = [user_id]
+    if source:
+        q += " AND r.source=?"; params.append(source)
+    q += " ORDER BY rp.completed_at DESC"
+    rows = conn.execute(q, params).fetchall()
+    conn.close()
+    return [_reto_row(r) for r in rows]
+
+
+def list_my_retos(user_id) -> dict:
+    """Los retos del usuario en 3 grupos: asignados por el Sensei, creados por él,
+    y seguidos/apuntados (de otros)."""
+    conn = get_conn()
+    sensei = conn.execute(
+        "SELECT r.*, rp.status AS my_status, rp.role AS my_role, rp.joined_at AS my_joined, "
+        "rp.player_tag AS my_player FROM retos r JOIN reto_participants rp ON rp.reto_id=r.id "
+        "WHERE rp.user_id=? AND r.source='sensei' ORDER BY r.id DESC", (user_id,)).fetchall()
+    created = conn.execute(
+        "SELECT * FROM retos WHERE creator_id=? AND source='user' ORDER BY id DESC", (user_id,)).fetchall()
+    joined = conn.execute(
+        "SELECT r.*, rp.status AS my_status, rp.role AS my_role, rp.joined_at AS my_joined, "
+        "rp.player_tag AS my_player FROM retos r JOIN reto_participants rp ON rp.reto_id=r.id "
+        "WHERE rp.user_id=? AND r.source='user' AND (r.creator_id IS NULL OR r.creator_id != ?) ORDER BY r.id DESC",
+        (user_id, user_id)).fetchall()
+    conn.close()
+    return {"sensei": [_reto_row(r) for r in sensei],
+            "created": [_reto_row(r) for r in created],
+            "joined": [_reto_row(r) for r in joined]}
+
+
+def list_board_retos(user_id, status=None, theme=None) -> list:
+    """Tablón: retos comunitarios (source='user'), ordenados por dificultad y tema.
+    Adjunta nº de participantes y el estado del usuario si ya participa."""
+    conn = get_conn()
+    q = ["SELECT r.*, "
+         "(SELECT COUNT(*) FROM reto_participants rp WHERE rp.reto_id=r.id AND rp.role='participant') AS participants, "
+         "(SELECT COUNT(*) FROM reto_participants rp WHERE rp.reto_id=r.id AND rp.role='follower') AS followers, "
+         "(SELECT status FROM reto_participants rp WHERE rp.reto_id=r.id AND rp.user_id=?) AS my_status "
+         "FROM retos r WHERE r.source='user'"]
+    params = [user_id]
+    if status in ("open", "closed"):
+        q.append("AND r.status=?"); params.append(status)
+    if theme:
+        q.append("AND r.theme=?"); params.append(theme)
+    q.append("ORDER BY r.difficulty_declared ASC, r.theme COLLATE NOCASE, r.id DESC")
+    rows = conn.execute(" ".join(q), params).fetchall()
+    conn.close()
+    return [_reto_row(r) for r in rows]
+
+
+def reto_metric(player_tag, since, until, metric, scope) -> float:
+    """Valor actual de una MÉTRICA para un jugador, sobre sus partidas en la ventana
+    [since, until] (formato battle_time) y el ámbito (mode/map/brawler/role). Todo se
+    calcula desde `battles`, reutilizando _build_filters para el ámbito."""
+    f = dict(scope or {})
+    f["player"] = player_tag
+    where_sql, params = _build_filters(f)
+    clauses = [where_sql[len("WHERE "):]] if where_sql else []
+    if since:
+        clauses.append("battle_time >= ?"); params.append(since)
+    if until:
+        clauses.append("battle_time <= ?"); params.append(until)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    conn = get_conn()
+    try:
+        if metric == "wins":
+            q = f"SELECT SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) FROM battles {where}"
+        elif metric == "games":
+            q = f"SELECT SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) FROM battles {where}"
+        elif metric == "star_player":
+            q = f"SELECT SUM(CASE WHEN is_star_player=1 THEN 1 ELSE 0 END) FROM battles {where}"
+        elif metric == "trophies":
+            q = f"SELECT SUM(COALESCE(trophy_change,0)) FROM battles {where}"
+        elif metric == "distinct_brawlers":
+            extra = "AND" if where else "WHERE"
+            q = f"SELECT COUNT(DISTINCT my_brawler) FROM battles {where} {extra} is_win=1"
+        elif metric == "winrate":
+            row = conn.execute(
+                f"SELECT SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS w, "
+                f"SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) AS g FROM battles {where}", params).fetchone()
+            w, g = (row["w"] or 0), (row["g"] or 0)
+            return round(100.0 * w / g, 1) if g else 0.0
+        elif metric == "win_streak":
+            rows = conn.execute(f"SELECT is_win FROM battles {where} ORDER BY battle_time ASC", params).fetchall()
+            best = run = 0
+            for r in rows:
+                if r["is_win"] == 1:
+                    run += 1; best = max(best, run)
+                elif r["is_win"] == 0:
+                    run = 0
+            return best
+        else:
+            return 0
+        val = conn.execute(q, params).fetchone()[0]
+        return val or 0
+    finally:
+        conn.close()

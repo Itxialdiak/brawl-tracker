@@ -17,7 +17,8 @@ frontend/
 │   ├── 06-modes-coach.js
 │   ├── 07-auth-notifs.js
 │   ├── 08-tournaments.js
-│   └── 09-init.js
+│   ├── 09-retos.js
+│   └── 10-init.js
 └── media/                # imágenes (banner, logo, subidas de eventos…)
 ```
 
@@ -33,7 +34,7 @@ algún listener de nivel superior se registra al cargar. Reglas que se respetan:
 
 1. **`01-core-analytics.js` primero**: define `$`, helpers (`esc`, `getJSON`…), los
    recursos visuales y el estado global. Todo lo demás depende de esto.
-2. **`09-init.js` el último**: arranca la app (`bootApp`, login, sondeo). Debe ir al
+2. **`10-init.js` el último**: arranca la app (`bootApp`, login, sondeo). Debe ir al
    final para que todas las funciones ya estén definidas.
 3. Entre medias, un módulo por área. El orden se conserva tal cual estaba en el
    `index.html` original (es seguro respecto al *hoisting*).
@@ -45,10 +46,11 @@ algún listener de nivel superior se registra al cargar. Reglas que se respetan:
 | `03-brawlers.js` | apartado **Brawlers** (rejilla, contadores, rating, Top 13, ficha) |
 | `04-wiki-guide.js` | **Guía de Estrategia** (wiki: árbol, nodos, editor, revisión) |
 | `05-admin.js` | **Administración** (cambios, usuarios, jugadores, métricas, historial) |
-| `06-modes-coach.js` | manejadores de la app + **Modos de Juego** (heatmap, Hub de Modos, modal de mapa) + **Consejos** (informes IA) |
+| `06-modes-coach.js` | manejadores de la app + **Modos de Juego** (heatmap, Hub de Modos, modal de mapa) + **Sensei** (informes IA) |
 | `07-auth-notifs.js` | **autenticación** y notificaciones |
-| `08-tournaments.js` | **Ligas y Torneos** (eventos, equipos, rondas, clasificación, partidas) |
-| `09-init.js` | **arranque** de la app |
+| `08-tournaments.js` | **Eventos** (ligas y torneos: equipos, rondas, clasificación, partidas) |
+| `09-retos.js` | **Retos** (sección social: retos del Sensei + comunidad, seguimiento automático) |
+| `10-init.js` | **arranque** de la app |
 
 ## Convenciones
 

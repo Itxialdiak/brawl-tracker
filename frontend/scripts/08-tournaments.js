@@ -782,7 +782,7 @@ async function unfollowEvent() { const { ok } = await apiSend(`/api/events/${cur
 /* ----- Apuntarse ----- */
 function openJoin() {
   const d = currentEvent, tags = d.my_tags || [];
-  if (!tags.length) { wikiToast("Añade primero un ID en Brawlytics", "err"); return; }
+  if (!tags.length) { wikiToast("Añade primero un ID en Brawl Sensei", "err"); return; }
   $("ejoin-tag").innerHTML = tags.map((t) => `<option value="${esc(t.tag)}">${esc(t.name || t.tag)} (${esc(t.tag)})</option>`).join("");
   $("ejoin-pw-wrap").style.display = d.visibility === "private" ? "block" : "none";
   $("ejoin-team-wrap").style.display = d.mode === "teams" ? "block" : "none";

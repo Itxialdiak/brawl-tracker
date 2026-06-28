@@ -379,6 +379,7 @@ function switchTab(name) {
   if (name === "rankings") loadRankings();
   if (name === "coach") { showCoachListView(); loadReports(); }
   if (name === "brawlers") loadBrawlers();
+  if (name === "retos") loadRetos();
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 

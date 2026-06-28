@@ -28,8 +28,9 @@ app/
 │   ├── admin.py           # administración (propuestas, usuarios, jugadores, métricas)
 │   ├── catalog.py         # catálogo visual (recursos de Brawlify, modos/mapas)
 │   ├── notifications.py   # notificaciones (listar, no leídas, marcar, borrar)
-│   └── events.py          # ligas y torneos (el más grande): partidas, equipos, clasificación
-└── (módulos de servicio/dominio, sin cambios en el refactor)
+│   ├── events.py          # ligas y torneos (el más grande): partidas, equipos, clasificación
+│   └── retos.py           # retos sociales: tablón, crear, apuntarse, progreso automático
+└── (módulos de servicio/dominio)
     ├── db.py              # toda la capa SQLite (queries, migraciones, upserts)
     ├── auth.py            # hashing, sesiones, dependencias require_user/require_admin
     ├── brawl_api.py       # cliente de la API oficial de Brawl Stars (vía proxy)
@@ -38,8 +39,20 @@ app/
     ├── brawler_extra.py   # dataset curado (hipercargas, stats, builds)
     ├── skins.py           # catálogo persistente de imágenes de skins
     ├── coach.py           # llamadas a Claude (informes y resúmenes) + conteo de tokens
-    └── detect.py          # detección/parseo de partidas
+    ├── detect.py          # detección/parseo de partidas
+    └── retos.py           # motor de retos: métricas medibles + progreso/dificultad (tracking)
 ```
+
+## Retos: condiciones medibles (nunca datos manuales)
+
+Un reto guarda una lista de **condiciones** como JSON. Cada condición usa una métrica
+del catálogo `retos.METRICS` (victorias, partidas, win rate, racha, brawlers
+distintos, copas, estrella del partido), con un objetivo y un ámbito opcional
+(brawler/modo/mapa/rol). Todo se calcula en `db.reto_metric()` **desde la tabla
+`battles`**, sobre las partidas del jugador **desde que se apuntó** (`joined_at`). Así
+el seguimiento es automático: el progreso y el "completado" salen de los datos que el
+poller ya guarda, sin que el usuario actualice nada. La dificultad la declara el
+creador y `retos.recalibrate_difficulty()` la ajusta al nivel del jugador que la ve.
 
 ## Cómo se conecta
 

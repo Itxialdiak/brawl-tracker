@@ -59,7 +59,7 @@
   <div id="help-modal" class="modal-overlay" onclick="if(event.target===this)closeEventHelp()">
     <div class="modal-card has-close help-card">
       <button class="modal-close" onclick="closeEventHelp()" title="Cerrar" aria-label="Cerrar">✕</button>
-      <h3 class="modal-title">Guía de Torneos y Ligas</h3>
+      <h3 class="modal-title">Guía de Eventos</h3>
       <div class="help-body">
         <p>Aquí puedes crear <b>torneos y ligas</b> de Brawl Stars, gestionar los enfrentamientos y la clasificación, y avisar a los seguidores. Esta guía explica cada parámetro.</p>
 
@@ -335,9 +335,9 @@
 
   <header>
     <nav class="section-nav">
-      <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawlytics</button>
+      <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawl Sensei</button>
       <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
-      <button class="snav" data-section="leagues" onclick="showSection('leagues')">Torneos y Ligas</button>
+      <button class="snav" data-section="leagues" onclick="showSection('leagues')">Eventos</button>
       <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
     <div class="toolbar">
@@ -391,9 +391,10 @@
       <button class="tab active" data-tab="stats">Analíticas</button>
       <button class="tab" data-tab="brawlers">Brawlers</button>
       <button class="tab" data-tab="report">Modos de Juego</button>
+      <button class="tab" data-tab="coach">Sensei</button>
+      <button class="tab" data-tab="retos">Retos</button>
       <button class="tab" data-tab="rankings">Rankings</button>
       <button class="tab" data-tab="history">Historial de partidas</button>
-      <button class="tab" data-tab="coach">Consejos</button>
     </div>
 
     <!-- ESTADÍSTICAS -->
@@ -544,7 +545,7 @@
 
     <!-- CONSEJOS -->
     <div class="tab-content" id="tab-coach">
-      <h2 class="section-title">Consejos de Claude</h2>
+      <h2 class="section-title">Sensei</h2>
       <div id="coach-list-view">
         <div class="panel coach">
           <div class="hint">Genera un informe con el jugador y los filtros (brawler / modo / mapa) seleccionados arriba. Claude lo analiza y le pone nombre según el ámbito. Se guarda y puedes consultarlo cuando quieras; mientras se genera puedes seguir navegando por la app.</div>
@@ -559,6 +560,31 @@
         <button class="ghost" id="coach-back">← Volver a la lista</button>
         <div class="report-detail" id="report-detail"></div>
       </div>
+    </div>
+
+    <!-- RETOS -->
+    <div class="tab-content" id="tab-retos">
+      <h2 class="section-title">Retos</h2>
+      <p class="hint">Ponte a prueba con retos que se <strong>verifican solos</strong> desde tus partidas: el Sensei te asigna misiones personalizadas y la comunidad propone las suyas. Te apuntas y tu progreso se mide automáticamente, sin tocar nada.</p>
+      <div class="retos-counters" id="retos-counters"></div>
+      <div class="retos-top">
+        <h3 class="reto-section-h">Tus retos</h3>
+        <button class="btn" id="reto-create-btn" onclick="openCreateReto()">+ Crear reto</button>
+      </div>
+      <div id="retos-mine"></div>
+      <div class="retos-top">
+        <h3 class="reto-section-h">Tablón de retos</h3>
+        <div class="retos-filters">
+          <select id="rf-status" onchange="loadRetoBoard()" title="Estado">
+            <option value="">Todos</option><option value="open">Abiertos</option><option value="closed">Cerrados</option>
+          </select>
+          <select id="rf-diff" onchange="loadRetoBoard()" title="Dificultad">
+            <option value="">Toda dificultad</option><option value="1">Muy fácil</option><option value="2">Fácil</option>
+            <option value="3">Media</option><option value="4">Difícil</option><option value="5">Muy difícil</option>
+          </select>
+        </div>
+      </div>
+      <div id="retos-board"></div>
     </div>
 
     <!-- BRAWLERS -->
@@ -1004,6 +1030,54 @@
 
   <footer>Los datos se acumulan mientras el tracker está en marcha. La API solo guarda las 25 últimas partidas de cada jugador.</footer>
 
+  <!-- Modales de Retos -->
+  <div class="modal-overlay" id="reto-detail-modal" onclick="if(event.target===this)closeEvModal('reto-detail-modal')">
+    <div class="modal-card modal-wide has-close">
+      <button class="modal-close" onclick="closeEvModal('reto-detail-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div id="reto-detail-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="reto-create-modal" onclick="if(event.target===this)closeEvModal('reto-create-modal')">
+    <div class="modal-card modal-wide has-close">
+      <button class="modal-close" onclick="closeEvModal('reto-create-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title">Crear reto <button class="reto-help-btn" type="button" onclick="toggleRetoHelp()" title="¿Qué se puede medir?">?</button></h3>
+      <div class="modal-sub">Define objetivos que la app pueda comprobar sola desde tus partidas.</div>
+      <div class="reto-help" id="reto-help" style="display:none">
+        <b>¿Qué es medible?</b> Solo lo que sale de tus registros de batalla: victorias, partidas
+        jugadas, win rate (sobre un mínimo de partidas), rachas de victorias, brawlers distintos
+        con los que ganas, copas netas y veces que eres estrella del partido. Cada objetivo puede
+        acotarse a un brawler o un modo. Nada de datos manuales (no "haz X de daño"): si la app no
+        lo registra, no se puede medir.
+      </div>
+      <div class="reto-form">
+        <label class="rc-row"><span>Nombre</span><input type="text" id="rc-name" maxlength="80" placeholder="p.ej. Maestría con Shelly"></label>
+        <label class="rc-row"><span>Temática</span><input type="text" id="rc-theme" maxlength="30" placeholder="1-2 palabras (p.ej. Agresivo)"></label>
+        <label class="rc-row"><span>Descripción</span><textarea id="rc-desc" rows="2" placeholder="Opcional"></textarea></label>
+        <div class="rc-row3">
+          <label><span>Dificultad</span><select id="rc-diff"><option value="1">Muy fácil</option><option value="2">Fácil</option><option value="3" selected>Media</option><option value="4">Difícil</option><option value="5">Muy difícil</option></select></label>
+          <label><span>Visibilidad</span><select id="rc-vis"><option value="public">Pública</option><option value="invite">Por invitación</option></select></label>
+          <label><span>Plazo (días)</span><input type="number" id="rc-limit" min="1" placeholder="sin límite"></label>
+        </div>
+        <h4 class="rc-h">Condiciones <span class="hint-inline">(marca las que quieras y pon su objetivo)</span></h4>
+        <div id="reto-conditions"></div>
+        <div class="modal-msg err" id="rc-err"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" onclick="closeEvModal('reto-create-modal')">Cancelar</button>
+        <button class="btn" onclick="submitCreateReto()">Crear reto</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="reto-completed-modal" onclick="if(event.target===this)closeEvModal('reto-completed-modal')">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeEvModal('reto-completed-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title" id="reto-completed-title">Retos cumplidos</h3>
+      <div id="reto-completed-body"></div>
+    </div>
+  </div>
+
 <script src="/static/scripts/01-core-analytics.js"></script>
 <script src="/static/scripts/02-rankings-leagues.js"></script>
 <script src="/static/scripts/03-brawlers.js"></script>
@@ -1012,6 +1086,7 @@
 <script src="/static/scripts/06-modes-coach.js"></script>
 <script src="/static/scripts/07-auth-notifs.js"></script>
 <script src="/static/scripts/08-tournaments.js"></script>
-<script src="/static/scripts/09-init.js"></script>
+<script src="/static/scripts/09-retos.js"></script>
+<script src="/static/scripts/10-init.js"></script>
 </body>
 </html>
