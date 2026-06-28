@@ -1499,3 +1499,28 @@
 .br-temp-head { border-top: 1px dashed rgba(255,255,255,.14); padding-top: 22px; margin-bottom: 16px; }
 .br-temp-head h3 { margin: 0 0 4px; font-size: 1.05rem; letter-spacing: .3px; }
 .br-temp-head p { margin: 0; font-size: .82rem; opacity: .68; max-width: 680px; line-height: 1.45; }
+
+
+/* === recomendaciones de brawlers === */
+.br-recs-panel { margin: 20px 0 6px; padding: 18px 18px 20px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; }
+.br-recs-title { margin: 0 0 9px; font-size: 1.15rem; letter-spacing: .3px; }
+.rec-toggle { display: inline-flex; gap: 6px; margin-bottom: 8px; }
+.rec-tab { padding: 6px 16px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: inherit; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: .82rem; transition: all .12s; }
+.rec-tab:hover { border-color: rgba(255,255,255,.3); }
+.rec-tab.active { background: linear-gradient(135deg,#4da6ff,#7b6cff); border-color: transparent; color: #fff; }
+.br-recs-sub { margin: 2px 0 16px; font-size: .8rem; opacity: .65; }
+.br-recs { display: grid; gap: 20px; }
+.br-rec-gh h4 { margin: 0 0 2px; font-size: .98rem; }
+.br-rec-gh p { margin: 0 0 11px; font-size: .77rem; opacity: .6; max-width: 760px; line-height: 1.4; }
+.br-rec-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.br-rec-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 11px 8px 9px; text-align: center; cursor: pointer; transition: transform .12s, border-color .12s; }
+.br-rec-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.24); }
+.br-rec-card .por { position: relative; width: 58px; height: 58px; margin: 0 auto 7px; }
+.br-rec-card .por img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+.rec-tier { position: absolute; bottom: -5px; right: -5px; font-size: .62rem; font-weight: 800; padding: 1px 5px; border-radius: 6px; color: #1a1030; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.rec-tier.tier-S { background:#ff6b8a } .rec-tier.tier-A { background:#ffa057 } .rec-tier.tier-B { background:#ffd35e }
+.rec-tier.tier-C { background:#9be36b } .rec-tier.tier-D { background:#6bdcc0 } .rec-tier.tier-F { background:#8aa0e6 }
+.br-rec-card .nm { font-size: .8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.br-rec-card .nt { font-size: .67rem; opacity: .6; margin-top: 3px; line-height: 1.25; }
+.rec-empty { grid-column: 1/-1; font-size: .77rem; opacity: .5; padding: 16px; text-align: center; border: 1px dashed rgba(255,255,255,.12); border-radius: 10px; }
+@media (max-width: 760px) { .br-rec-cards { grid-template-columns: repeat(3, 1fr); } }

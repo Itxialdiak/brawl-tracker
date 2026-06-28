@@ -627,6 +627,15 @@
         <div class="br-counters" id="br-counters"></div>
         <div class="br-distrib" id="br-distrib"></div>
         <div class="top10" id="br-top10"></div>
+        <div class="br-recs-panel" id="br-recs-panel">
+          <h3 class="br-recs-title">Recomendaciones</h3>
+          <div class="rec-toggle">
+            <button class="rec-tab active" data-rec="community" onclick="loadRecommendations('community')">Comunitaria</button>
+            <button class="rec-tab" data-rec="global" onclick="loadRecommendations('global')">Global</button>
+          </div>
+          <p class="br-recs-sub" id="br-recs-source">Cruzamos tus brawlers y tu win rate con el meta para decirte dónde enfocarte.</p>
+          <div class="br-recs" id="br-recs"></div>
+        </div>
         <div class="br-toolbar">
           <input id="br-search" class="br-search" placeholder="Buscar brawler…" autocomplete="off" />
           <div class="br-sort-group"><span class="br-tb-lbl">Ordenar por:</span>

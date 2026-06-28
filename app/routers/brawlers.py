@@ -216,6 +216,25 @@ async def api_tierlist(kind: str = Query("community"), user: dict = Depends(auth
     return tierlist.get("community")
 
 
+@router.get("/api/recommendations")
+async def api_recommendations(player: str = Query(None), kind: str = Query("community"),
+                              user: dict = Depends(auth.require_user)):
+    """Recomendaciones de brawlers: cruza tu colección y tus win rates con el meta
+    (comunitario o global). Devuelve 5 subsecciones de hasta 5 brawlers cada una."""
+    tag = _require_follow(user, player)
+    from .. import tierlist, recommendations
+    catalog = await assets.get_brawler_catalog()
+    if kind == "global":
+        tl = await tierlist.global_tierlist()
+        community = None
+    else:
+        tl = await asyncio.to_thread(tierlist.get, "community")
+        community = await asyncio.to_thread(db.community_meta)
+    collection = await asyncio.to_thread(db.get_collection, tag)
+    wr_rows = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
+    return recommendations.build(kind, catalog, tl, community, collection, wr_rows)
+
+
 @router.get("/api/account-rating")
 async def api_account_rating(player: str = Query(None), user: dict = Depends(auth.require_user)):
     """Solo el rating de cuenta (para mostrarlo también en Estadísticas, sin cargar

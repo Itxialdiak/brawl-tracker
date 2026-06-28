@@ -3,7 +3,7 @@
    Se carga como <script src> desde index.html, en orden. El JS de cliente
    SIEMPRE es visible en el navegador: aquí no van secretos. */
 /* ============================ BRAWLERS (apartado tipo Brawlify) ============================ */
-let brawlersData = null, brawlersPlayer = null, brSort = "winrate", brSearch = "", brRole = null, statLevelSel = 11;
+let brawlersData = null, brawlersPlayer = null, brSort = "winrate", brSearch = "", brRole = null, statLevelSel = 11, recsKind = "community";
 const RANK_LABELS = { wood: "Madera", bronze: "Bronce", silver: "Plata", gold: "Oro", p1: "Prestigio 1", p2: "Prestigio 2", p3: "Prestigio 3" };
 const RARITY_ORDER = { "Common": 0, "Rare": 1, "Super Rare": 2, "Epic": 3, "Mythic": 4, "Legendary": 5, "Ultra Legendary": 6 };
 
@@ -12,7 +12,7 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); loadRecommendations(recsKind); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
@@ -20,7 +20,7 @@ async function loadBrawlers() {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary();
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); loadRecommendations(recsKind);
 }
 
 function renderBrCounters() {
@@ -209,6 +209,34 @@ function renderBrTemporary() {
     <div class="br-temp-head"><h3>⏳ Brawlers temporales</h3>
       <p>Colaboraciones limitadas que ya no se pueden conseguir ni usar. No cuentan para la colección ni el meta — solo un recuerdo de lo que pasó.</p></div>
     <div class="br-grid">${list.map(renderBrawlerCard).join("")}</div>`;
+}
+async function loadRecommendations(kind) {
+  recsKind = kind || recsKind;
+  document.querySelectorAll(".rec-tab").forEach((b) => b.classList.toggle("active", b.dataset.rec === recsKind));
+  const host = $("br-recs");
+  if (!host || !currentPlayer) return;
+  host.innerHTML = `<div class="empty">Cargando recomendaciones…</div>`;
+  let d = null;
+  try { d = await getJSON("/api/recommendations?kind=" + recsKind + "&player=" + encodeURIComponent(currentPlayer)); }
+  catch (e) { host.innerHTML = `<div class="empty">No se pudieron cargar las recomendaciones.</div>`; return; }
+  if ($("br-recs-source")) $("br-recs-source").textContent = d.source || "";
+  host.innerHTML = (d.groups || []).map(renderRecGroup).join("");
+}
+function renderRecGroup(g) {
+  const cards = (g.brawlers || []).map((b) => {
+    const por = b.portrait ? `<img src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
+    const tier = b.tier ? `<span class="rec-tier tier-${b.tier}">${b.tier}</span>` : "";
+    return `<div class="br-rec-card" onclick="showBrawlerDetail(${b.id})" title="${esc(b.name)}">
+      <div class="por">${por}${tier}</div>
+      <div class="nm">${esc(b.name)}</div>
+      <div class="nt">${esc(b.note || "")}</div>
+    </div>`;
+  }).join("");
+  const body = cards || `<div class="rec-empty">Aún no hay datos suficientes aquí. Juega más partidas y se recalculará.</div>`;
+  return `<div class="br-rec-group">
+    <div class="br-rec-gh"><h4>${esc(g.title)}</h4><p>${esc(g.subtitle)}</p></div>
+    <div class="br-rec-cards">${body}</div>
+  </div>`;
 }
 function renderBrRoles() {
   const el = $("br-roles");
