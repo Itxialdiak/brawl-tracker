@@ -81,14 +81,14 @@ function renderVersatileTop13(top) {
       <div class="podium-img">${img}</div>
       <div class="podium-base"><span class="podium-pos">${b.pos}</span>
         <span class="podium-name">${esc(b.name)}</span>
-        <span class="podium-tro" style="color:${pctColor(b.avg_winrate)}">${b.avg_winrate}% medio</span></div></div>`;
+        <span class="podium-tro" style="color:${pctColor(b.avg_winrate)}">Rend. ${b.avg_winrate}</span></div></div>`;
   }).join("");
   const winnersMini = podium.map((b) => {
     const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
     return `<div class="winner-row" onclick="gotoBrawler(${b.id})" title="Ver ficha">
       <span class="wm-pos">${b.pos}</span>${img}
       <div class="wm-tx"><span class="wm-name">${esc(b.name)}</span>
-        <span class="wm-sub"><b style="color:${pctColor(b.avg_winrate)}">${b.avg_winrate}%</b> · ${b.modes_played} modos</span></div></div>`;
+        <span class="wm-sub"><b style="color:${pctColor(b.avg_winrate)}">Rend. ${b.avg_winrate}</b> · ${b.modes_played} modos</span></div></div>`;
   }).join("");
   const effRows = podium.map((b) => {
     const wr = b.avg_winrate, w = Math.max(3, wr);
@@ -101,11 +101,11 @@ function renderVersatileTop13(top) {
     return `<div class="top-mini" onclick="gotoBrawler(${b.id})" title="Ver ficha">
       <span class="top-mini-pos">${i + 4}</span>${img}
       <div class="top-mini-tx"><span class="top-mini-name">${esc(b.name)}</span>
-        <span class="top-mini-tro" style="color:${pctColor(b.avg_winrate)}">${b.avg_winrate}% medio</span></div></div>`;
+        <span class="top-mini-tro" style="color:${pctColor(b.avg_winrate)}">Rend. ${b.avg_winrate}</span></div></div>`;
   }).join("");
   el.innerHTML = `<div class="top10-panel">
     <h2><span class="dot"></span>Top 13 Brawlers más versátiles</h2>
-    <p class="hint" style="margin:-4px 0 14px">Tus brawlers con mejor win rate medio entre los modos que juegas.</p>
+    <p class="hint" style="margin:-4px 0 14px">Tus brawlers con mejor <b>rendimiento medio</b> entre los modos que juegas — ajustado a la dificultad del entorno (trofeos), no solo win rate.</p>
     <div class="top13-main">
       <div class="podium-extra extra-left"><div class="extra-title">Versatilidad</div>${winnersMini}</div>
       <div class="podium">${podiumHtml}</div>
@@ -354,8 +354,8 @@ function hlCard(icon, label, item, kind, valueFn, cat) {
 function renderHighlights(h) {
   $("highlights").innerHTML = [
     hlCard("🎯", "Más jugado", h.most_played, "brawler", (v) => `${v.total} partidas`, "most_played"),
-    hlCard("🏆", "Mejor rendimiento", h.best_brawler, "brawler", (v) => `${v.winrate}% en ${v.total}p`, "best"),
-    hlCard("⚠️", "Peor rendimiento", h.worst_brawler, "brawler", (v) => `${v.winrate}% en ${v.total}p`, "worst"),
+    hlCard("🏆", "Mejor rendimiento", h.best_brawler, "brawler", (v) => `Rend. ${adjVal(v)} · ${v.total}p`, "best"),
+    hlCard("⚠️", "Peor rendimiento", h.worst_brawler, "brawler", (v) => `Rend. ${adjVal(v)} · ${v.total}p`, "worst"),
     hlCard("🤝", "Mejor aliado", h.best_ally, "brawler", (v) => `${v.winrate}% (${v.total}p)`, "best_ally"),
     hlCard("😈", "Rival más duro", h.hardest_vs, "brawler", (v) => `${v.winrate}% (${v.total}p)`, "hardest_vs"),
     hlCard("😎", "Rival más fácil", h.easiest_vs, "brawler", (v) => `${v.winrate}% (${v.total}p)`, "easiest_vs"),
@@ -365,10 +365,11 @@ function renderHighlights(h) {
 }
 
 /* Modal Top 16 al pulsar cualquier tarjeta de destacado (Analíticas, 2ª fila). */
+function adjVal(r) { return r && r.adj_score != null ? r.adj_score : (r ? r.winrate : null); }
 const HL_CATS = {
   most_played: { title: "Más jugados", sub: "Tus brawlers por número de partidas", url: "/api/winrate?by=brawler", kind: "brawler", sort: (a, b) => b.total - a.total, val: (v) => `${v.total} partidas`, color: false },
-  best: { title: "Mejor rendimiento", sub: "Tus brawlers con mejor win rate (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, sort: (a, b) => b.winrate - a.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
-  worst: { title: "Peor rendimiento", sub: "Tus brawlers con peor win rate (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, sort: (a, b) => a.winrate - b.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
+  best: { title: "Mejor rendimiento", sub: "Tus brawlers por rendimiento ajustado a la dificultad (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, adj: true, sort: (a, b) => adjVal(b) - adjVal(a), val: (v) => `Rend. ${adjVal(v)} · ${v.total}p`, color: true },
+  worst: { title: "Peor rendimiento", sub: "Tus brawlers por rendimiento ajustado a la dificultad (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, adj: true, sort: (a, b) => adjVal(a) - adjVal(b), val: (v) => `Rend. ${adjVal(v)} · ${v.total}p`, color: true },
   best_ally: { title: "Mejores aliados", sub: "Win rate cuando van en tu equipo (mín. 2 partidas)", url: "/api/allies", kind: "brawler", min: 2, sort: (a, b) => b.winrate - a.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
   hardest_vs: { title: "Rivales más duros", sub: "Contra los que peor win rate tienes (mín. 2 partidas)", url: "/api/vs", kind: "brawler", min: 2, sort: (a, b) => a.winrate - b.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
   easiest_vs: { title: "Rivales más fáciles", sub: "Contra los que mejor win rate tienes (mín. 2 partidas)", url: "/api/vs", kind: "brawler", min: 2, sort: (a, b) => b.winrate - a.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
@@ -394,7 +395,7 @@ async function openHlModal(cat) {
         let vis = "", nm = esc(r.label);
         if (c.kind === "mode") { const a = modeAsset(r.label); vis = a && a.icon ? imgTag(a.icon, "hl-row-ic") : ""; nm = esc(modeName(r.label)); }
         else if (c.kind === "brawler") { const p = brawlerPortrait(r.label); vis = p ? `<img src="${p}" alt="" onerror="this.style.display='none'">` : ""; }
-        const color = c.color ? pctColor(r.winrate) : "var(--text)";
+        const color = c.color ? pctColor(c.adj ? adjVal(r) : r.winrate) : "var(--text)";
         return `<div class="hl-row"><span class="hl-rank">${i + 1}</span>${vis}
           <span class="hl-row-name">${nm}</span>
           <span class="hl-row-val" style="color:${color}">${c.val(r)}</span></div>`;

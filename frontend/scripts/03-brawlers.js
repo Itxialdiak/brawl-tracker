@@ -404,6 +404,7 @@ function renderBrawlerDetail(d) {
       <div class="br-d-stat"><div class="k">Rango</div><div class="v"><span class="rank-chip">${rankBadge(d.rank_band)}<span class="lbl">${RANK_LABELS[d.rank_band] || ""}</span></span></div></div>
       <div class="br-d-stat"><div class="k">Trofeos</div><div class="v">${d.trophies ?? "—"}<small style="color:var(--muted);font-size:12px"> · máx ${d.highest_trophies ?? "—"}</small></div></div>
       ${d.your.battles ? `<div class="br-d-stat"><div class="k">Tu win rate</div><div class="v" style="color:${pctColor(d.your.winrate)}">${d.your.winrate == null ? "—" : d.your.winrate + "%"}<small style="color:var(--muted);font-size:12px"> · ${d.your.battles}p</small></div></div>` : ""}
+      ${d.your.adj_score != null ? `<div class="br-d-stat"><div class="k">Rendimiento ajustado <small style="font-size:10px;opacity:.55">a la dificultad</small></div><div class="v" style="color:${pctColor(d.your.adj_score)}">${d.your.adj_score}<small style="color:var(--muted);font-size:12px"> · ~${d.your.level ?? "—"} cp</small></div></div>` : ""}
     </div>`;
   } else {
     yourStats = `<div class="hint">Aún no tienes este brawler.</div>`;

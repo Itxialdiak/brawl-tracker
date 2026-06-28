@@ -1355,6 +1355,20 @@ def overview(filters: dict | None = None) -> dict:
     }
 
 
+def _adjusted_score(winrate, avg_trophies, base_trophies, bmax=12.0, scale=400.0):
+    """Win rate AJUSTADO por la dificultad del entorno. Los trofeos del brawler
+    (`my_trophies`) aproximan el nivel del lobby (matchmaking por trofeos): rendir a 1400
+    copas vale más que a 250. EQUILIBRADO: el win rate manda; la dificultad lo sube/baja
+    hasta ±bmax puntos según el nivel del brawler frente a tu media. Acotado y suave (tanh)."""
+    if winrate is None:
+        return None
+    if not avg_trophies or not base_trophies:
+        return winrate
+    import math
+    bonus = bmax * math.tanh((avg_trophies - base_trophies) / scale)
+    return round(max(0.0, min(100.0, winrate + bonus)), 1)
+
+
 def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
     col = GROUP_COLUMNS.get(dimension)
     if not col:
@@ -1370,7 +1384,8 @@ def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
                SUM(CASE WHEN is_win IS NULL THEN 1 ELSE 0 END) AS undecided,
                SUM(CASE WHEN is_star_player=1 THEN 1 ELSE 0 END) AS star_players,
                SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) AS star_eligible,
-               COUNT(*) AS total, SUM(COALESCE(trophy_change,0)) AS trophy_delta
+               COUNT(*) AS total, SUM(COALESCE(trophy_change,0)) AS trophy_delta,
+               AVG(CAST(my_trophies AS REAL)) AS avg_trophies
         FROM battles {where_sql}
         GROUP BY {col} ORDER BY total DESC
         """,
@@ -1385,7 +1400,14 @@ def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
                     "undecided": r["undecided"], "total": r["total"],
                     "winrate": _winrate(r["wins"], r["losses"]),
                     "star_rate": _star_rate(r["star_players"], r["star_eligible"]),
-                    "trophy_delta": r["trophy_delta"]})
+                    "trophy_delta": r["trophy_delta"], "_avg_tr": r["avg_trophies"]})
+    # Nivel de referencia del jugador: media de trofeos de brawler ponderada por partidas.
+    n = sum(o["total"] for o in out)
+    base = (sum((o["_avg_tr"] or 0) * o["total"] for o in out) / n) if n else 0
+    for o in out:
+        o["avg_trophies"] = round(o["_avg_tr"]) if o["_avg_tr"] else None
+        o["adj_score"] = _adjusted_score(o["winrate"], o["_avg_tr"], base)
+        del o["_avg_tr"]
     return out
 
 
@@ -1707,8 +1729,8 @@ def report_analytics(filters: dict | None = None) -> dict:
     most_played = max(by_brawler, key=lambda r: r["total"]) if by_brawler else None
     highlights = {
         "most_played": most_played,
-        "best_brawler": _pick(by_brawler, "winrate", True),
-        "worst_brawler": _pick(by_brawler, "winrate", False),
+        "best_brawler": _pick(by_brawler, "adj_score", True),
+        "worst_brawler": _pick(by_brawler, "adj_score", False),
         "best_mode": _pick(by_mode, "winrate", True, min_total=2),
         "worst_mode": _pick(by_mode, "winrate", False, min_total=2),
         "best_map": _pick(by_map, "winrate", True),
@@ -2675,20 +2697,28 @@ def versatile_brawlers(filters, limit=13):
     rows = conn.execute(
         f"SELECT my_brawler AS brawler, mode, "
         f"SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins, "
-        f"SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses, COUNT(*) AS total "
+        f"SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses, COUNT(*) AS total, "
+        f"AVG(CAST(my_trophies AS REAL)) AS avg_tr "
         f"FROM battles {where_sql} {extra} my_brawler IS NOT NULL AND mode IS NOT NULL "
         f"GROUP BY my_brawler, mode", params).fetchall()
     conn.close()
+    # Nivel de referencia (trofeos medios ponderados) para el rendimiento ajustado.
+    valid = [r for r in rows if _winrate(r["wins"], r["losses"]) is not None]
+    tn = sum(r["total"] for r in valid)
+    base = (sum((r["avg_tr"] or 0) * r["total"] for r in valid) / tn) if tn else 0
     agg = {}
     for r in rows:
         wr = _winrate(r["wins"], r["losses"])
         if wr is None:
             continue
-        d = agg.setdefault(r["brawler"], {"wrs": [], "total": 0})
+        adj = _adjusted_score(wr, r["avg_tr"], base)
+        d = agg.setdefault(r["brawler"], {"adjs": [], "wrs": [], "total": 0})
+        d["adjs"].append(adj if adj is not None else wr)
         d["wrs"].append(wr)
         d["total"] += r["total"]
-    out = [{"name": b, "avg_winrate": round(sum(d["wrs"]) / len(d["wrs"]), 1),
-            "modes_played": len(d["wrs"]), "total": d["total"]}
-           for b, d in agg.items() if d["wrs"]]
+    out = [{"name": b, "avg_winrate": round(sum(d["adjs"]) / len(d["adjs"]), 1),
+            "avg_raw": round(sum(d["wrs"]) / len(d["wrs"]), 1),
+            "modes_played": len(d["adjs"]), "total": d["total"]}
+           for b, d in agg.items() if d["adjs"]]
     out.sort(key=lambda x: (-x["avg_winrate"], -x["modes_played"], -x["total"], x["name"]))
     return out[:limit]

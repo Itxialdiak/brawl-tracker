@@ -57,21 +57,24 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
         mm = meta.get(nm) or {"tier": None, "rank": 0, "mwr": None}
         w = wr.get(nm) or {}
         bat = w.get("total") or 0
-        ywr = w.get("winrate") if bat >= MIN_PLAY else None
+        # perf = rendimiento AJUSTADO por dificultad (cae al win rate crudo si no hay nivel)
+        perf = (w.get("adj_score") if w.get("adj_score") is not None else w.get("winrate")) if bat >= MIN_PLAY else None
+        wrr = w.get("winrate") if bat >= MIN_PLAY else None
         base = mm["mwr"] if mm["mwr"] is not None else _TIER_BASELINE.get(mm["tier"], 50)
-        over = round(ywr - base, 1) if ywr is not None else None
+        over = round(perf - base, 1) if perf is not None else None
         cands.append({"id": bid, "name": name, "portrait": cat.get("portrait"),
-                      "tier": mm["tier"], "rank": mm["rank"], "winrate": ywr, "mwr": mm["mwr"],
+                      "tier": mm["tier"], "rank": mm["rank"], "winrate": wrr, "perf": perf,
+                      "level": w.get("avg_trophies"), "mwr": mm["mwr"],
                       "battles": bat, "power": c.get("power"), "over": over,
                       "change": changes.get(nm)})
 
     def good_meta(x): return x["rank"] >= GOOD_META
     def bad_meta(x): return 0 < x["rank"] < GOOD_META
     def played(x): return x["battles"] >= MIN_PLAY
-    def good_perf(x): return x["winrate"] is not None and x["winrate"] >= 50
+    def good_perf(x): return x["perf"] is not None and x["perf"] >= 50
 
     g1 = sorted([x for x in cands if good_meta(x) and played(x) and good_perf(x)],
-                key=lambda x: (x["winrate"], x["rank"]), reverse=True)[:N]
+                key=lambda x: (x["perf"], x["rank"]), reverse=True)[:N]
     g4 = sorted([x for x in cands if bad_meta(x) and played(x)
                  and x["over"] is not None and x["over"] >= OVERPERF],
                 key=lambda x: x["over"], reverse=True)[:N]
@@ -90,7 +93,8 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
 
     def entry(x, note):
         return {"id": x["id"], "name": x["name"], "portrait": x["portrait"],
-                "tier": x["tier"], "winrate": x["winrate"], "battles": x["battles"],
+                "tier": x["tier"], "winrate": x["winrate"], "perf": x["perf"],
+                "level": x["level"], "battles": x["battles"],
                 "power": x["power"], "note": note, "change": x["change"]}
 
     def note2(x):
@@ -104,7 +108,7 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
     groups = [
         {"key": "in_form", "title": "En forma · aprovéchalos",
          "subtitle": "De los brawlers que dominas, los que además pegan fuerte en el meta ahora mismo.",
-         "brawlers": [entry(x, f"{x['winrate']}% en {x['battles']} · tier {x['tier']}") for x in g1]},
+         "brawlers": [entry(x, f"Rend. {x['perf']} · {x['battles']}p · tier {x['tier']}") for x in g1]},
         {"key": "dont_overuse", "title": "No abuses · mal momento",
          "subtitle": "Los manejas bien, pero están en horas bajas (o recién nerfeados): altérnalos para no estancarte.",
          "brawlers": [entry(x, note2(x)) for x in g2]},
@@ -113,7 +117,7 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
          "brawlers": [entry(x, f"Tier {x['tier']} y casi sin jugar") for x in g3]},
         {"key": "against_meta", "title": "A contracorriente · tu sello",
          "subtitle": "El meta dice que van flojos, pero tú les sacas un rendimiento por encima de lo esperado.",
-         "brawlers": [entry(x, f"+{x['over']}% sobre lo esperado · tier {x['tier']}") for x in g4]},
+         "brawlers": [entry(x, f"+{x['over']} sobre lo esperado · tier {x['tier']}") for x in g4]},
     ]
     # «Conviene maxear»: solo si te queda MÁS de 1 brawler por subir a 11 (si no, desaparece).
     if sum(1 for x in cands if (x["power"] or 0) < 11) > 1:

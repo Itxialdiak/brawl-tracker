@@ -296,6 +296,8 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
     filt = {"player": tag, "brawler": bname}
     ov = await asyncio.to_thread(db.overview, filt)
     by_mode = await asyncio.to_thread(db.winrate_by, "mode", filt)
+    wr_all = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
+    wr_me = next((r for r in wr_all if (r.get("label") or "").upper() == bname), None)
     skin = {"id": c.get("skin_id"), "name": c.get("skin_name")} if (c and c.get("skin_id")) else None
     image_full = extra.get("body_image") or cat.get("image_full")
     if skin and skin.get("id") and skin.get("name"):
@@ -334,6 +336,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
         "builds": extra.get("builds") or [],
         "your": {
             "winrate": ov.get("winrate"), "battles": ov.get("total"),
+            "adj_score": (wr_me or {}).get("adj_score"), "level": (wr_me or {}).get("avg_trophies"),
             "by_mode": [{"mode": m["label"], "winrate": m["winrate"], "battles": m["total"]}
                         for m in by_mode],
         },
