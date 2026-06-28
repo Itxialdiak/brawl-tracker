@@ -87,7 +87,8 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     wr = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
     wr_by_name = {(r["label"] or "").upper(): r for r in wr}
     hc_ids = brawler_extra.hypercharge_ids()
-    bchanges = (await buffs.get_buffs()).get("changes") or {}   # buffs/nerfs recientes (no bloquea)
+    await buffs.get_buffs()                                     # calienta la caché (no bloquea)
+    bchanges = buffs.changes_map()                              # cambios vigentes por brawler
 
     items = []
     temporary = []
@@ -232,7 +233,8 @@ async def api_recommendations(player: str = Query(None), kind: str = Query("comm
         tl = await asyncio.to_thread(tierlist.get, "community")
     collection = await asyncio.to_thread(db.get_collection, tag)
     wr_rows = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
-    changes = (await buffs.get_buffs()).get("changes") or {}
+    await buffs.get_buffs()
+    changes = buffs.changes_map()
     return recommendations.build(kind, catalog, tl, collection, wr_rows, changes)
 
 

@@ -20,7 +20,8 @@ _TIER_BASELINE = {"S": 56, "A": 53, "B": 51, "C": 49, "D": 47, "F": 44}
 MIN_PLAY = 4        # partidas mínimas para considerar que "lo usas" (y fiar de tu win rate)
 GOOD_META = 4       # rank >= B se considera buen momento
 OVERPERF = 6        # % sobre la media para entrar en "a contracorriente"
-N = 5               # brawlers por subsección
+N = 6               # brawlers por subsección (las 4 primeras)
+N_MAX = 7           # "conviene maxear" muestra 7
 
 
 def _meta_map(tiers: dict) -> dict:
@@ -85,7 +86,7 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
                 key=lambda x: (x["rank"], x["mwr"] if (x.get("mwr") is not None) else 0),
                 reverse=True)[:N]
     g5 = sorted([x for x in cands if good_meta(x) and (x["power"] or 0) < 11],
-                key=lambda x: (is_buff(x), x["rank"], x["power"] or 0), reverse=True)[:N]
+                key=lambda x: (is_buff(x), x["rank"], x["power"] or 0), reverse=True)[:N_MAX]
 
     def entry(x, note):
         return {"id": x["id"], "name": x["name"], "portrait": x["portrait"],
@@ -113,9 +114,13 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
         {"key": "against_meta", "title": "A contracorriente · tu sello",
          "subtitle": "El meta dice que van flojos, pero tú les sacas un rendimiento por encima de lo esperado.",
          "brawlers": [entry(x, f"+{x['over']}% sobre lo esperado · tier {x['tier']}") for x in g4]},
-        {"key": "to_max", "title": "Conviene maxear",
-         "subtitle": "Sin nivel máximo y muy bien valorados (mejor si tienen mejoras recientes): donde más rinde tu inversión.",
-         "brawlers": [entry(x, note5(x)) for x in g5]},
     ]
+    # «Conviene maxear»: solo si te queda MÁS de 1 brawler por subir a 11 (si no, desaparece).
+    if sum(1 for x in cands if (x["power"] or 0) < 11) > 1:
+        groups.append(
+            {"key": "to_max", "numbered": True, "title": "Conviene maxear",
+             "subtitle": "Sin nivel máximo y muy bien valorados (mejor si tienen mejoras recientes): "
+                         "ordenados por prioridad, donde más rinde tu inversión.",
+             "brawlers": [entry(x, note5(x)) for x in g5]})
     return {"kind": kind, "groups": groups,
             "source": (tl or {}).get("note") or (tl or {}).get("criteria") or ""}

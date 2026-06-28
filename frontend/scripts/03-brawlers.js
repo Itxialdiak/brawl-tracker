@@ -222,24 +222,85 @@ async function loadRecommendations(kind) {
   try { d = await getJSON("/api/recommendations?kind=" + recsKind + "&player=" + encodeURIComponent(currentPlayer)); }
   catch (e) { host.innerHTML = `<div class="empty">No se pudieron cargar las recomendaciones.</div>`; return; }
   if ($("br-recs-source")) $("br-recs-source").textContent = d.source || "";
-  host.innerHTML = (d.groups || []).map(renderRecGroup).join("");
+  const groups = d.groups || [];
+  const grid = groups.filter((g) => g.key !== "to_max");
+  const toMax = groups.find((g) => g.key === "to_max");
+  host.innerHTML = `<div class="recs-grid">${grid.map(renderRecGroup).join("")}</div>${toMax ? renderRecGroup(toMax) : ""}`;
 }
 function renderRecGroup(g) {
-  const cards = (g.brawlers || []).map((b) => {
+  const numbered = !!g.numbered;
+  const cards = (g.brawlers || []).map((b, i) => {
     const por = b.portrait ? `<img src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
     const tier = b.tier ? `<span class="rec-tier tier-${b.tier}">${b.tier}</span>` : "";
     const chgFlag = b.change ? `<span class="chg-flag sm ${b.change.kind}" title="${esc(b.change.note || "")}">${chgIcon(b.change.kind)}</span>` : "";
+    const num = numbered ? `<span class="rec-num">${i + 1}</span>` : "";
     return `<div class="br-rec-card" onclick="showBrawlerDetail(${b.id})" title="${esc(b.name)}">
-      <div class="por">${por}${tier}${chgFlag}</div>
+      <div class="por">${num}${por}${tier}${chgFlag}</div>
       <div class="nm">${esc(b.name)}</div>
       <div class="nt">${esc(b.note || "")}</div>
     </div>`;
   }).join("");
   const body = cards || `<div class="rec-empty">Aún no hay datos suficientes aquí. Juega más partidas y se recalculará.</div>`;
-  return `<div class="br-rec-group">
+  return `<div class="br-rec-group${numbered ? " full numbered" : ""}">
     <div class="br-rec-gh"><h4>${esc(g.title)}</h4><p>${esc(g.subtitle)}</p></div>
     <div class="br-rec-cards">${body}</div>
   </div>`;
+}
+
+/* ---------- Lista de buffs y nerfs (bajo la Tier List) ---------- */
+const TARGET_ICON = { attack: "💥", super: "✦", gadget: "◆", starpower: "★", hypercharge: "⚡", stats: "🛡" };
+const TARGET_LABEL = { attack: "Ataque", super: "Súper", gadget: "Gadget", starpower: "Estelar", hypercharge: "Hipercarga", stats: "Características" };
+function titleCaseName(s) { return String(s || "").replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.substr(1).toLowerCase()); }
+async function loadBuffsList() {
+  const host = $("buffs-section");
+  if (!host) return;
+  host.innerHTML = `<div class="empty">Cargando cambios de balance…</div>`;
+  let d = null;
+  try { d = await getJSON("/api/buffs"); } catch (e) { d = null; }
+  if (!d) { host.innerHTML = ""; return; }
+  const up = d.upcoming || [];
+  host.innerHTML = `
+    <h2 class="section-title" style="margin-top:34px">Buffs y nerfs</h2>
+    <p class="hint" style="margin:2px 0 14px;max-width:760px">Los cambios de balance de Brawl Stars de un vistazo: a la izquierda las mejoras (verde), a la derecha los recortes (rojo).</p>
+    <h4 class="buffs-h">Vigentes ahora</h4>
+    ${renderBuffsCols(d.current || [], "Recopilando los cambios de balance recientes…")}
+    <h4 class="buffs-h">Próximos cambios confirmados</h4>
+    ${up.length ? renderBuffsCols(up, "") : `<div class="buffs-none">No hay cambios de balance programados.</div>`}`;
+}
+function renderBuffsCols(list, emptyMsg) {
+  if (!list.length) return `<div class="buffs-none">${esc(emptyMsg || "Sin datos por ahora.")}</div>`;
+  const buffs = list.filter((e) => e.kind !== "nerf");
+  const nerfs = list.filter((e) => e.kind === "nerf");
+  return `<div class="buffs-cols">
+    <div class="buffs-block">
+      <div class="buffs-block-h buff">▲ Buffs</div>
+      <div class="buffs-grid">${buffs.map(buffEntry).join("") || '<div class="buffs-none sm">Sin buffs.</div>'}</div>
+    </div>
+    <div class="buffs-block">
+      <div class="buffs-block-h nerf">▼ Nerfs</div>
+      <div class="buffs-grid">${nerfs.map(buffEntry).join("") || '<div class="buffs-none sm">Sin nerfs.</div>'}</div>
+    </div>
+  </div>`;
+}
+function buffEntry(e) {
+  const por = (typeof brawlerPortrait === "function") ? brawlerPortrait(e.brawler) : null;
+  const img = por ? `<img src="${por}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
+  const ti = TARGET_ICON[e.target] || "•";
+  const cls = e.kind === "nerf" ? "nerf" : e.kind === "rework" ? "rework" : "buff";
+  return `<div class="buff-entry ${cls}" title="${esc(e.note || "")}">
+    <div class="be-face">${img}<span class="be-target" title="${TARGET_LABEL[e.target] || ""}">${ti}</span></div>
+    <div class="be-body">
+      <div class="be-name">${esc(titleCaseName(e.brawler))}${e.date ? ` <small>${esc(e.date)}</small>` : ""}</div>
+      <div class="be-note">${esc(e.note || TARGET_LABEL[e.target] || "")}</div>
+    </div>
+  </div>`;
+}
+function goToBuffs() {
+  showSection("tierlists");
+  setTimeout(() => {
+    const el = $("buffs-section");
+    if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600); }
+  }, 220);
 }
 function renderBrRoles() {
   const el = $("br-roles");

@@ -1,9 +1,10 @@
-"""Buffs y nerfs recientes por brawler, sacados de las notas de parche.
+"""Buffs y nerfs por brawler, sacados de las notas de parche.
 
-Mismo enfoque robusto y NO bloqueante que la tier list global: lo genera el modelo a
-partir de las notas de parche más recientes, se canonicalizan los nombres contra el
-catálogo, se cachea en memoria, se persiste en disco y se refresca en segundo plano (la
-petición nunca espera a la IA). Cada entrada: {kind: buff|nerf|rework, note, date}.
+Igual de robusto y NO bloqueante que la tier list global: lo genera el modelo a partir
+de las notas de parche, se canonicalizan los nombres contra el catálogo, se cachea, se
+persiste y se refresca en segundo plano. Se distingue entre cambios VIGENTES (ya en el
+juego) y PRÓXIMOS confirmados. Cada entrada lleva además QUÉ se toca (target): ataque,
+súper, gadget, estelar, hipercarga o características.
 """
 import os
 import json
@@ -11,17 +12,36 @@ import time
 from datetime import datetime, timezone
 
 from . import db
-from .tierlist import _norm, _catalog_names   # reutiliza la normalización y los nombres del catálogo
+from .tierlist import _norm, _catalog_names   # reutiliza normalización y nombres del catálogo
 
 _STORE = os.path.join(os.path.dirname(__file__), "data", "buffs.json")
 _TTL = 24 * 3600
 _cache = {"data": None, "at": 0.0}
 _refreshing = {"on": False}
 KINDS = {"buff", "nerf", "rework"}
+TARGETS = {"attack", "super", "gadget", "starpower", "hypercharge", "stats"}
+_MAX = 18
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _clean(lst, names) -> list:
+    out = []
+    for e in (lst or []):
+        if not isinstance(e, dict):
+            continue
+        canon = names.get(_norm(e.get("brawler", ""))) if names else str(e.get("brawler", "")).upper()
+        kind = str(e.get("kind", "")).lower()
+        if not canon or kind not in KINDS:
+            continue
+        target = str(e.get("target", "")).lower()
+        if target not in TARGETS:
+            target = "stats"
+        out.append({"brawler": canon, "kind": kind, "target": target,
+                    "note": str(e.get("note") or "")[:160], "date": str(e.get("date") or "")})
+    return out[:_MAX]
 
 
 async def _compute(names: dict) -> dict | None:
@@ -32,16 +52,19 @@ async def _compute(names: dict) -> dict | None:
         from anthropic import AsyncAnthropic
         client = AsyncAnthropic(api_key=coach.API_KEY)
         msg = await client.messages.create(
-            model=coach.MODEL, max_tokens=2200,
-            system=("Eres un analista del meta de Brawl Stars. Conoces las notas de parche "
-                    "(balance changes) más recientes del juego al detalle."),
+            model=coach.MODEL, max_tokens=2600,
+            system=("Eres un analista del meta de Brawl Stars. Conoces al detalle las notas de "
+                    "parche (balance changes) recientes y las anunciadas para próximas versiones."),
             messages=[{"role": "user", "content": (
-                "Lista los cambios de balance (buffs, nerfs y reworks) más RECIENTES de Brawl "
-                "Stars brawler por brawler, según las últimas notas de parche (último mes o dos). "
-                "Responde SOLO con un JSON, sin texto adicional, con la forma: "
-                '{"NOMBRE":{"kind":"buff|nerf|rework","note":"resumen muy breve del cambio en '
-                'español","date":"AAAA-MM o número de versión"}}. El nombre del brawler en '
-                "MAYÚSCULAS. Incluye solo brawlers con cambios recientes reales.")}],
+                "Dame los cambios de balance de Brawl Stars en DOS grupos: los VIGENTES ahora "
+                "mismo (ya aplicados en el juego en las últimas semanas) y los PRÓXIMOS "
+                "confirmados (anunciados oficialmente pero aún sin aplicar). Para cada cambio "
+                "indica el brawler, si es buff/nerf/rework, QUÉ se toca (attack, super, gadget, "
+                "starpower, hypercharge o stats) y un resumen muy breve en español. Responde SOLO "
+                'con un JSON sin texto adicional: {"current":[{"brawler":"NOMBRE","kind":"buff|'
+                'nerf|rework","target":"attack|super|gadget|starpower|hypercharge|stats","note":'
+                '"...","date":"versión o fecha"}],"upcoming":[...]}. Nombres en MAYÚSCULAS. Si no '
+                'hay próximos confirmados, devuelve "upcoming":[].')}],
         )
         try:
             db.log_ai_usage("buffs", msg.usage.input_tokens, msg.usage.output_tokens)
@@ -50,19 +73,9 @@ async def _compute(names: dict) -> dict | None:
         text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
         i, j = text.find("{"), text.rfind("}")
         raw = json.loads(text[i:j + 1])
-        out = {}
-        for nm, info in raw.items():
-            if not isinstance(info, dict):
-                continue
-            canon = names.get(_norm(nm)) if names else str(nm).upper()
-            kind = str(info.get("kind", "")).lower()
-            if not canon or kind not in KINDS:
-                continue
-            out[canon] = {"kind": kind, "note": str(info.get("note") or "")[:160],
-                          "date": str(info.get("date") or "")}
-        if out:
-            return {"changes": out, "updated": _now_iso(),
-                    "note": "Cambios de balance recientes según las notas de parche."}
+        current, upcoming = _clean(raw.get("current"), names), _clean(raw.get("upcoming"), names)
+        if current or upcoming:
+            return {"current": current, "upcoming": upcoming, "updated": _now_iso()}
     except Exception as e:  # noqa: BLE001
         print(f"[buffs] {e}")
     return None
@@ -118,7 +131,7 @@ def _schedule_refresh() -> None:
 
 
 async def get_buffs() -> dict:
-    """Mapa de cambios recientes por brawler. NUNCA bloquea: sirve memoria/disco al
+    """{current:[...], upcoming:[...], updated}. NUNCA bloquea: sirve memoria/disco al
     instante y, si está caducado o ausente, refresca con IA en segundo plano."""
     now = time.time()
     if _cache["data"] is not None and now - _cache["at"] < 600:
@@ -127,15 +140,18 @@ async def get_buffs() -> dict:
     if stored and _age(stored) < _TTL:
         _cache["data"], _cache["at"] = stored, now
         return stored
-    data = stored or {"changes": {}, "updated": None,
-                      "note": "Recopilando los cambios de parche recientes…"}
+    data = stored or {"current": [], "upcoming": [], "updated": None,
+                      "note": "Recopilando los cambios de balance recientes…"}
     _cache["data"], _cache["at"] = data, now
     _schedule_refresh()
     return data
 
 
 def changes_map() -> dict:
-    """Versión SÍNCRONA (para cálculos como las recomendaciones): {NOMBRE: {kind,note,date}}
-    de lo que haya en memoria o disco, sin disparar la IA."""
+    """{NOMBRE: {kind,target,note,date}} con el primer cambio VIGENTE de cada brawler (para
+    los badges en las tarjetas/ficha y para las recomendaciones). Síncrono, sin IA."""
     d = _cache["data"] or _load_store() or {}
-    return d.get("changes") or {}
+    m = {}
+    for e in (d.get("current") or []):
+        m.setdefault(e["brawler"], e)
+    return m
