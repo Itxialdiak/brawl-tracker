@@ -2,6 +2,7 @@
 
 Extraído de main.py; se incluye con app.include_router()."""
 import asyncio
+import re
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
 from .. import db, assets, brawler_extra, auth
@@ -22,6 +23,44 @@ def _rank_band(trophies) -> str:
     if t >= 500:  return "silver"
     if t >= 250:  return "bronze"
     return "wood"
+
+
+_NO_HYPERCHARGE = {"STARR NOVA", "BOLT"}  # los únicos brawlers sin hipercarga ahora mismo
+
+
+def _dedup_by_id(items):
+    """Quita duplicados por id (BrawlAPI lista a veces el mismo gadget/star power dos veces)."""
+    seen, out = set(), []
+    for it in (items or []):
+        if it.get("id") in seen:
+            continue
+        seen.add(it.get("id")); out.append(it)
+    return out
+
+
+def _norm_name(s):
+    return re.sub(r"[^a-z0-9]", "", str(s or "").lower())
+
+
+def _clean_abilities(cat_items, es_list):
+    """BrawlAPI lista a veces gadgets/star powers VIEJOS de brawlers reworkeados (p. ej.
+    Bolt, con Rocket Laces/Fuel ya retirados) junto a los actuales. Si la lista curada
+    (es_list) fija los `id` de los gadgets/star powers actuales, mostramos SOLO esos en su
+    orden; si no, quitamos posibles duplicados traducidos y devolvemos el catálogo dedup."""
+    cat = _dedup_by_id(cat_items)
+    es_list = es_list or []
+    ids = [e.get("id") for e in es_list if e.get("id")]
+    if ids and len(ids) == len(es_list):           # el dataset fija los actuales por id
+        by_id = {it.get("id"): it for it in cat}
+        picked = [by_id[i] for i in ids if i in by_id]
+        if len(picked) == len(ids):
+            return picked
+    es_norm = {_norm_name(e.get("name")) for e in es_list if e.get("name")}
+    if es_norm:
+        cleaned = [it for it in cat if _norm_name(it.get("name")) not in es_norm]
+        if len(cleaned) >= len(es_list):
+            return cleaned
+    return cat
 
 
 @router.get("/api/brawlers")
@@ -50,6 +89,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     hc_ids = brawler_extra.hypercharge_ids()
 
     items = []
+    temporary = []
     for bid, cat in by_id.items():
         c = coll_by_id.get(bid)
         name = cat.get("name")
@@ -57,8 +97,10 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         owned_sp = set(c["star_power_ids"]) if c else set()
         owned_gd = set(c["gadget_ids"]) if c else set()
         ex = brawler_extra.get(bid)
+        sps = _clean_abilities(cat.get("star_powers"), ex.get("star_powers_es"))
+        gds = _clean_abilities(cat.get("gadgets"), ex.get("gadgets_es"))
         role = ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role")
-        items.append({
+        item = {
             "id": bid, "name": name, "role": role,
             "role_secondary": brawler_extra.role_secondary(name),
             "hypercharge_icon": (ex.get("hypercharge") or {}).get("icon"),
@@ -70,19 +112,22 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "trophies": c["trophies"] if c else None,
             "rank_band": _rank_band(c["trophies"]) if c else None,
             "prestige": c.get("prestige_level") if c else None,
-            "star_powers": [{"icon": s.get("icon"), "owned": s.get("id") in owned_sp}
-                            for s in (cat.get("star_powers") or [])],
-            "gadgets": [{"icon": g.get("icon"), "owned": g.get("id") in owned_gd}
-                        for g in (cat.get("gadgets") or [])],
+            "star_powers": [{"icon": s.get("icon"), "owned": s.get("id") in owned_sp} for s in sps],
+            "gadgets": [{"icon": g.get("icon"), "owned": g.get("id") in owned_gd} for g in gds],
             "owned_star_powers": len(owned_sp),
-            "total_star_powers": len(cat.get("star_powers") or []),
+            "total_star_powers": len(sps),
             "owned_gadgets": len(owned_gd),
-            "total_gadgets": len(cat.get("gadgets") or []),
-            "has_hypercharge": bid in hc_ids,
+            "total_gadgets": len(gds),
+            "has_hypercharge": (name or "").upper() not in _NO_HYPERCHARGE,
             "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
             "your_winrate": w["winrate"] if w else None,
             "your_battles": w["total"] if w else 0,
-        })
+        }
+        if brawler_extra.is_temporary(bid, name):    # colab temporal: a su apartado aparte
+            item["temporary"] = True
+            temporary.append(item)
+        else:
+            items.append(item)
 
     # Top 10 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
     from .. import skins
@@ -108,16 +153,21 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         top_brawlers.append(tb)
 
     counts = await asyncio.to_thread(db.collection_counts, tag)
-    rating = await asyncio.to_thread(db.account_rating, tag,
-                                     {**totals, "hypercharges": brawler_extra.hypercharge_total()})
+    n_temp = len(temporary)                        # los temporales no cuentan en la colección
+    owned_temp = sum(1 for t in temporary if t["owned"])
+    total_brawlers = max(0, (totals.get("brawlers") or len(by_id)) - n_temp)
+    rating = await asyncio.to_thread(
+        db.account_rating, tag,
+        {**totals, "brawlers": total_brawlers, "hypercharges": brawler_extra.hypercharge_total()})
     counters = {
-        "brawlers": {"owned": counts["brawlers"], "total": totals.get("brawlers") or len(by_id)},
+        "brawlers": {"owned": max(0, counts["brawlers"] - owned_temp), "total": total_brawlers},
         "star_powers": {"owned": counts["star_powers_owned"], "total": totals.get("star_powers") or 0},
         "gadgets": {"owned": counts["gadgets_owned"], "total": totals.get("gadgets") or 0},
-        "hypercharges": {"owned": counts["hypercharges_owned"], "total": brawler_extra.hypercharge_total()},
+        "hypercharges": {"owned": counts["hypercharges_owned"],
+                         "total": max(0, total_brawlers - len(_NO_HYPERCHARGE))},
     }
     return {"counters": counters, "rating": rating, "account": account,
-            "brawlers": items, "top_brawlers": top_brawlers}
+            "brawlers": items, "temporary": temporary, "top_brawlers": top_brawlers}
 
 
 @router.get("/api/versatile")
@@ -157,11 +207,13 @@ async def api_versatile(player: str = Query(None), mode: str = Query(None), map:
 
 
 @router.get("/api/tierlist")
-def api_tierlist(kind: str = Query("community"), user: dict = Depends(auth.require_user)):
+async def api_tierlist(kind: str = Query("community"), user: dict = Depends(auth.require_user)):
     """Tier List del meta: 'community' (generada con los datos de BrawlSensei) o
-    'global' (meta externo)."""
+    'global' (consenso del meta externo, vía IA con respaldo)."""
     from .. import tierlist
-    return tierlist.get(kind)
+    if kind == "global":
+        return await tierlist.global_tierlist()
+    return tierlist.get("community")
 
 
 @router.get("/api/account-rating")
@@ -203,7 +255,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
         de la wiki (emparejado por orden)."""
         es_list = es_list or []
         out = []
-        for i, it in enumerate(cat_items or []):
+        for i, it in enumerate(_clean_abilities(cat_items, es_list)):
             es = es_list[i] if i < len(es_list) else {}
             out.append({"id": it.get("id"), "name": es.get("name") or it.get("name"),
                         "icon": it.get("icon"),
@@ -246,7 +298,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
         "prestige_level": c.get("prestige_level") if c else None,
         "skin": skin,
         "gears_owned": len(c["gear_ids"]) if c else 0,
-        "has_hypercharge": brawler_id in brawler_extra.hypercharge_ids(),
+        "has_hypercharge": (name or "").upper() not in _NO_HYPERCHARGE,
         "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
         "hypercharge": extra.get("hypercharge"),
         "stats_by_level": extra.get("stats_by_level"),

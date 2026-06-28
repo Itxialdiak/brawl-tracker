@@ -55,6 +55,10 @@ def _build(brawlers, gamemodes, maps) -> dict:
     if "showdown" in mmap:
         for k in ("soloshowdown", "duoshowdown"):
             mmap.setdefault(k, mmap["showdown"])
+    # "Siege" (nombre interno antiguo con el que llegan las partidas) = la nueva "Brawl
+    # Arena" (Arena en español): reutiliza su icono oficial.
+    if "brawl arena" in mmap:
+        mmap.setdefault("siege", mmap["brawl arena"])
 
     pmap = {}
     for m in maps:

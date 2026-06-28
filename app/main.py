@@ -24,7 +24,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Query, Body, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -317,6 +317,18 @@ async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_
 
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+    """Sirve el index versionando los assets (JS/CSS) con la fecha de modificación más
+    reciente, para que el navegador cargue siempre la versión nueva (cache-busting)."""
+    path = os.path.join(FRONTEND_DIR, "index.html")
+    try:
+        import glob
+        html = open(path, encoding="utf-8").read()
+        assets = glob.glob(os.path.join(FRONTEND_DIR, "scripts", "*.js")) + [os.path.join(FRONTEND_DIR, "styles.css")]
+        v = int(max((os.path.getmtime(f) for f in assets if os.path.exists(f)), default=0))
+        html = html.replace('.js"></script>', f'.js?v={v}"></script>')
+        html = html.replace('href="/static/styles.css"', f'href="/static/styles.css?v={v}"')
+        return HTMLResponse(html)
+    except Exception:  # noqa: BLE001
+        return FileResponse(path)
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

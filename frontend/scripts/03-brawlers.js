@@ -12,7 +12,7 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
@@ -20,7 +20,7 @@ async function loadBrawlers() {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid();
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary();
 }
 
 function renderBrCounters() {
@@ -156,14 +156,19 @@ const TL_TIERS = ["S", "A", "B", "C", "D", "F"];
 async function loadTierlist(kind) {
   document.querySelectorAll(".tl-tab").forEach((b) => b.classList.toggle("active", b.dataset.tl === kind));
   const board = $("tl-board");
-  if (board) board.innerHTML = `<div class="empty">Cargando…</div>`;
-  let d;
-  try { d = await getJSON("/api/tierlist?kind=" + kind); } catch (e) { return; }
-  if ($("tl-sub")) $("tl-sub").textContent = d.criteria || d.note || "";
-  const any = TL_TIERS.some((t) => (d.tiers[t] || []).length);
-  if (!any) { if (board) board.innerHTML = `<div class="empty">${esc(d.note || "Sin datos todavía.")}</div>`; return; }
-  if (board) board.innerHTML = TL_TIERS.map((t) => {
-    const cells = (d.tiers[t] || []).map((b) => {
+  if (board) board.innerHTML = renderTierBoard({});  // pinta ya la plantilla vacía (6 filas)
+  let d = null;
+  try { d = await getJSON("/api/tierlist?kind=" + kind); } catch (e) { d = null; }
+  const tiers = (d && d.tiers) || {};
+  if ($("tl-sub")) {
+    $("tl-sub").textContent = (d && (d.criteria || d.note))
+      || (d ? "" : "No se pudo cargar la tier list. Si acabas de actualizar, reinicia el servidor.");
+  }
+  if (board) board.innerHTML = renderTierBoard(tiers);  // rellena lo que haya (aunque falten brawlers)
+}
+function renderTierBoard(tiers) {
+  return TL_TIERS.map((t) => {
+    const cells = (tiers[t] || []).map((b) => {
       const p = brawlerPortrait(b.name);
       const img = p ? `<img src="${p}" alt="" onerror="this.style.display='none'">` : `<span class="tl-noimg">${esc((b.name || "?")[0])}</span>`;
       const tip = b.winrate != null ? `${b.name} · ${b.winrate}% WR · uso ${b.pick_rate}%` : b.name;
@@ -194,6 +199,16 @@ function renderBrGrid() {
   $("br-grid").innerHTML = list.length
     ? list.map(renderBrawlerCard).join("")
     : `<div class="empty" style="grid-column:1/-1">Sin resultados.</div>`;
+}
+function renderBrTemporary() {
+  const el = $("br-temporary");
+  if (!el || !brawlersData) return;
+  const list = brawlersData.temporary || [];
+  if (!list.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="br-temp-head"><h3>⏳ Brawlers temporales</h3>
+      <p>Colaboraciones limitadas que ya no se pueden conseguir ni usar. No cuentan para la colección ni el meta — solo un recuerdo de lo que pasó.</p></div>
+    <div class="br-grid">${list.map(renderBrawlerCard).join("")}</div>`;
 }
 function renderBrRoles() {
   const el = $("br-roles");

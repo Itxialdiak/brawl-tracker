@@ -65,6 +65,23 @@ def hypercharge_total() -> int:
     return explicit if isinstance(explicit, int) else len(hypercharge_ids())
 
 
+# --- Brawlers temporales (colaboraciones limitadas) ---------------------------
+# No forman parte de la colección: no cuentan en el total, no se filtran, no se usan en
+# cálculos ni en las tier lists. Solo se muestran aparte, como recuerdo de eventos pasados.
+TEMPORARY_IDS = {16000088}                 # Buzz Lightyear
+TEMPORARY_NAMES = {"BUZZ LIGHTYEAR"}
+
+
+def is_temporary(brawler_id=None, name=None) -> bool:
+    """¿Es un brawler temporal (colab limitada) que no entra en la colección?"""
+    try:
+        if brawler_id is not None and int(brawler_id) in TEMPORARY_IDS:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return bool(name) and str(name).upper() in TEMPORARY_NAMES
+
+
 # --- Roles secundarios curados (data/roles_secondary.json) -------------------
 
 _ROLES_PATH = os.path.join(os.path.dirname(__file__), "data", "roles_secondary.json")

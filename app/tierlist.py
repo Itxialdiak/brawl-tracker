@@ -7,11 +7,36 @@
 - GLOBAL: el meta según fuentes externas (scraping). Llega aparte.
 """
 import os
+import re
 import json
 import time
+import unicodedata
 from datetime import datetime, timezone
 
-from . import db
+from . import db, brawler_extra
+
+
+def _norm(s: str) -> str:
+    """Normaliza un nombre de brawler para comparar (sin acentos, sin signos ni
+    conectores Y/AND): 'Larry & Lawrie' y 'Larry Y Lawrie' -> 'LARRYLAWRIE'."""
+    s = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode().upper()
+    words = [w for w in re.findall(r"[A-Z0-9]+", s) if w not in ("Y", "AND")]
+    return "".join(words)
+
+
+async def _catalog_names() -> dict:
+    """{nombre_normalizado -> NOMBRE CANÓNICO en mayúsculas} del catálogo."""
+    try:
+        from . import assets
+        cat = await assets.get_brawler_catalog()
+        out = {}
+        for c in (cat.get("by_id") or {}).values():
+            n = c.get("name")
+            if n and not brawler_extra.is_temporary(c.get("id"), n):   # temporales fuera del meta
+                out[_norm(n)] = n.upper()
+        return out
+    except Exception:  # noqa: BLE001
+        return {}
 
 TIERS = ["S", "A", "B", "C", "D", "F"]
 # Reparto acumulado por tiers (S pocos, centro ancho, F pocos): % de brawlers hasta ese tier.
@@ -44,7 +69,8 @@ def _compute() -> dict | None:
     """Tier list desde los datos de la comunidad, o None si la muestra es muy pobre."""
     meta = db.community_meta()
     brs = [b for b in meta.get("brawlers", [])
-           if (b.get("games") or 0) >= _MIN_GAMES and b.get("winrate") is not None]
+           if (b.get("games") or 0) >= _MIN_GAMES and b.get("winrate") is not None
+           and not brawler_extra.is_temporary(name=b.get("brawler"))]
     if len(brs) < _MIN_BRAWLERS:
         return None
     maxpick = max((b["pick_rate"] for b in brs), default=1) or 1
@@ -100,17 +126,92 @@ def _community() -> dict:
     return _load_store() or _baseline()   # la de ayer, o la de referencia: NUNCA vacía
 
 
-def _global_pending() -> dict:
-    return {"kind": "global", "tiers": {t: [] for t in TIERS},
-            "note": "La Tier List Global (meta externo, por scraping de fuentes) llegará en breve."}
+# --- Global: consenso del meta externo. Lo genera el modelo analizando las tier lists y
+# fuentes fiables más recientes (refresco diario, persistido). Sin clave de IA usa una de
+# referencia para que tampoco quede vacía. ---
+
+_GLOBAL_STORE = os.path.join(os.path.dirname(__file__), "data", "tierlist_global.json")
+_GLOBAL_TTL = 24 * 3600
+
+
+async def _global_compute(names: dict) -> dict | None:
+    from . import coach
+    if not coach.configured():
+        return None
+    try:
+        from anthropic import AsyncAnthropic
+        client = AsyncAnthropic(api_key=coach.API_KEY)
+        msg = await client.messages.create(
+            model=coach.MODEL, max_tokens=1500,
+            system=("Eres un analista del meta de Brawl Stars. Conoces el consenso de las tier "
+                    "lists y fuentes fiables más recientes de la comunidad competitiva."),
+            messages=[{"role": "user", "content": (
+                "Genera la tier list GLOBAL actual del meta de Brawl Stars (3v3 ranked, nivel "
+                "competitivo), promediando el consenso de las fuentes fiables más recientes. "
+                "Clasifica los brawlers relevantes en S/A/B/C/D/F. Responde SOLO con un JSON: "
+                '{"S":["NOMBRE",...],"A":[...],"B":[...],"C":[...],"D":[...],"F":[...]} '
+                "con los nombres de brawler en MAYÚSCULAS y sin texto adicional.")}],
+        )
+        try:
+            db.log_ai_usage("tierlist_global", msg.usage.input_tokens, msg.usage.output_tokens)
+        except Exception:  # noqa: BLE001
+            pass
+        text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+        i, j = text.find("{"), text.rfind("}")
+        raw = json.loads(text[i:j + 1])
+        tiers = {}
+        for t in TIERS:
+            seen, lst = set(), []
+            for n in (raw.get(t) or []):
+                canon = names.get(_norm(n)) if names else str(n).upper()
+                if canon and canon not in seen:   # solo brawlers reales del catálogo (evita letras rotas)
+                    seen.add(canon)
+                    lst.append({"name": canon, "winrate": None, "pick_rate": None, "games": 0})
+            tiers[t] = lst
+        if any(tiers[t] for t in TIERS):
+            return {"kind": "global", "tiers": tiers, "updated": _now_iso(),
+                    "criteria": "Consenso del meta global según fuentes fiables (se actualiza a diario)."}
+    except Exception as e:  # noqa: BLE001
+        print(f"[tierlist global] {e}")
+    return None
+
+
+def _global_baseline() -> dict:
+    b = _baseline()
+    b["kind"] = "global"
+    b["note"] = "Tier list global de referencia (se actualizará automáticamente con el meta)."
+    return b
+
+
+async def global_tierlist() -> dict:
+    now = time.time()
+    c = _cache.get("global")
+    if c and now - c[0] < _GLOBAL_TTL:
+        return c[1]
+    data = await _global_compute(await _catalog_names())
+    if data:
+        try:
+            os.makedirs(os.path.dirname(_GLOBAL_STORE), exist_ok=True)
+            with open(_GLOBAL_STORE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        try:
+            with open(_GLOBAL_STORE, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:  # noqa: BLE001
+            data = _global_baseline()
+    _cache["global"] = (now, data)
+    return data
 
 
 def get(kind: str) -> dict:
-    kind = kind if kind in ("community", "global") else "community"
+    """Versión síncrona: la Comunitaria. La Global es async (usa global_tierlist())."""
     now = time.time()
-    c = _cache.get(kind)
+    c = _cache.get("community")
     if c and now - c[0] < _TTL:
         return c[1]
-    data = _community() if kind == "community" else _global_pending()
-    _cache[kind] = (now, data)
+    data = _community()
+    _cache["community"] = (now, data)
     return data
