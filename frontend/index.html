@@ -616,8 +616,8 @@
         <button class="btn" id="reto-create-btn" onclick="openCreateReto()">+ Crear reto</button>
       </div>
       <div id="retos-mine"></div>
-      <div class="retos-top">
-        <h3 class="reto-section-h">Tablón de retos</h3>
+      <details class="m-acc2" open>
+        <summary class="reto-section-h">Tablón de retos</summary>
         <div class="retos-filters">
           <select id="rf-status" onchange="loadRetoBoard()" title="Estado">
             <option value="">Todos</option><option value="open">Abiertos</option><option value="closed">Cerrados</option>
@@ -627,8 +627,8 @@
             <option value="3">Media</option><option value="4">Difícil</option><option value="5">Muy difícil</option>
           </select>
         </div>
-      </div>
-      <div id="retos-board"></div>
+        <div id="retos-board"></div>
+      </details>
     </div>
 
     <!-- BRAWLERS -->

@@ -96,7 +96,7 @@ async function loadRetoMine() {
       const body = items.length
         ? `<div class="reto-grid">${items.map((r) => retoCardHTML(r, true)).join("")}</div>`
         : `<div class="lg-empty">${empty}</div>`;
-      return `<div class="reto-group"><h4 class="reto-group-h">${title} <span class="reto-count">${items.length}</span></h4>${body}</div>`;
+      return `<details class="m-acc2 reto-group" open><summary class="reto-group-h">${title} <span class="reto-count">${items.length}</span></summary>${body}</details>`;
     }).join("");
   } catch (_) { /* 401 */ }
 }

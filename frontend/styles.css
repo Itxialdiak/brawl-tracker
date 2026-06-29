@@ -1373,7 +1373,9 @@
     color: var(--text); margin-top: 6px; }
   .rc-cond { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; opacity: .6; }
   .rc-cond.on { opacity: 1; border-color: var(--cyan); background: rgba(63,225,255,.05); }
-  .rc-cond-on { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; }
+  .rc-cond-on { display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; font-size: 13.5px; min-height: 24px; padding-right: 26px; }
+  .rc-cond-on b { text-align: center; }
+  .rc-cond-on input[type=checkbox] { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--cyan); }
   .rc-cond-fields { display: none; flex-wrap: wrap; gap: 12px; margin: 9px 0 2px; }
   .rc-cond.on .rc-cond-fields { display: flex; }
   .rc-f { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
@@ -1725,4 +1727,35 @@
   .modal-card { max-width: calc(100vw - 20px); max-height: calc(100dvh - 24px); overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
   .modal-card::-webkit-scrollbar { width: 5px; }
   .modal-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+}
+
+
+/* === movil v4: acordeon etiquetado + carruseles retos/rotacion/recs/filtros === */
+/* Acordeón con etiqueta visible (rotación, retos): en PC etiqueta normal, no colapsable */
+.m-acc2 > summary { list-style: none; }
+.m-acc2 > summary::-webkit-details-marker { display: none; }
+.m-acc2 > summary::marker { content: ""; }
+@media (min-width: 769px) { .m-acc2 > summary { pointer-events: none; } }
+@media (max-width: 768px) {
+  .m-acc2 { margin-bottom: 8px; }
+  .m-acc2 > summary { cursor: pointer; position: relative; padding-right: 22px; }
+  .m-acc2 > summary::after { content: "▸"; position: absolute; right: 0; top: 50%; transform: translateY(-50%); opacity: .5; font-size: 13px; transition: transform .15s; }
+  .m-acc2[open] > summary::after { transform: translateY(-50%) rotate(90deg); }
+
+  /* Rotación (Qué jugar) + Retos: tarjetas en carrusel deslizable */
+  .rotation-grid, .reto-grid { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 11px; padding-bottom: 8px;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .rotation-grid::-webkit-scrollbar, .reto-grid::-webkit-scrollbar { display: none; }
+  .rotation-grid > *, .reto-grid > * { flex: 0 0 84%; scroll-snap-align: center; margin-bottom: 0; }
+
+  /* Recomendaciones: 3 visibles + deslizar para ver el resto (reduce una fila) */
+  .br-rec-cards { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding-bottom: 6px;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .br-rec-cards::-webkit-scrollbar { display: none; }
+  .br-rec-cards > .br-rec-card { flex: 0 0 30%; scroll-snap-align: center; }
+
+  /* Filtros de Brawlers (Ordenar por / Filtrar por) en una sola línea deslizable */
+  .br-sorts, .br-roles { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .br-sorts::-webkit-scrollbar, .br-roles::-webkit-scrollbar { display: none; }
+  .br-sort, .br-role-chip { flex: 0 0 auto; white-space: nowrap; }
 }

@@ -432,7 +432,7 @@ async function loadRotation() {
   const trophy = events.filter((e) => e.category !== "ranked");
   const ranked = events.filter((e) => e.category === "ranked");
   const section = (label, sub, list) => list.length
-    ? `<div class="rot-cat-label">${label}<span>${sub}</span></div><div class="rotation-grid">${list.map(renderRotCard).join("")}</div>`
+    ? `<details class="m-acc2" open><summary class="rot-cat-label">${label}<span>${sub}</span></summary><div class="rotation-grid">${list.map(renderRotCard).join("")}</div></details>`
     : "";
   grid.innerHTML =
     section("🏆 Copas", "Modos y mapas que dan trofeos ahora mismo", trophy) +
