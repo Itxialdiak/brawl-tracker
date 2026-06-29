@@ -348,6 +348,15 @@
     </div>
   </header>
 
+  <!-- Botón flotante (solo móvil): power cube de Supervivencia → vuelve arriba -->
+  <button id="home-fab" class="home-fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba" title="Volver arriba">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <polygon points="12,2.5 21,7.2 12,11.9 3,7.2" fill="#c8ff6e"/>
+      <polygon points="3,7.2 12,11.9 12,21.5 3,16.8" fill="#79d11e"/>
+      <polygon points="21,7.2 12,11.9 12,21.5 21,16.8" fill="#4e9a14"/>
+    </svg>
+  </button>
+
   <!-- ===================== SECCIÓN: BRAWLYTICS (el tracker) ===================== -->
   <section class="app-section active" id="section-brawlytics">
     <div class="bytics-bar">
