@@ -107,9 +107,6 @@ async function loadOverview() {
     <div class="stat"><div class="k">Partidas registradas</div><div class="v">${o.total}</div><div class="sub">acumuladas hasta ahora</div></div>
     <div class="stat star"><div class="k">Jugador estelar</div><div class="v">${o.star_rate == null ? "—" : o.star_rate + "<small>%</small>"}</div><div class="sub">${o.star_players} veces MVP (3v3)</div></div>
     <div class="stat cyan"><div class="k">Balance de trofeos</div><div class="v" style="color:${o.trophy_delta_7d >= 0 ? "var(--win)" : "var(--loss)"}">${o.trophy_delta_7d >= 0 ? "+" : ""}${o.trophy_delta_7d}</div><div class="sub">últimos 7 días</div></div>`;
-  if (o.annotated > 0) {
-    cards += `<div class="stat combat"><div class="k">Combate (anotado)</div><div class="v" style="font-size:19px">${o.avg_kills ?? "—"} / ${o.avg_deaths ?? "—"}</div><div class="sub">asesinatos / muertes · ${o.annotated}p · daño ${o.avg_damage ?? "—"}</div></div>`;
-  }
   cards += `<div class="stat"><div class="k">Última partida</div><div class="v" style="font-size:18px">${o.last_battle ? fmtTime(o.last_battle) : "—"}</div><div class="sub">vista por el tracker</div></div>`;
   $("overview").innerHTML = cards;
 }

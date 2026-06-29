@@ -350,10 +350,11 @@
 
   <!-- Botón flotante (solo móvil): power cube de Supervivencia → vuelve arriba -->
   <button id="home-fab" class="home-fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba" title="Volver arriba">
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <polygon points="12,2.5 21,7.2 12,11.9 3,7.2" fill="#c8ff6e"/>
-      <polygon points="3,7.2 12,11.9 12,21.5 3,16.8" fill="#79d11e"/>
-      <polygon points="21,7.2 12,11.9 12,21.5 21,16.8" fill="#4e9a14"/>
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <polygon points="3,10.5 16,18 16,30.5 3,23" fill="#27a33b" stroke="#0d3d14" stroke-width="1" stroke-linejoin="round"/>
+      <polygon points="29,10.5 16,18 16,30.5 29,23" fill="#178a2b" stroke="#0d3d14" stroke-width="1" stroke-linejoin="round"/>
+      <polygon points="16,3 29,10.5 16,18 3,10.5" fill="#46d657" stroke="#0d3d14" stroke-width="1" stroke-linejoin="round"/>
+      <polygon points="19,5.6 11,11.3 15.4,11.5 12.2,16.7 21.3,10.2 16.4,10" fill="#ffd400" stroke="#b88f00" stroke-width=".5" stroke-linejoin="round"/>
     </svg>
   </button>
 
@@ -423,6 +424,7 @@
       <section class="overview" id="overview"></section>
       <div class="highlights" id="highlights"></div>
       <div class="br-rating" id="stats-rating" style="display:none"></div>
+      <details class="m-acc" open><summary>Rendimiento por categoría</summary>
       <div class="grid grid-cols5">
         <div class="panel p-brawler" id="panel-brawler"><h2><span class="dot"></span>Win rate por brawler</h2>
           <div class="hint">Rendimiento con cada brawler (V/D · estelar).</div><div class="rows" id="r-brawler"></div></div>
@@ -434,7 +436,8 @@
           <div class="hint">Win rate por rol (primario y secundario).</div><div class="rows" id="r-role"></div></div>
         <div class="panel p-vs"><h2><span class="dot"></span>Contra cada brawler</h2>
           <div class="hint">Win rate y copas medias del rival.</div><div class="rows" id="r-vs"></div></div>
-      </div>
+      </div></details>
+      <details class="m-acc" open><summary>Roles y modos</summary>
       <div class="charts-row" id="role-radars-row">
         <div class="panel chart-sq"><h2><span class="dot"></span>Preferencia de rol</h2>
           <div class="hint">Qué roles usas más (cada brawler pesa en su rol principal y secundario).</div>
@@ -450,7 +453,8 @@
         <div class="panel chart-sq"><h2><span class="dot"></span>Mejores modos · win rate</h2>
           <div class="hint">Comparativa de tu win rate por modo.</div>
           <div class="chart-box" id="mode-wr-donut"></div></div>
-      </div>
+      </div></details>
+      <details class="m-acc" open><summary>Análisis avanzado</summary>
       <div class="grid grid-5">
         <div class="panel"><h2><span class="dot"></span>Mejores aliados</h2>
           <div class="hint">Brawlers aliados con los que más ganas cuando van en tu equipo.</div>
@@ -467,7 +471,7 @@
         <div class="panel"><h2><span class="dot"></span>Por franja horaria</h2>
           <div class="hint">A qué hora del día rindes mejor (en tu hora local).</div>
           <div class="rows" id="hourly"></div></div>
-      </div>
+      </div></details>
       <div class="charts-row">
         <div class="panel chart-sq"><h2><span class="dot"></span>Evolución de trofeos</h2>
           <div class="hint">Balance acumulado de trofeos.</div>
@@ -560,7 +564,7 @@
       <div id="coach-list-view">
         <div class="dojo">
           <div class="dojo-portrait">
-            <img src="/static/media/sensei.png" alt="El Sensei" class="dojo-img" id="dojo-img" onerror="senseiImgFallback(this)">
+            <img src="/static/media/Sensei.png" alt="El Sensei" class="dojo-img" id="dojo-img" onerror="senseiImgFallback(this)">
           </div>
           <div class="dojo-speech" id="dojo-welcome">
             <p>Has cruzado el umbral del dojo. Aquí te espera <b>Brawl Sensei</b>, un viejo zorro que estudia tu forma de jugar, te señala el camino a la mejora y te enseña a recorrerlo por tu cuenta.</p>

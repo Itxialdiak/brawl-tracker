@@ -200,10 +200,10 @@
   .we-toolbar button:hover { border-color: var(--cyan); color: var(--cyan); }
   .we-divider { font-family: var(--display); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold);
     border-top: 1px solid var(--border); margin: 20px 0 12px; padding-top: 12px; }
-  .modal-card.modal-wide { max-width: 720px; width: 94vw; }
+  .modal-card.modal-wide { max-width: 900px; width: 94vw; max-height: calc(100vh - 28px); overflow-y: auto; }
   .modal-card.modal-xwide { max-width: 1140px; width: 96vw; max-height: calc(100vh - 28px); overflow-y: auto; }
   .modal-card.modal-xxwide { max-width: 1320px; width: 96vw; max-height: calc(100vh - 24px); overflow-y: auto; }
-  .modal-card.modal-xwide .modal-close { position: sticky; float: right; top: 4px; z-index: 5; }
+  .modal-card.modal-xwide .modal-close, .modal-card.modal-xxwide .modal-close, .modal-card.modal-wide .modal-close { position: sticky; float: right; top: 4px; z-index: 5; }
 
   /* ===================== PANEL DE ADMINISTRACIÓN ===================== */
   .admin-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -1688,4 +1688,41 @@
   .hub-btn img { width: 20px; height: 20px; }
   .hub-btn-name { white-space: nowrap; }
   .hub-btn-meta { display: none; }
+}
+
+
+/* === movil v3: acordeon + carruseles overview/highlights + modales === */
+@media (min-width: 769px) { .m-acc > summary { display: none; } }
+@media (max-width: 768px) {
+  /* Acordeón (solo móvil): cabecera por sección, contenido colapsable */
+  .m-acc { margin-bottom: 14px; }
+  .m-acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 2px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+    font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--text); }
+  .m-acc > summary::-webkit-details-marker { display: none; }
+  .m-acc > summary::after { content: "▸"; opacity: .5; transition: transform .15s; font-size: 13px; }
+  .m-acc[open] > summary::after { transform: rotate(90deg); }
+
+  /* Overview: carrusel de tarjetas al ancho de su contenido (~2 a la vez) */
+  .overview { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 6px; }
+  .overview::-webkit-scrollbar { display: none; }
+  .overview > .stat { flex: 0 0 auto; min-width: 132px; scroll-snap-align: start; margin: 0; }
+
+  /* Highlights: carrusel (antes 2 columnas que se salían del marco) */
+  .highlights { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 6px; margin-bottom: 16px; }
+  .highlights::-webkit-scrollbar { display: none; }
+  .highlights > .hl-card { flex: 0 0 78%; scroll-snap-align: center; }
+
+  /* Filas de gráficas (roles, modos) también como carrusel */
+  #role-radars-row, #mode-donuts-row { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 12px;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 8px; }
+  #role-radars-row::-webkit-scrollbar, #mode-donuts-row::-webkit-scrollbar { display: none; }
+  #role-radars-row > .panel, #mode-donuts-row > .panel { flex: 0 0 87%; scroll-snap-align: center; margin-bottom: 0; }
+
+  /* Modales: que no sobresalgan; alto acotado + scroll interno con barra discreta */
+  .modal-card { max-width: calc(100vw - 20px); max-height: calc(100dvh - 24px); overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+  .modal-card::-webkit-scrollbar { width: 5px; }
+  .modal-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
 }
