@@ -1614,3 +1614,54 @@
   .home-fab:active { transform: scale(.9); box-shadow: 0 2px 8px rgba(0,0,0,.5), 0 0 18px rgba(140,240,90,.6); }
   .home-fab svg { width: 25px; height: 25px; filter: drop-shadow(0 0 4px rgba(150,255,90,.75)); }
 }
+
+
+/* === optimizacion movil v2: Top 13 + densidad === */
+/* El podio ocupa todo el ancho cuando se ocultan las cajas extra (PC) */
+@media (max-width: 920px) {
+  .top13-main { display: block; }
+  .top13-main .podium { width: 100%; }
+}
+/* Podio Top 13 en teléfono: 3 columnas que se reparten el ancho y encogen (sin desbordar) */
+@media (max-width: 640px) {
+  .podium { gap: 7px; padding-top: 14px; margin-bottom: 12px; }
+  .podium-col { width: auto; flex: 1 1 0; max-width: none; min-width: 0; }
+  .podium-name { font-size: 11px; letter-spacing: .2px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .podium-tro { font-size: 10.5px; }
+  .podium-img img { max-height: 88px; }
+  .podium-col.pos1 .podium-img img { max-height: 110px; }
+  .podium-col.pos2 .podium-img img { max-height: 98px; }
+  .podium-base { min-height: 56px; padding: 7px 4px 8px; }
+  .podium-col.pos1 .podium-base { min-height: 74px; }
+  .podium-col.pos2 .podium-base { min-height: 64px; }
+  .top-mini-row { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .top-mini { padding: 6px 8px; }
+  .top-mini img { width: 28px; height: 28px; }
+  .top-mini-name { font-size: 11.5px; }
+}
+/* Más densidad: en móvil se escanea verticalmente, que no sobre espacio entre bloques */
+@media (max-width: 768px) {
+  .section-title { font-size: 16px; margin-bottom: 11px; }
+  .top10-panel { padding: 14px 13px 15px; margin-bottom: 14px; }
+  .top10-panel h2 { font-size: 14px; margin-bottom: 11px; }
+  .br-account { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 13px; }
+  .br-account .ac { padding: 10px 7px; }
+  .br-account .ac .v { font-size: 18px; }
+  .br-counters { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+  .br-counter { padding: 12px 12px; gap: 9px; }
+  .br-distrib { gap: 11px; margin-bottom: 14px; }
+  .br-recs-panel { padding: 14px 12px 15px; margin-bottom: 20px; }
+  .panel { padding: 14px 13px; }
+}
+@media (max-width: 380px) {
+  .br-account { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* === movil: destacados 2 columnas === */
+@media (max-width: 768px) {
+  .highlights { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 16px; }
+  .hl-card { padding: 12px 11px; gap: 10px; }
+  .hl-card .hl-portrait { width: 40px; height: 40px; }
+  .hl-label { font-size: 10px; }
+}
