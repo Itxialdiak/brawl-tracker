@@ -151,6 +151,8 @@ async function selectHubMode(mode, force) {
   hubMode = mode;
   document.querySelectorAll(".hub-btn").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
   $("hub-content").innerHTML = `<div class="empty" style="padding:34px">Cargando ${esc(modeName(mode))}…</div>`;
+  // En móvil los botones son una fila de pestañas: lleva la vista al contenido recién abierto.
+  if (window.innerWidth <= 768) setTimeout(() => { const el = $("hub-content"); if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 30);
   try {
     const d = await getJSON(`/api/mode-hub?player=${encodeURIComponent(currentPlayer)}&mode=${encodeURIComponent(mode)}`);
     if (hubMode !== mode) return;  // el usuario cambió mientras cargaba

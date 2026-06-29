@@ -1665,3 +1665,27 @@
   .hl-card .hl-portrait { width: 40px; height: 40px; }
   .hl-label { font-size: 10px; }
 }
+
+
+/* === movil: carrusel de filas + Hub pestanas === */
+@media (max-width: 768px) {
+  /* Filas de paneles (PC) -> carrusel horizontal: una a la vez, deslizando izq/der */
+  .grid.grid-cols5, .grid.grid-5, .br-distrib {
+    display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 12px; padding-bottom: 8px;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .grid.grid-cols5::-webkit-scrollbar, .grid.grid-5::-webkit-scrollbar, .br-distrib::-webkit-scrollbar { display: none; }
+  .grid.grid-cols5 > .panel, .grid.grid-5 > .panel, .br-distrib > .panel {
+    flex: 0 0 87%; scroll-snap-align: center; margin-bottom: 0; box-sizing: border-box;
+  }
+  /* Hub de Modos como pestañas: botones en una sola fila deslizable, contenido justo debajo */
+  .hub-buttons {
+    display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .hub-buttons::-webkit-scrollbar { display: none; }
+  .hub-btn { flex: 0 0 auto; flex-direction: row; gap: 7px; padding: 9px 13px; }
+  .hub-btn img { width: 20px; height: 20px; }
+  .hub-btn-name { white-space: nowrap; }
+  .hub-btn-meta { display: none; }
+}
