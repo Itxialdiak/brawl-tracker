@@ -32,7 +32,7 @@ NOTES_URLS = [u.strip() for u in os.environ.get(
     "https://supercell.com/en/games/brawlstars/es/blog/release-notes/"
     "notas-de-la-actualizaci%C3%B3n-de-abril-de-2026/").split(",") if u.strip()]
 CREATORS = [h.strip() for h in os.environ.get(
-    "BUFFS_YT_CREATORS", "@Godeik,@SobaBS,@Spiuk").split(",") if h.strip()]
+    "BUFFS_YT_CREATORS", "@SpiukYT,@Godeik,@SobaBS").split(",") if h.strip()]
 SOCIAL_URLS = [u.strip() for u in os.environ.get("BUFFS_SOCIAL_URLS", "").split(",") if u.strip()]
 
 # Solo nos interesan vídeos cuyo TÍTULO huela a noticia de balance.
