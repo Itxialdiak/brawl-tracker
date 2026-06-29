@@ -238,6 +238,7 @@ function renderRecGroup(g) {
       <div class="por">${num}${por}${tier}${chgFlag}</div>
       <div class="nm">${esc(b.name)}</div>
       <div class="nt">${esc(b.note || "")}</div>
+      ${b.reliability != null ? `<div class="rel-bar" title="Fiabilidad ${b.reliability}% · según partidas jugadas"><span style="width:${b.reliability}%"></span></div>` : ""}
     </div>`;
   }).join("");
   const body = cards || `<div class="rec-empty">Aún no hay datos suficientes aquí. Juega más partidas y se recalculará.</div>`;
@@ -264,8 +265,8 @@ async function loadBuffsList() {
     <p class="hint" style="margin:2px 0 14px;max-width:760px">Los cambios de balance de Brawl Stars de un vistazo: a la izquierda las mejoras (verde), a la derecha los recortes (rojo).</p>
     <h4 class="buffs-h">Vigentes ahora</h4>
     ${renderBuffsCols(d.current || [], "Recopilando los cambios de balance recientes…")}
-    <h4 class="buffs-h">Próximos cambios confirmados</h4>
-    ${up.length ? renderBuffsCols(up, "") : `<div class="buffs-none">No hay cambios de balance programados.</div>`}`;
+    <h4 class="buffs-h">Próximos cambios (anunciados)</h4>
+    ${up.length ? renderBuffsCols(up, "") : `<div class="buffs-none">Aún no hay cambios anunciados para la próxima actualización.</div>`}`;
 }
 function renderBuffsCols(list, emptyMsg) {
   if (!list.length) return `<div class="buffs-none">${esc(emptyMsg || "Sin datos por ahora.")}</div>`;
@@ -405,6 +406,7 @@ function renderBrawlerDetail(d) {
       <div class="br-d-stat"><div class="k">Trofeos</div><div class="v">${d.trophies ?? "—"}<small style="color:var(--muted);font-size:12px"> · máx ${d.highest_trophies ?? "—"}</small></div></div>
       ${d.your.battles ? `<div class="br-d-stat"><div class="k">Tu win rate</div><div class="v" style="color:${pctColor(d.your.winrate)}">${d.your.winrate == null ? "—" : d.your.winrate + "%"}<small style="color:var(--muted);font-size:12px"> · ${d.your.battles}p</small></div></div>` : ""}
       ${d.your.adj_score != null ? `<div class="br-d-stat"><div class="k">Rendimiento ajustado <small style="font-size:10px;opacity:.55">a la dificultad</small></div><div class="v" style="color:${pctColor(d.your.adj_score)}">${d.your.adj_score}<small style="color:var(--muted);font-size:12px"> · ~${d.your.level ?? "—"} cp</small></div></div>` : ""}
+      ${d.your.reliability != null && d.your.battles ? `<div class="br-d-stat"><div class="k">Fiabilidad del dato</div><div class="v">${d.your.reliability}<small style="color:var(--muted);font-size:13px">%</small></div><div class="rel-bar" style="margin-top:7px"><span style="width:${d.your.reliability}%"></span></div></div>` : ""}
     </div>`;
   } else {
     yourStats = `<div class="hint">Aún no tienes este brawler.</div>`;

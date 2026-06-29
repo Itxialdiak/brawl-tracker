@@ -326,8 +326,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/bull",
         "star_power_id": 23000137,
         "gadget_id": 23000272,
-        "gear": "Speed",
-        "win_rate": 63.8
+        "gear": "Health",
+        "win_rate": 63.9
       }
     ]
   },
@@ -690,10 +690,10 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/nita",
-        "star_power_id": 23000136,
-        "gadget_id": 23000314,
+        "star_power_id": 23000084,
+        "gadget_id": 23000249,
         "gear": "Gadget Cooldown",
-        "win_rate": 66.2
+        "win_rate": 66.3
       }
     ]
   },
@@ -840,12 +840,10 @@
     ],
     "gadgets_es": [
       {
-        "id": 23001281,
         "name": "Cambio de Aceite",
         "description": "Bolt obtiene un escudo de entre 2000 y 4000 puntos de salud en función de su velocidad actual. Bolt obtiene instantáneamente un escudo consumible que bloquea una gran cantidad de daño; la salud del escudo depende de su velocidad actual en el momento de activarlo."
       },
       {
-        "id": 23001282,
         "name": "Rebote Letal",
         "description": "Bolt salta a una ubicación en inflige daño de área. Al aterrizar, también destruye el entorno, pero pierde toda su velocidad. Al apuntar con el botón del gadget, Bolt realiza un pequeño salto."
       }
@@ -858,7 +856,7 @@
         "star_power_id": 23001280,
         "gadget_id": 23001281,
         "gear": "Health",
-        "win_rate": 78.4
+        "win_rate": 78.3
       }
     ]
   },
@@ -1036,7 +1034,7 @@
         "star_power_id": 23001245,
         "gadget_id": 23001247,
         "gear": "Gadget Cooldown",
-        "win_rate": 72.6
+        "win_rate": 72.5
       }
     ]
   },
@@ -1806,10 +1804,10 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/kaze",
-        "star_power_id": 23000939,
+        "star_power_id": 23000938,
         "gadget_id": 23000940,
-        "gear": "Damage",
-        "win_rate": 65.4
+        "gear": "Shield",
+        "win_rate": 65.5
       }
     ]
   },
@@ -1900,7 +1898,7 @@
         "star_power_id": 23000929,
         "gadget_id": 23000932,
         "gear": "Speed",
-        "win_rate": 67.0
+        "win_rate": 66.9
       }
     ]
   },
@@ -2070,7 +2068,7 @@
         "star_power_id": 23000905,
         "gadget_id": 23000908,
         "gear": "Damage",
-        "win_rate": 67.2
+        "win_rate": 67.1
       }
     ]
   },
@@ -2159,10 +2157,10 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/ollie",
-        "star_power_id": 23000883,
+        "star_power_id": 23000884,
         "gadget_id": 23000886,
         "gear": "Health",
-        "win_rate": 69.5
+        "win_rate": 69.4
       }
     ]
   },
@@ -2336,7 +2334,7 @@
         "star_power_id": 23000849,
         "gadget_id": 23000850,
         "gear": "Vision",
-        "win_rate": 65.9
+        "win_rate": 66.0
       }
     ]
   },
@@ -2589,7 +2587,7 @@
         "star_power_id": 23000805,
         "gadget_id": 23000807,
         "gear": "Shield",
-        "win_rate": 65.8
+        "win_rate": 65.7
       }
     ]
   },
@@ -3046,7 +3044,7 @@
         "star_power_id": 23000675,
         "gadget_id": 23000678,
         "gear": "Shield",
-        "win_rate": 64.2
+        "win_rate": 64.3
       }
     ]
   },
@@ -3125,7 +3123,7 @@
         "star_power_id": 23000667,
         "gadget_id": 23000669,
         "gear": "Shield",
-        "win_rate": 64.6
+        "win_rate": 64.7
       }
     ]
   },
@@ -3204,9 +3202,9 @@
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/larry___lawrie",
         "star_power_id": 23000660,
-        "gadget_id": 23000661,
+        "gadget_id": 23000662,
         "gear": "Shield",
-        "win_rate": 65.1
+        "win_rate": 65.0
       }
     ]
   },
@@ -3293,12 +3291,12 @@
         "star_power_id": 23000647,
         "gadget_id": 23000649,
         "gear": "Shield",
-        "win_rate": 63.2
+        "win_rate": 63.3
       }
     ]
   },
   "16000075": {
-    "description_es": "Mico es un brawler Mítico que se pudo desbloquear gratis como regalo de Brawlidays 2023 del 14 al 31 de diciembre o se puede desbloquear desde el Camino Starr. Tiene una salud moderadamente baja, una producción de daño moderada, una velocidad de movimiento muy rápida, un rango de ataque corto y una inmensa utilidad con su ataque y Súper, pero sufre por tener una velocidad de recarga muy lenta. Fue el Brawler N°74 agregado al juego. Ataca saltando obstáculos, infligiendo daño a cualquier enemigo en un radio pequeño cuando aterriza. Su súper es un salto que, al aterrizar, inflige daño y empuja a los enemigos hacia atrás. Su primer Gadget, Rompetimpanos, dispara 3 proyectiles de largo alcance que ralentizan y dañan a los enemigos al impactar. Su segundo Gadget, Presto, aumenta el alcance de su próximo ataque.",
+    "description_es": "Con todas esas anécdotas sobre famosos, lo normal es pensar que Mico es una estrella del espectáculo, pero en realidad es el técnico de Sonido de Brawlywood. Irascible, impredecible y sin sentido del humor: hagas lo que hagas, nunca te rías delante de él. Mico es un brawler Mítico que se pudo desbloquear gratis como regalo de Brawlidays 2023 del 14 al 31 de diciembre o se puede desbloquear desde el Camino Starr. Tiene una salud moderadamente baja, una producción de daño moderada, una velocidad de movimiento muy rápida, un rango de ataque corto y una inmensa utilidad con su ataque y Súper, pero sufre por tener una velocidad de recarga muy lenta. Fue el Brawler N°74 agregado al juego. Ataca saltando obstáculos, infligiendo daño a cualquier enemigo en un radio pequeño cuando aterriza. Su súper es un salto que, al aterrizar, inflige daño y empuja a los enemigos hacia atrás.",
     "stats_by_level": {
       "health": [
         3500,
@@ -3456,7 +3454,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/chuck",
         "star_power_id": 23000610,
         "gadget_id": 23000611,
-        "gear": "Health",
+        "gear": "Damage",
         "win_rate": 66.0
       }
     ]
@@ -3619,7 +3617,7 @@
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/doug",
         "star_power_id": 23000594,
-        "gadget_id": 23000595,
+        "gadget_id": 23000596,
         "gear": "Shield",
         "win_rate": 68.7
       }
@@ -4008,7 +4006,7 @@
         "star_power_id": 23000554,
         "gadget_id": 23000556,
         "gear": "Health",
-        "win_rate": 65.9
+        "win_rate": 66.0
       }
     ]
   },
@@ -4415,7 +4413,7 @@
         "star_power_id": 23000512,
         "gadget_id": 23000514,
         "gear": "Vision",
-        "win_rate": 63.7
+        "win_rate": 63.6
       }
     ]
   },
@@ -4805,7 +4803,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/eve",
-        "star_power_id": 23000453,
+        "star_power_id": 23000452,
         "gadget_id": 23000454,
         "gear": "Gadget Cooldown",
         "win_rate": 66.5
@@ -4990,7 +4988,7 @@
         "star_power_id": 23000431,
         "gadget_id": 23000433,
         "gear": "Reload Speed",
-        "win_rate": 67.6
+        "win_rate": 67.7
       }
     ]
   },
@@ -5165,7 +5163,7 @@
         "star_power_id": 23000414,
         "gadget_id": 23000465,
         "gear": "Health",
-        "win_rate": 67.9
+        "win_rate": 68.0
       }
     ]
   },
@@ -5774,7 +5772,7 @@
         "star_power_id": 23000346,
         "gadget_id": 23000347,
         "gear": "Shield",
-        "win_rate": 64.0
+        "win_rate": 64.1
       }
     ]
   },
@@ -5951,7 +5949,7 @@
         "star_power_id": 23000332,
         "gadget_id": 23000333,
         "gear": "Vision",
-        "win_rate": 61.3
+        "win_rate": 61.2
       }
     ]
   },
@@ -6042,7 +6040,7 @@
         "star_power_id": 23000325,
         "gadget_id": 23000400,
         "gear": "Shield",
-        "win_rate": 67.7
+        "win_rate": 67.6
       }
     ]
   },
@@ -6134,7 +6132,7 @@
         "star_power_id": 23000308,
         "gadget_id": 23000488,
         "gear": "Shield",
-        "win_rate": 65.3
+        "win_rate": 65.2
       }
     ]
   },
@@ -6393,14 +6391,14 @@
       "description": "La barrera vegetal de Sprout inflige daño a los enemigos cercanos. Cuando se activa, cada casilla del Súper inflige 500 puntos de daño por segundo a los enemigos en un círculo de 2,67 casillas de ancho durante 10 segundos. El daño de cada casilla se acumula. Teniendo en cuenta la hitbox de la pared, la zona de daño se extiende como máximo 0,83 casillas lejos del borde de una casilla de muro.",
       "multiplier": "40%"
     },
-    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/34/Sprout.png/revision/latest/scale-to-width-down/500?cb=20260203162532&path-prefix=es",
+    "body_image": "https://static.wikia.nocookie.net/brawlstars/images/3/34/Sprout.png/revision/latest/scale-to-width-down/500?cb=20260628170307&path-prefix=es",
     "builds": [
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/sprout",
         "star_power_id": 23000240,
         "gadget_id": 23000315,
-        "gear": "Shield",
+        "gear": "Super Charge",
         "win_rate": 63.5
       }
     ]
@@ -6492,7 +6490,7 @@
         "star_power_id": 23000235,
         "gadget_id": 23000353,
         "gear": "Shield",
-        "win_rate": 61.6
+        "win_rate": 61.7
       }
     ]
   },
@@ -6652,7 +6650,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/jacky",
         "star_power_id": 23000223,
         "gadget_id": 23000256,
-        "gear": "Shield",
+        "gear": "Speed",
         "win_rate": 68.3
       }
     ]
@@ -6722,7 +6720,7 @@
         "star_power_id": 23000211,
         "gadget_id": 23000311,
         "gear": "Shield",
-        "win_rate": 63.1
+        "win_rate": 63.2
       }
     ]
   },
@@ -6912,7 +6910,7 @@
         "star_power_id": 23000193,
         "gadget_id": 23000312,
         "gear": "Shield",
-        "win_rate": 63.4
+        "win_rate": 63.5
       }
     ]
   },
@@ -6981,7 +6979,7 @@
         "star_power_id": 23000187,
         "gadget_id": 23000405,
         "gear": "Exhausting Storm",
-        "win_rate": 67.3
+        "win_rate": 67.2
       }
     ]
   },
@@ -7073,7 +7071,7 @@
         "star_power_id": 23000168,
         "gadget_id": 23000318,
         "gear": "Reload Speed",
-        "win_rate": 64.1
+        "win_rate": 64.2
       }
     ]
   },
@@ -7601,7 +7599,7 @@
         "star_power_id": 23000159,
         "gadget_id": 23000352,
         "gear": "Speed",
-        "win_rate": 63.4
+        "win_rate": 63.5
       }
     ]
   },
@@ -7773,7 +7771,7 @@
         "star_power_id": 23000099,
         "gadget_id": 23000248,
         "gear": "Gadget Cooldown",
-        "win_rate": 63.7
+        "win_rate": 63.8
       }
     ]
   },
@@ -7948,7 +7946,7 @@
         "star_power_id": 23000160,
         "gadget_id": 23000356,
         "gear": "Shield",
-        "win_rate": 64.1
+        "win_rate": 64.2
       }
     ]
   },
@@ -8029,7 +8027,7 @@
         "star_power_id": 23000139,
         "gadget_id": 23000404,
         "gear": "Super Turret",
-        "win_rate": 65.7
+        "win_rate": 65.6
       }
     ]
   },
@@ -8311,7 +8309,7 @@
         "star_power_id": 23000144,
         "gadget_id": 23000350,
         "gear": "Damage",
-        "win_rate": 64.9
+        "win_rate": 64.8
       }
     ]
   },
@@ -8401,7 +8399,7 @@
         "star_power_id": 23000088,
         "gadget_id": 23000243,
         "gear": "Shield",
-        "win_rate": 62.9
+        "win_rate": 63.0
       }
     ]
   },
@@ -8583,7 +8581,7 @@
         "star_power_id": 23000155,
         "gadget_id": 23000258,
         "gear": "Shield",
-        "win_rate": 60.8
+        "win_rate": 60.7
       }
     ]
   },
@@ -8675,7 +8673,7 @@
         "star_power_id": 23000149,
         "gadget_id": 23000251,
         "gear": "Shield",
-        "win_rate": 64.8
+        "win_rate": 64.7
       }
     ]
   },

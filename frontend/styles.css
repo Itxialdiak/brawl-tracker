@@ -1786,3 +1786,9 @@
   .br-grid::-webkit-scrollbar { display: none; }
   .br-grid > .br-card { scroll-snap-align: start; }
 }
+
+
+/* === fiabilidad del dato (barra) === */
+.rel-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.09); overflow: hidden; }
+.rel-bar > span { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, #5b54ff, #3fe1ff); }
+.br-rec-card .rel-bar { margin-top: 7px; }

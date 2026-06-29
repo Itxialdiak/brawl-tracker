@@ -66,7 +66,7 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
                       "tier": mm["tier"], "rank": mm["rank"], "winrate": wrr, "perf": perf,
                       "level": w.get("avg_trophies"), "mwr": mm["mwr"],
                       "battles": bat, "power": c.get("power"), "over": over,
-                      "change": changes.get(nm)})
+                      "reliability": w.get("reliability"), "change": changes.get(nm)})
 
     def good_meta(x): return x["rank"] >= GOOD_META
     def bad_meta(x): return 0 < x["rank"] < GOOD_META
@@ -94,7 +94,7 @@ def build(kind: str, catalog: dict, tl: dict, collection: list, wr_rows: list,
     def entry(x, note):
         return {"id": x["id"], "name": x["name"], "portrait": x["portrait"],
                 "tier": x["tier"], "winrate": x["winrate"], "perf": x["perf"],
-                "level": x["level"], "battles": x["battles"],
+                "level": x["level"], "battles": x["battles"], "reliability": x["reliability"],
                 "power": x["power"], "note": note, "change": x["change"]}
 
     def note2(x):

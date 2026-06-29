@@ -337,6 +337,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
         "your": {
             "winrate": ov.get("winrate"), "battles": ov.get("total"),
             "adj_score": (wr_me or {}).get("adj_score"), "level": (wr_me or {}).get("avg_trophies"),
+            "reliability": (wr_me or {}).get("reliability"),
             "by_mode": [{"mode": m["label"], "winrate": m["winrate"], "battles": m["total"]}
                         for m in by_mode],
         },

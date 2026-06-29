@@ -1355,18 +1355,28 @@ def overview(filters: dict | None = None) -> dict:
     }
 
 
-def _adjusted_score(winrate, avg_trophies, base_trophies, bmax=12.0, scale=400.0):
-    """Win rate AJUSTADO por la dificultad del entorno. Los trofeos del brawler
-    (`my_trophies`) aproximan el nivel del lobby (matchmaking por trofeos): rendir a 1400
-    copas vale más que a 250. EQUILIBRADO: el win rate manda; la dificultad lo sube/baja
-    hasta ±bmax puntos según el nivel del brawler frente a tu media. Acotado y suave (tanh)."""
-    if winrate is None:
+def _adjusted_score(wins, losses, avg_trophies, base_trophies, bmax=15.0, scale=400.0, k=10.0, prior=50.0):
+    """Rendimiento AJUSTADO, justo con muestras pequeñas y con la dificultad del entorno:
+    (1) Win rate ENCOGIDO hacia 50% según el nº de partidas (k = partidas 'a priori'): pocas
+        partidas tiran al 50% (un 3-0 NO es un 100% real), muchas se quedan en el real.
+    (2) Ajuste por DIFICULTAD (trofeos del brawler ~ nivel del lobby), acotado a ±bmax: rendir
+        a 1400 copas vale más que a 250.
+    El win rate sigue mandando; el nivel y la fiabilidad lo matizan. Suave y acotado (tanh)."""
+    decided = (wins or 0) + (losses or 0)
+    if decided <= 0:
         return None
-    if not avg_trophies or not base_trophies:
-        return winrate
     import math
-    bonus = bmax * math.tanh((avg_trophies - base_trophies) / scale)
-    return round(max(0.0, min(100.0, winrate + bonus)), 1)
+    score = 100.0 * (wins + k * prior / 100.0) / (decided + k)
+    if avg_trophies and base_trophies:
+        score += bmax * math.tanh((avg_trophies - base_trophies) / scale)
+    return round(max(0.0, min(100.0, score)), 1)
+
+
+def _reliability(wins, losses, k=10.0):
+    """Fiabilidad del dato (0-100) según el tamaño de muestra: decided/(decided+k). Es el peso
+    que tiene tu win rate real frente al 50% a priori del encogimiento (más partidas = más fiable)."""
+    decided = (wins or 0) + (losses or 0)
+    return round(100.0 * decided / (decided + k)) if decided else 0
 
 
 def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
@@ -1406,7 +1416,8 @@ def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
     base = (sum((o["_avg_tr"] or 0) * o["total"] for o in out) / n) if n else 0
     for o in out:
         o["avg_trophies"] = round(o["_avg_tr"]) if o["_avg_tr"] else None
-        o["adj_score"] = _adjusted_score(o["winrate"], o["_avg_tr"], base)
+        o["adj_score"] = _adjusted_score(o["wins"], o["losses"], o["_avg_tr"], base)
+        o["reliability"] = _reliability(o["wins"], o["losses"])
         del o["_avg_tr"]
     return out
 
@@ -2711,7 +2722,7 @@ def versatile_brawlers(filters, limit=13):
         wr = _winrate(r["wins"], r["losses"])
         if wr is None:
             continue
-        adj = _adjusted_score(wr, r["avg_tr"], base)
+        adj = _adjusted_score(r["wins"], r["losses"], r["avg_tr"], base)
         d = agg.setdefault(r["brawler"], {"adjs": [], "wrs": [], "total": 0})
         d["adjs"].append(adj if adj is not None else wr)
         d["wrs"].append(wr)
