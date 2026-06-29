@@ -1774,3 +1774,15 @@
   .br-toolbar, .br-sort-group, .br-filter-row { min-width: 0; }
   .br-sorts, .br-roles { min-width: 0; max-width: 100%; }
 }
+
+
+/* === movil: rejilla de brawlers 2 filas carrusel === */
+@media (max-width: 768px) {
+  .br-grid {
+    display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto);
+    grid-auto-columns: 42%; gap: 12px; overflow-x: auto; padding-bottom: 8px;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .br-grid::-webkit-scrollbar { display: none; }
+  .br-grid > .br-card { scroll-snap-align: start; }
+}
