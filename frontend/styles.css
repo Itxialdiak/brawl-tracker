@@ -1792,3 +1792,15 @@
 .rel-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.09); overflow: hidden; }
 .rel-bar > span { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, #5b54ff, #3fe1ff); }
 .br-rec-card .rel-bar { margin-top: 7px; }
+
+
+/* === estado de proximos cambios (anunciado/confirmado) === */
+.be-status { font-size: .6rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; vertical-align: middle; white-space: nowrap; }
+.be-status.ann { background: rgba(245,184,42,.18); color: #f5b82a; }
+.be-status.conf { background: rgba(63,225,255,.16); color: #3fe1ff; }
+.be-status i { font-style: italic; font-weight: 600; opacity: .85; }
+
+
+/* === fiabilidad en lista de rendimiento por brawler === */
+.rel-note { grid-column: 1 / -1; text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.rel-note b { font-weight: 700; }

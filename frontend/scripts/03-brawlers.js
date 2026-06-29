@@ -124,11 +124,11 @@ function renderTop13() {
   // Extras (solo PC): rendimiento de los 3 ganadores + gráfica de eficiencia.
   const winnersMini = podium.map((b) => {
     const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
-    const wr = b.your_winrate;
+    const adj = b.your_adj;
     return `<div class="winner-row" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
       <span class="wm-pos">${b.pos}</span>${img}
       <div class="wm-tx"><span class="wm-name">${esc(b.name)}</span>
-        <span class="wm-sub">${wr == null ? "sin partidas" : `<b style="color:${pctColor(wr)}">${wr}%</b> WR · ${b.your_battles}p`}</span></div></div>`;
+        <span class="wm-sub">${adj == null ? "sin partidas" : `<b style="color:${pctColor(adj)}">${adj}</b> rend · ${b.your_battles}p`}</span></div></div>`;
   }).join("");
   const effRows = podium.map((b) => {
     const wr = b.your_winrate, w = wr == null ? 0 : Math.max(3, wr);
@@ -288,10 +288,15 @@ function buffEntry(e) {
   const img = por ? `<img src="${por}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
   const ti = TARGET_ICON[e.target] || "•";
   const cls = e.kind === "nerf" ? "nerf" : e.kind === "rework" ? "rework" : "buff";
+  const meta = e.status === "confirmed"
+    ? ` <span class="be-status conf">Confirmado${e.date ? ` · <i>${esc(e.date)}</i>` : ""}</span>`
+    : e.status === "announced"
+      ? ` <span class="be-status ann">Anunciado</span>`
+      : (e.date ? ` <small>${esc(e.date)}</small>` : "");
   return `<div class="buff-entry ${cls}" title="${esc(e.note || "")}">
     <div class="be-face">${img}<span class="be-target" title="${TARGET_LABEL[e.target] || ""}">${ti}</span></div>
     <div class="be-body">
-      <div class="be-name">${esc(titleCaseName(e.brawler))}${e.date ? ` <small>${esc(e.date)}</small>` : ""}</div>
+      <div class="be-name">${esc(titleCaseName(e.brawler))}${meta}</div>
       <div class="be-note">${esc(e.note || TARGET_LABEL[e.target] || "")}</div>
     </div>
   </div>`;

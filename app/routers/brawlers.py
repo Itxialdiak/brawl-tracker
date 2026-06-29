@@ -123,6 +123,8 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "has_hypercharge": (name or "").upper() not in _NO_HYPERCHARGE,
             "owns_hypercharge": bool(c and c.get("hypercharge_ids")),
             "your_winrate": w["winrate"] if w else None,
+            "your_adj": w["adj_score"] if w else None,
+            "your_reliability": w["reliability"] if w else None,
             "your_battles": w["total"] if w else 0,
             "change": bchanges.get((name or "").upper()),
         }
@@ -140,7 +142,8 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     for pos, it in enumerate(owned_sorted):
         tb = {"id": it["id"], "name": it["name"], "trophies": it["trophies"],
               "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"],
-              "your_winrate": it["your_winrate"], "your_battles": it["your_battles"]}
+              "your_winrate": it["your_winrate"], "your_battles": it["your_battles"],
+              "your_adj": it["your_adj"], "your_reliability": it["your_reliability"]}
         if pos < 3:  # podio: imagen de la ficha (skin equipada si la hay, o cuerpo entero)
             ex = brawler_extra.get(it["id"])
             image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")

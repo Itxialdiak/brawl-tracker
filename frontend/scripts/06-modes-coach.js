@@ -356,7 +356,7 @@ function hlCard(icon, label, item, kind, valueFn, cat) {
 function renderHighlights(h) {
   $("highlights").innerHTML = [
     hlCard("🎯", "Más jugado", h.most_played, "brawler", (v) => `${v.total} partidas`, "most_played"),
-    hlCard("🏆", "Mejor rendimiento", h.best_brawler, "brawler", (v) => `Rend. ${adjVal(v)} · ${v.total}p`, "best"),
+    hlCard("🏆", "Mejor win rate", h.best_brawler, "brawler", (v) => `${v.winrate}% · ${v.total}p`, "best"),
     hlCard("⚠️", "Peor rendimiento", h.worst_brawler, "brawler", (v) => `Rend. ${adjVal(v)} · ${v.total}p`, "worst"),
     hlCard("🤝", "Mejor aliado", h.best_ally, "brawler", (v) => `${v.winrate}% (${v.total}p)`, "best_ally"),
     hlCard("😈", "Rival más duro", h.hardest_vs, "brawler", (v) => `${v.winrate}% (${v.total}p)`, "hardest_vs"),
@@ -370,7 +370,7 @@ function renderHighlights(h) {
 function adjVal(r) { return r && r.adj_score != null ? r.adj_score : (r ? r.winrate : null); }
 const HL_CATS = {
   most_played: { title: "Más jugados", sub: "Tus brawlers por número de partidas", url: "/api/winrate?by=brawler", kind: "brawler", sort: (a, b) => b.total - a.total, val: (v) => `${v.total} partidas`, color: false },
-  best: { title: "Mejor rendimiento", sub: "Tus brawlers por rendimiento ajustado a la dificultad (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, adj: true, sort: (a, b) => adjVal(b) - adjVal(a), val: (v) => `Rend. ${adjVal(v)} · ${v.total}p`, color: true },
+  best: { title: "Mejor win rate", sub: "Tus brawlers por win rate puro (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, sort: (a, b) => b.winrate - a.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
   worst: { title: "Peor rendimiento", sub: "Tus brawlers por rendimiento ajustado a la dificultad (mín. 3 partidas)", url: "/api/winrate?by=brawler", kind: "brawler", min: 3, adj: true, sort: (a, b) => adjVal(a) - adjVal(b), val: (v) => `Rend. ${adjVal(v)} · ${v.total}p`, color: true },
   best_ally: { title: "Mejores aliados", sub: "Win rate cuando van en tu equipo (mín. 2 partidas)", url: "/api/allies", kind: "brawler", min: 2, sort: (a, b) => b.winrate - a.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
   hardest_vs: { title: "Rivales más duros", sub: "Contra los que peor win rate tienes (mín. 2 partidas)", url: "/api/vs", kind: "brawler", min: 2, sort: (a, b) => a.winrate - b.winrate, val: (v) => `${v.winrate}% · ${v.total}p`, color: true },
