@@ -1759,3 +1759,18 @@
   .br-sorts::-webkit-scrollbar, .br-roles::-webkit-scrollbar { display: none; }
   .br-sort, .br-role-chip { flex: 0 0 auto; white-space: nowrap; }
 }
+
+
+/* === movil: fix carrusel recomendaciones dentro del marco === */
+@media (max-width: 768px) {
+  .recs-grid { grid-template-columns: 1fr; }
+  .recs-grid > .br-rec-group, .br-rec-group.full { min-width: 0; }
+  .br-rec-cards { min-width: 0; max-width: 100%; }
+}
+
+
+/* === movil: fix filtros Ordenar/Filtrar dentro del marco === */
+@media (max-width: 768px) {
+  .br-toolbar, .br-sort-group, .br-filter-row { min-width: 0; }
+  .br-sorts, .br-roles { min-width: 0; max-width: 100%; }
+}
