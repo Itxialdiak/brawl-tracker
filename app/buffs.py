@@ -1,33 +1,24 @@
-"""Buffs y nerfs por brawler.
+"""Buffs y nerfs por brawler, a partir de fuentes EN VIVO (no del conocimiento del modelo,
+que está desfasado). La spider (`app/spider.py`) reúne el texto; aquí la IA lo estructura.
 
-VIGENTES: se extraen de las NOTAS OFICIALES de Supercell (release notes). Se descubre la
-actualización más reciente desde el índice del blog, se descarga la página, se limpia el
-HTML y un modelo extrae los cambios estructurados USANDO SOLO ese texto (no de memoria,
-que estaría desfasada). Los hot fixes se SUMAN a los cambios de la actualización (no la
-sustituyen). Los cambios vigentes quedan FIJOS —no se recalculan ni se gasta IA— hasta que
-se detecta una actualización nueva (cambia la firma de fuentes); solo se revisa el índice.
+- VIGENTES: de las NOTAS OFICIALES de Supercell (autoridad).
+- ANUNCIADOS: de YouTube de creadores (Spiuk, Godeik, Soba...) y redes -> cada uno con estado
+  "announced" (solo publicado, puede variar) o "confirmed" (con fecha, va en la próxima).
 
-PRÓXIMOS (anunciados): cambios publicados pero aún sin aplicar. Cada uno lleva estado:
-  - "announced": solo se ha publicado QUÉ cambia (todavía puede variar).
-  - "confirmed": confirmado para la próxima actualización (lleva fecha).
-
-NUNCA bloquea: sirve memoria/disco al instante y refresca en segundo plano. Si la descarga
-de las notas falla, cae con elegancia al conocimiento del modelo para no quedarse vacío.
-
-Configuración por entorno (todo opcional):
-  BUFFS_INDEX_URL   índice de release notes a rastrear (por defecto, el oficial ES).
-  BUFFS_NOTES_URL   fija una URL de notas concreta (desactiva el autodescubrimiento).
-  BUFFS_HOTFIX_URLS URLs de hot fix a SUMAR a la actualización vigente (separadas por comas).
+NUNCA bloquea: sirve memoria/disco al instante y refresca en segundo plano (la red va en un
+hilo). Los datos quedan FIJOS hasta que cambia la FIRMA de las fuentes (nueva nota o vídeo
+nuevo relevante): así no se gasta IA ni se pierde estabilidad. Si la red falla del todo, cae
+al conocimiento del modelo para no quedar vacío.
 """
 import os
-import re
-import html
 import json
 import time
+import asyncio
 from datetime import datetime, timezone
 
 from . import db
-from .tierlist import _norm, _catalog_names   # reutiliza normalización y nombres del catálogo
+from . import spider
+from .tierlist import _norm, _catalog_names   # normalización + nombres del catálogo
 
 _STORE = os.path.join(os.path.dirname(__file__), "data", "buffs.json")
 _TTL = 24 * 3600
@@ -38,65 +29,9 @@ TARGETS = {"attack", "super", "gadget", "starpower", "hypercharge", "stats"}
 STATUS = {"announced", "confirmed"}
 _MAX = 24
 
-_INDEX_URL = os.environ.get(
-    "BUFFS_INDEX_URL",
-    "https://supercell.com/en/games/brawlstars/es/blog/release-notes/")
-_NOTES_URL = os.environ.get("BUFFS_NOTES_URL", "").strip()
-_HOTFIX_URLS = [u.strip() for u in os.environ.get("BUFFS_HOTFIX_URLS", "").split(",") if u.strip()]
-_UA = {"User-Agent": "Mozilla/5.0 (compatible; BrawlSensei/1.0)"}
-
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-# ----------------------------- descarga + limpieza -----------------------------
-def _html_to_text(raw: str) -> str:
-    """HTML -> texto plano legible (suficiente para que el modelo lea las notas)."""
-    raw = re.sub(r"(?is)<(script|style|noscript|svg|nav|footer|header)[^>]*>.*?</\1>", " ", raw)
-    raw = re.sub(r"(?is)<br\s*/?>", "\n", raw)
-    raw = re.sub(r"(?is)</(p|div|li|h[1-6]|tr|section)>", "\n", raw)
-    raw = re.sub(r"(?is)<[^>]+>", " ", raw)
-    raw = html.unescape(raw)
-    raw = re.sub(r"[ \t\r\f]+", " ", raw)
-    raw = re.sub(r"\n[ \t]*\n+", "\n", raw)
-    return raw.strip()
-
-
-async def _fetch(url: str) -> str:
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=12.0, follow_redirects=True, headers=_UA) as cli:
-            r = await cli.get(url)
-            r.raise_for_status()
-            return r.text
-    except Exception as e:  # noqa: BLE001
-        print(f"[buffs fetch] {url}: {e}")
-        return ""
-
-
-async def _discover_notes_url() -> str:
-    """URL de la actualización más reciente desde el índice. Respeta BUFFS_NOTES_URL si está
-    fijada. Devuelve '' si no logra descubrir nada."""
-    if _NOTES_URL:
-        return _NOTES_URL
-    raw = await _fetch(_INDEX_URL)
-    if not raw:
-        return ""
-    links = re.findall(r'href="([^"#?]*release-notes/[^"#?]+)"', raw)
-    seen, cand = set(), []
-    for l in links:
-        slug = l.rstrip("/").rsplit("/", 1)[-1]
-        if not slug or slug == "release-notes" or l in seen:
-            continue
-        seen.add(l)
-        cand.append(l if l.startswith("http") else "https://supercell.com" + l)
-    return cand[0] if cand else ""   # el índice lista lo más reciente primero
-
-
-def _date_hint(url: str) -> str:
-    slug = url.rstrip("/").rsplit("/", 1)[-1]
-    return slug.replace("-", " ").replace("notas de la actualizacion de", "").strip() or slug
 
 
 # ----------------------------- extracción con IA -----------------------------
@@ -122,28 +57,34 @@ async def _ai_json(system: str, user: str, max_tokens: int) -> dict | None:
         return None
 
 
-async def _extract(text: str, date_hint: str) -> dict | None:
-    """Extrae los cambios del TEXTO de unas notas oficiales (solo a partir del texto)."""
-    if not text:
+async def _extract_live(notes: list, news: list) -> dict | None:
+    """Una sola llamada: extrae current (de las notas oficiales) y upcoming (de las noticias)."""
+    blocks = []
+    for n in notes:
+        blocks.append(f"=== NOTAS OFICIALES — {n['url']} ===\n{n['text']}")
+    for n in news:
+        blocks.append(f"=== {n['source']} — {n['url']} ===\n{n['text']}")
+    if not blocks:
         return None
+    body = "\n\n".join(blocks)[:28000]
     return await _ai_json(
-        ("Extraes cambios de balance de las notas OFICIALES de Brawl Stars. Usa SOLO la "
-         "información del texto dado; no inventes ni añadas cambios de memoria."),
-        ("Texto de las notas oficiales de Brawl Stars:\n\n" + text[:14000] +
-         "\n\n---\nExtrae los cambios de balance por brawler distinguiendo:\n"
-         "- current: cambios YA aplicados en esta actualización.\n"
-         "- upcoming: cambios solo ANUNCIADOS o previstos para una versión futura.\n"
+        ("Extraes cambios de balance de Brawl Stars SOLO del texto dado (no de memoria). Las "
+         "'NOTAS OFICIALES' son la autoridad de lo ya aplicado; las secciones de YouTube/redes "
+         "son lo anunciado/previsto."),
+        (body + "\n\n---\nDevuelve los cambios de balance por brawler:\n"
+         "- current: cambios YA APLICADOS, SOLO de las NOTAS OFICIALES.\n"
+         "- upcoming: cambios ANUNCIADOS o previstos (de YouTube/redes), aún no aplicados.\n"
          "Para cada cambio: brawler, kind (buff|nerf|rework), target (attack|super|gadget|"
          "starpower|hypercharge|stats), note (resumen muy breve en español), date (versión/"
-         f'fecha; usa "{date_hint}" si no hay otra). En upcoming añade status (announced|'
-         'confirmed). Responde SOLO JSON: {"current":[...],"upcoming":[...]}. Nombres de '
-         "brawler en MAYÚSCULAS. Listas vacías si no hay cambios de ese tipo."),
-        3000)
+         "fecha). En upcoming añade status: \"confirmed\" si se confirma para la próxima "
+         "actualización (con fecha) o \"announced\" si solo se ha mencionado. Ignora promos, "
+         "sorteos y enlaces. Responde SOLO JSON: {\"current\":[...],\"upcoming\":[...]}. "
+         "Nombres de brawler en MAYÚSCULAS. Listas vacías si no hay nada de ese tipo."),
+        3200)
 
 
 async def _extract_from_knowledge() -> dict | None:
-    """Fallback si no se pudo descargar/parsear ninguna nota: conocimiento del modelo (puede
-    estar algo desfasado) para no dejar la sección vacía."""
+    """Fallback si la red falla del todo: conocimiento del modelo (puede estar desfasado)."""
     return await _ai_json(
         "Eres un analista del meta de Brawl Stars y conoces las notas de parche recientes.",
         ("Cambios de balance de Brawl Stars en dos grupos: current (vigentes ya en el juego) y "
@@ -177,8 +118,7 @@ def _clean(lst, names, upcoming: bool = False) -> list:
 
 
 def _dedup(lst) -> list:
-    """Quita repeticiones exactas pero CONSERVA cambios distintos del mismo brawler (un hot fix
-    sobre un brawler ya tocado se suma, no sustituye)."""
+    """Quita repeticiones exactas pero conserva cambios distintos del mismo brawler."""
     seen, out = set(), []
     for e in lst:
         k = (e["brawler"], e["target"], e["kind"], e["note"][:40].lower())
@@ -189,34 +129,23 @@ def _dedup(lst) -> list:
     return out[:_MAX]
 
 
-def _sources_sig(sources: list) -> str:
-    return "|".join(sources)
-
-
-async def _compute(names: dict, sources: list) -> dict | None:
-    """Descarga y parsea cada fuente (actualización + hot fixes) y combina los cambios."""
-    current, upcoming = [], []
-    for url in sources:
-        raw = await _fetch(url)
-        if not raw:
-            continue
-        data = await _extract(_html_to_text(raw), _date_hint(url))
-        if not data:
-            continue
-        current += _clean(data.get("current"), names)
-        upcoming += _clean(data.get("upcoming"), names, upcoming=True)
-    if not current:                       # notas no descargables/parseables -> conocimiento
+async def _compute(names: dict) -> dict | None:
+    g = await asyncio.to_thread(spider.gather)          # red en un hilo (no bloquea el bucle)
+    data = await _extract_live(g["notes"], g["news"])
+    current = _clean((data or {}).get("current"), names)
+    upcoming = _clean((data or {}).get("upcoming"), names, upcoming=True)
+    if not current and not upcoming:                    # red caída -> conocimiento del modelo
         kn = await _extract_from_knowledge()
         if kn:
             current = _clean(kn.get("current"), names)
-            if not upcoming:
-                upcoming = _clean(kn.get("upcoming"), names, upcoming=True)
+            upcoming = _clean(kn.get("upcoming"), names, upcoming=True)
     if not (current or upcoming):
         return None
     now = _now_iso()
     return {"current": _dedup(current), "upcoming": _dedup(upcoming),
             "updated": now, "checked": now,
-            "sources": sources, "source_sig": _sources_sig(sources)}
+            "sources": [n["url"] for n in g["notes"]] + [n["url"] for n in g["news"]],
+            "source_sig": g["signature"]}
 
 
 # ----------------------------- almacenamiento -----------------------------
@@ -238,8 +167,8 @@ def _save_store(data: dict) -> None:
 
 
 def _age(data: dict) -> float:
-    """Antigüedad desde la última REVISIÓN (no desde el último cambio): así, con las fuentes
-    sin novedades, no se recalcula en bucle, solo se revisa el índice cada _TTL."""
+    """Antigüedad desde la última REVISIÓN (no desde el último cambio): con las fuentes sin
+    novedades, no se recalcula en bucle, solo se revisa la firma cada _TTL."""
     try:
         up = (data or {}).get("checked") or (data or {}).get("updated")
         return (time.time() - datetime.fromisoformat(up).timestamp()) if up else 1e12
@@ -250,18 +179,15 @@ def _age(data: dict) -> float:
 async def _refresh() -> None:
     try:
         names = await _catalog_names()
-        main = await _discover_notes_url()
-        sources = ([main] if main else []) + _HOTFIX_URLS
-        sig = _sources_sig(sources)
+        sig = await asyncio.to_thread(spider.signature)     # firma barata (notas + RSS)
         stored = _load_store()
-        # Vigentes FIJOS: si la firma de fuentes no cambió y ya hay datos, NO se recalcula
-        # (ni se gasta IA); solo se marca que se revisó para no caducar en bucle.
+        # FIJO hasta que cambie la firma de fuentes: ni se gasta IA ni descargas pesadas.
         if stored and stored.get("source_sig") == sig and (stored.get("current") or stored.get("upcoming")):
             stored["checked"] = _now_iso()
             _save_store(stored)
             _cache["data"], _cache["at"] = stored, time.time()
             return
-        data = await _compute(names, sources)
+        data = await _compute(names)
         if data:
             _save_store(data)
             _cache["data"], _cache["at"] = data, time.time()
@@ -272,7 +198,6 @@ async def _refresh() -> None:
 
 
 def _schedule_refresh() -> None:
-    import asyncio
     if _refreshing["on"]:
         return
     try:
@@ -285,7 +210,7 @@ def _schedule_refresh() -> None:
 
 async def get_buffs() -> dict:
     """{current:[...], upcoming:[...], updated, ...}. NUNCA bloquea: sirve memoria/disco al
-    instante y, si está caducado o ausente, refresca con IA en segundo plano."""
+    instante y, si está caducado o ausente, refresca con la spider + IA en segundo plano."""
     now = time.time()
     if _cache["data"] is not None and now - _cache["at"] < 600:
         return _cache["data"]
@@ -301,8 +226,8 @@ async def get_buffs() -> dict:
 
 
 def changes_map() -> dict:
-    """{NOMBRE: {kind,target,note,date}} con el primer cambio VIGENTE de cada brawler (para
-    los badges en las tarjetas/ficha y para las recomendaciones). Síncrono, sin IA."""
+    """{NOMBRE: {kind,target,note,date}} con el primer cambio VIGENTE de cada brawler (para los
+    badges en las tarjetas/ficha y para las recomendaciones). Síncrono, sin IA."""
     d = _cache["data"] or _load_store() or {}
     m = {}
     for e in (d.get("current") or []):
