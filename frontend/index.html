@@ -339,6 +339,7 @@
       <button class="snav" data-section="tierlists" onclick="showSection('tierlists')">Tier Lists</button>
       <button class="snav" data-section="leagues" onclick="showSection('leagues')">Eventos</button>
       <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
+      <button class="snav" data-section="actualizaciones" onclick="showSection('actualizaciones')">Actualizaciones</button>
       <button class="snav" data-section="servers" onclick="showSection('servers')">Estado servidores</button>
       <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
@@ -665,6 +666,7 @@
         </div>
         <div class="br-filter-row"><span class="br-tb-lbl">Filtrar por:</span><div class="br-roles" id="br-roles"></div></div>
         <div class="br-grid" id="br-grid"></div>
+        <div class="br-temporary" id="br-upcoming"></div>
         <div class="br-temporary" id="br-temporary"></div>
       </div>
       <div id="brawler-detail-view" style="display:none">
@@ -685,6 +687,7 @@
     </div>
     <p class="hint" id="tl-sub" style="margin:2px 0 14px"></p>
     <div id="tl-board"></div>
+    <div id="meta-global"></div>
     <div id="buffs-section" class="buffs-section"></div>
   </section>
 
@@ -1041,6 +1044,25 @@
         <button class="ghost" type="button" onclick="closeEvModal('event-team-modal')">Cancelar</button>
         <button class="btn" type="button" onclick="submitTeam()">Guardar</button>
       </div>
+    </div>
+  </div>
+
+  <section class="app-section" id="section-actualizaciones">
+    <h2 class="section-title">Actualizaciones</h2>
+    <p class="hint" style="max-width:760px;margin:-6px 0 16px">Todo lo nuevo de Brawl Stars: cambios de balance, próximos brawlers, nuevos modos y eventos, y otros ajustes. De las notas oficiales de Supercell y de creadores de contenido.</p>
+    <div id="act-content"></div>
+    <div class="modal-overlay" id="changelog-modal">
+      <div class="modal-card modal-wide has-close">
+        <button class="modal-close" onclick="closeChangelog()">✕</button>
+        <div id="changelog-body"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal-overlay" id="br-history-modal">
+    <div class="modal-card modal-wide has-close">
+      <button class="modal-close" onclick="closeBrawlerHistory()">✕</button>
+      <div id="br-history-body"></div>
     </div>
   </div>
 

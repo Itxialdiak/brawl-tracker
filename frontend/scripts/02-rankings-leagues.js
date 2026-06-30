@@ -356,8 +356,9 @@ function showSection(name) {
   if (name === "guide") loadWikiTree();
   if (name === "admin") { loadAdminPending(); }
   if (name === "leagues") loadLeagues();
+  if (name === "actualizaciones") loadActualizaciones();
   if (name === "servers") loadServerStatus();
-  if (name === "tierlists") { loadTierlist("community"); loadBuffsList(); }
+  if (name === "tierlists") { loadTierlist("community"); loadMetaGlobal(); loadBuffsList(); }
 }
 
 /* ---------- Pestañas ---------- */

@@ -27,10 +27,10 @@ _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
 _CK = {"CONSENT": "YES+cb", "SOCS": "CAI"}     # evita el muro de consentimiento de YouTube
 
+_RELEASE_BASE = os.environ.get(
+    "BUFFS_RELEASE_BASE", "https://supercell.com/en/games/brawlstars/blog/release-notes/")
 NOTES_URLS = [u.strip() for u in os.environ.get(
-    "BUFFS_NOTES_URLS",
-    "https://supercell.com/en/games/brawlstars/es/blog/release-notes/"
-    "notas-de-la-actualizaci%C3%B3n-de-abril-de-2026/").split(",") if u.strip()]
+    "BUFFS_NOTES_URLS", _RELEASE_BASE + "release-notes-june-2026/").split(",") if u.strip()]
 CREATORS = [h.strip() for h in os.environ.get(
     "BUFFS_YT_CREATORS", "@SpiukYT,@Godeik,@SobaBS").split(",") if h.strip()]
 SOCIAL_URLS = [u.strip() for u in os.environ.get("BUFFS_SOCIAL_URLS", "").split(",") if u.strip()]
@@ -169,3 +169,59 @@ def gather() -> dict:
     sig_parts = list(NOTES_URLS) + list(SOCIAL_URLS) + [n["url"].rsplit("/", 1)[-1] for n in news
                                                         if "youtu.be" in n["url"]]
     return {"notes": notes, "news": news, "signature": "|".join(sig_parts)}
+
+
+# ----------------------------- historial de cambios (release notes) -----------------------------
+_SLUG_RE = re.compile(r"^[a-z0-9-]{3,80}$")
+_MONTHS = {"january": "enero", "february": "febrero", "march": "marzo", "april": "abril",
+           "may": "mayo", "june": "junio", "july": "julio", "august": "agosto",
+           "september": "septiembre", "october": "octubre", "november": "noviembre",
+           "december": "diciembre", "enero": "enero", "febrero": "febrero", "marzo": "marzo",
+           "abril": "abril", "mayo": "mayo", "junio": "junio", "julio": "julio", "agosto": "agosto",
+           "septiembre": "septiembre", "octubre": "octubre", "noviembre": "noviembre",
+           "diciembre": "diciembre"}
+_index_cache = {"at": 0.0, "data": []}
+
+
+def _slug_meta(slug: str) -> tuple:
+    """De un slug de nota saca (título legible, fecha 'mes año' si se detecta)."""
+    words = slug.replace("release-notes", "").replace("notas-de-la-actualizacion-de", "")
+    words = words.replace("notas-actualizacion", "").replace("-", " ").strip()
+    m = re.search(r"\b(" + "|".join(_MONTHS) + r")\b[ ]*(?:de )?[ ]*(\d{4})", words, re.I)
+    date = f"{_MONTHS.get(m.group(1).lower(), m.group(1)).capitalize()} {m.group(2)}" if m else ""
+    title = ("Notas · " + date) if date else ("Notas · " + (words.title() or slug))
+    return title, date
+
+
+_BLOG_BASE = os.environ.get("BUFFS_BLOG_BASE", "https://supercell.com/en/games/brawlstars/blog/")
+
+
+def release_index(ttl: float = 1800.0) -> list:
+    """Lista de actualizaciones desde el blog oficial (con paginación): [{slug, url, title, date}]
+    (más reciente primero). Cacheada en memoria (la red va en un hilo desde el endpoint)."""
+    import time
+    if _index_cache["data"] and (time.time() - _index_cache["at"]) < ttl:
+        return _index_cache["data"]
+    out, seen = [], set()
+    for page in [_BLOG_BASE] + [_BLOG_BASE + f"page/{n}/" for n in range(2, 6)]:
+        raw = _get(page)
+        if not raw:
+            continue
+        for slug in re.findall(r"/games/brawlstars/blog/release-notes/([a-z0-9-]+)", raw):
+            if not _SLUG_RE.match(slug) or slug in seen or slug == "release-notes":
+                continue
+            seen.add(slug)
+            title, date = _slug_meta(slug)
+            out.append({"slug": slug, "url": _RELEASE_BASE + slug + "/", "title": title, "date": date})
+    if out:
+        _index_cache["data"], _index_cache["at"] = out, time.time()
+    return out
+
+
+def update_text(slug: str) -> str:
+    """Texto limpio de una actualización concreta. Valida el slug (evita SSRF/URLs arbitrarias):
+    solo se permite construir la URL desde la base oficial."""
+    if not _SLUG_RE.match(slug or ""):
+        return ""
+    raw = _get(_RELEASE_BASE + slug + "/")
+    return html_to_text(raw)[:16000] if raw else ""

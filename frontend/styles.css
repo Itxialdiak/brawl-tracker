@@ -1831,3 +1831,52 @@
 .srv-hdate { color: var(--text); }
 .srv-hdur { font-family: var(--display); font-weight: 700; color: var(--gold); white-space: nowrap; }
 @media (max-width: 560px) { .srv-hrow { grid-template-columns: 1fr auto; } .srv-hrow .srv-hdate { grid-column: 1 / -1; color: var(--muted); font-size: 12px; } }
+
+
+/* === seccion Actualizaciones + historial de cambios === */
+#act-content.flash { animation: buffsFlash 1.6s ease; }
+.act-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.act-item { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; }
+.act-item-h { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); }
+.act-item-n { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+.cl-list { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; max-height: 60vh; overflow-y: auto; }
+.cl-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; cursor: pointer; color: var(--text); font-family: var(--body); transition: border-color .12s, background .12s; }
+.cl-item:hover { border-color: var(--cyan); background: rgba(63,225,255,.05); }
+.cl-name { font-family: var(--display); font-weight: 700; font-size: 14px; }
+.cl-date { font-size: 12px; color: var(--gold); font-family: var(--display); white-space: nowrap; }
+.cl-text { font-size: 13.5px; line-height: 1.6; color: var(--text); max-height: 62vh; overflow-y: auto; }
+@media (max-width: 640px) { .act-list { grid-template-columns: 1fr; } }
+
+
+/* === brawlers proximamente === */
+.up-card { position: relative; }
+.up-badge { position: absolute; top: 7px; left: 7px; z-index: 2; font-family: var(--display); font-weight: 700; font-size: 9px; letter-spacing: .4px; text-transform: uppercase; color: #0a0a1f; background: linear-gradient(135deg, var(--gold), #ff9f43); padding: 2px 7px; border-radius: 7px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.up-badge.lg { top: 12px; left: 12px; font-size: 11px; padding: 3px 10px; }
+.up-noimg { display: grid; place-items: center; font-size: 30px; color: var(--muted); }
+.up-card.locked { opacity: .82; filter: none; }
+
+
+/* === top meta global (brawltime) === */
+.mg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 8px; }
+.mg-row { display: flex; align-items: center; gap: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+.mg-rank { font-family: var(--display); font-weight: 800; font-size: 13px; color: var(--gold); width: 20px; flex: 0 0 auto; text-align: center; }
+.mg-row img, .mg-noimg { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
+.mg-name { flex: 1; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-wr { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--win); white-space: nowrap; }
+.mg-use { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--cyan); white-space: nowrap; }
+.mg-wr small, .mg-use small { color: var(--muted); font-weight: 500; font-size: 10px; }
+
+
+/* === histórico de cambios por brawler === */
+.bh-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 62vh; overflow-y: auto; }
+.bh-row { display: flex; gap: 11px; align-items: flex-start; background: var(--bg-elev); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 11px; padding: 11px 14px; }
+.bh-row.buff { border-left-color: var(--win); }
+.bh-row.nerf { border-left-color: var(--loss); }
+.bh-row.rework { border-left-color: var(--cyan); }
+.bh-row .chg-flag { margin-top: 1px; flex: 0 0 auto; }
+.bh-body { min-width: 0; flex: 1; }
+.bh-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font-size: 13.5px; }
+.bh-head b { color: var(--text); }
+.bh-target { font-size: 11.5px; color: var(--muted); }
+.bh-date { font-family: var(--display); font-weight: 700; font-size: 11.5px; color: var(--gold); margin-left: auto; white-space: nowrap; }
+.bh-note { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.45; }

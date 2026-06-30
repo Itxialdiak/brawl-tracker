@@ -71,16 +71,19 @@ async def _extract_live(notes: list, news: list) -> dict | None:
         ("Extraes cambios de balance de Brawl Stars SOLO del texto dado (no de memoria). Las "
          "'NOTAS OFICIALES' son la autoridad de lo ya aplicado; las secciones de YouTube/redes "
          "son lo anunciado/previsto."),
-        (body + "\n\n---\nDevuelve los cambios de balance por brawler:\n"
-         "- current: cambios YA APLICADOS, SOLO de las NOTAS OFICIALES.\n"
-         "- upcoming: cambios ANUNCIADOS o previstos (de YouTube/redes), aún no aplicados.\n"
-         "Para cada cambio: brawler, kind (buff|nerf|rework), target (attack|super|gadget|"
-         "starpower|hypercharge|stats), note (resumen muy breve en español), date (versión/"
-         "fecha). En upcoming añade status: \"confirmed\" si se confirma para la próxima "
-         "actualización (con fecha) o \"announced\" si solo se ha mencionado. Ignora promos, "
-         "sorteos y enlaces. Responde SOLO JSON: {\"current\":[...],\"upcoming\":[...]}. "
-         "Nombres de brawler en MAYÚSCULAS. Listas vacías si no hay nada de ese tipo."),
-        3200)
+        (body + "\n\n---\nDevuelve, SOLO del texto dado:\n"
+         "- current: cambios de balance YA APLICADOS (SOLO de las NOTAS OFICIALES).\n"
+         "- upcoming: cambios de balance ANUNCIADOS o previstos (de YouTube/redes), sin aplicar.\n"
+         "  current/upcoming: brawler, kind (buff|nerf|rework), target (attack|super|gadget|"
+         "starpower|hypercharge|stats), note (breve, español), date. En upcoming añade status "
+         "(\"confirmed\" con fecha si va en la próxima, o \"announced\" si solo se menciona).\n"
+         "- brawlers: PRÓXIMOS brawlers por salir (name=nombre, note=rol/fecha/habilidades).\n"
+         "- modes: nuevos modos de juego o eventos (name, note=en qué consisten).\n"
+         "- other: otros cambios y ajustes del juego (name=título corto, note=detalle).\n"
+         "Ignora promos, sorteos y enlaces. Responde SOLO JSON: {\"current\":[...],\"upcoming\":"
+         "[...],\"brawlers\":[...],\"modes\":[...],\"other\":[...]}. Nombres de brawler en "
+         "MAYÚSCULAS. Listas vacías si no hay nada de ese tipo."),
+        3800)
 
 
 async def _extract_from_knowledge() -> dict | None:
@@ -129,20 +132,38 @@ def _dedup(lst) -> list:
     return out[:_MAX]
 
 
+def _clean_items(lst) -> list:
+    """Normaliza bloques de texto libre (próximos brawlers / modos / otros cambios) a {name,note}."""
+    out = []
+    for e in (lst or []):
+        if isinstance(e, dict):
+            name = str(e.get("name") or e.get("title") or e.get("brawler") or "").strip()
+            note = str(e.get("note") or e.get("desc") or "").strip()
+        else:
+            name, note = str(e).strip(), ""
+        if name:
+            out.append({"name": name[:90], "note": note[:280]})
+    return out[:14]
+
+
 async def _compute(names: dict) -> dict | None:
     g = await asyncio.to_thread(spider.gather)          # red en un hilo (no bloquea el bucle)
     data = await _extract_live(g["notes"], g["news"])
     current = _clean((data or {}).get("current"), names)
     upcoming = _clean((data or {}).get("upcoming"), names, upcoming=True)
+    brawlers = _clean_items((data or {}).get("brawlers"))
+    modes = _clean_items((data or {}).get("modes"))
+    other = _clean_items((data or {}).get("other"))
     if not current and not upcoming:                    # red caída -> conocimiento del modelo
         kn = await _extract_from_knowledge()
         if kn:
             current = _clean(kn.get("current"), names)
             upcoming = _clean(kn.get("upcoming"), names, upcoming=True)
-    if not (current or upcoming):
+    if not (current or upcoming or brawlers or modes or other):
         return None
     now = _now_iso()
     return {"current": _dedup(current), "upcoming": _dedup(upcoming),
+            "brawlers": brawlers, "modes": modes, "other": other,
             "updated": now, "checked": now,
             "sources": [n["url"] for n in g["notes"]] + [n["url"] for n in g["news"]],
             "source_sig": g["signature"]}

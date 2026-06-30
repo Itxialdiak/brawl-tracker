@@ -332,6 +332,30 @@ def api_server_status(user: dict = Depends(auth.require_user)):
             "history": db.incident_history(60)}
 
 
+@app.get("/api/changelog")
+async def api_changelog(user: dict = Depends(auth.require_user)):
+    """Historial de actualizaciones (índice oficial de release notes de Supercell)."""
+    from . import spider
+    return {"updates": await asyncio.to_thread(spider.release_index)}
+
+
+@app.get("/api/changelog/{slug}")
+async def api_changelog_entry(slug: str, user: dict = Depends(auth.require_user)):
+    """Cambios de una actualización concreta. El `slug` se valida en el spider (sin SSRF)."""
+    from . import spider
+    text = await asyncio.to_thread(spider.update_text, slug)
+    if not text:
+        return JSONResponse({"error": "No se pudo cargar esta actualización."}, status_code=404)
+    return {"slug": slug, "text": text}
+
+
+@app.get("/api/meta-global")
+async def api_meta_global(user: dict = Depends(auth.require_user)):
+    """Top del meta global por win rate (de brawltime.ninja; complementa nuestras tier lists)."""
+    from . import brawltime
+    return {"brawlers": await asyncio.to_thread(brawltime.top_brawlers), "source": "brawltime.ninja"}
+
+
 @app.post("/api/poll")
 async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_user)):
     if not brawl_api.TOKEN:

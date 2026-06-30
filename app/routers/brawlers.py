@@ -5,7 +5,7 @@ import asyncio
 import re
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
-from .. import db, assets, brawler_extra, auth, buffs
+from .. import db, assets, brawler_extra, auth, buffs, changes
 from ..api_common import _require_follow, _get_player_cached
 
 router = APIRouter()
@@ -88,6 +88,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     wr_by_name = {(r["label"] or "").upper(): r for r in wr}
     hc_ids = brawler_extra.hypercharge_ids()
     await buffs.get_buffs()                                     # calienta la caché (no bloquea)
+    changes.schedule_build()                                    # construye el histórico en 2º plano
     bchanges = buffs.changes_map()                              # cambios vigentes por brawler
 
     items = []
@@ -172,8 +173,10 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         "hypercharges": {"owned": counts["hypercharges_owned"],
                          "total": max(0, total_brawlers - len(_NO_HYPERCHARGE))},
     }
+    from .. import upcoming
     return {"counters": counters, "rating": rating, "account": account,
-            "brawlers": items, "temporary": temporary, "top_brawlers": top_brawlers}
+            "brawlers": items, "temporary": temporary, "top_brawlers": top_brawlers,
+            "upcoming": upcoming.list_all()}
 
 
 @router.get("/api/versatile")
@@ -245,6 +248,18 @@ async def api_recommendations(player: str = Query(None), kind: str = Query("comm
 async def api_buffs(user: dict = Depends(auth.require_user)):
     """Buffs/nerfs recientes por brawler (de las notas de parche, vía IA, no bloqueante)."""
     return await buffs.get_buffs()
+
+
+@router.get("/api/brawler/{brawler_id}/changes")
+async def api_brawler_changes(brawler_id: int, user: dict = Depends(auth.require_user)):
+    """Histórico de cambios (buffs/nerfs/reworks) de un brawler en las notas oficiales.
+    La primera llamada construye el histórico (IA por nota); luego sirve de la caché en disco."""
+    catalog = await assets.get_brawler_catalog()
+    cat = (catalog.get("by_id") or {}).get(brawler_id)
+    if not cat:
+        return JSONResponse({"error": "Brawler no encontrado."}, status_code=404)
+    await changes.ensure_built()
+    return {"name": cat.get("name"), "history": changes.history_for(cat.get("name"))}
 
 
 @router.get("/api/account-rating")

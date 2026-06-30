@@ -14,7 +14,7 @@ function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return 
 
 async function loadBrawlers() {
   if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); loadRecommendations(recsKind); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); renderBrUpcoming(); loadRecommendations(recsKind); return; }
   showBrawlersGridView();
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
@@ -22,7 +22,7 @@ async function loadBrawlers() {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
   } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); loadRecommendations(recsKind);
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); renderBrUpcoming(); loadRecommendations(recsKind);
 }
 
 function renderBrCounters() {
@@ -212,6 +212,50 @@ function renderBrTemporary() {
       <p>Colaboraciones limitadas que ya no se pueden conseguir ni usar. No cuentan para la colección ni el meta — solo un recuerdo de lo que pasó.</p></div>
     <div class="br-grid">${list.map(renderBrawlerCard).join("")}</div>`;
 }
+
+/* ---------- Brawlers "Próximamente" (anunciados, aún no en el juego) ---------- */
+function renderUpcomingCard(u, i) {
+  const img = u.image
+    ? `<img src="${u.image}" class="por" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+    : `<div class="por up-noimg">🔮</div>`;
+  return `<div class="br-card locked up-card" onclick="showUpcomingDetail(${i})" title="${esc(u.name)}">
+    <span class="up-badge">Próximamente</span>
+    <div class="por-frame">${img}</div>
+    <div class="nm">${esc(u.name)}</div>
+    <div class="role">${esc(u.release || "")}</div>
+  </div>`;
+}
+function renderBrUpcoming() {
+  const el = $("br-upcoming");
+  if (!el || !brawlersData) return;
+  const list = brawlersData.upcoming || [];
+  if (!list.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="br-temp-head"><h3>🔮 Próximos brawlers</h3>
+      <p>Brawlers anunciados que aún no han salido al juego. No cuentan para la colección ni el meta; su ficha se completa según Supercell publica la información oficial.</p></div>
+    <div class="br-grid">${list.map(renderUpcomingCard).join("")}</div>`;
+}
+function showUpcomingDetail(i) {
+  const u = ((brawlersData && brawlersData.upcoming) || [])[i];
+  if (!u) return;
+  $("brawlers-grid-view").style.display = "none"; $("brawler-detail-view").style.display = "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  const img = u.image ? `<img src="${esc(u.image)}" alt="">` : `<div class="empty" style="font-size:64px;margin:0">🔮</div>`;
+  const ab = (u.abilities || []).length
+    ? `<div class="br-section"><h3>Habilidades (anticipo)</h3><div class="ability-grid">${u.abilities.map((a) => `<div class="ability"><div class="be-body"><div class="nm">${esc(a.name)}</div><div class="ds">${esc(a.note || "")}</div></div></div>`).join("")}</div></div>`
+    : "";
+  $("br-detail").innerHTML = `
+    <div class="br-d-top">
+      <div class="br-d-img">${img}<span class="up-badge lg">Próximamente</span></div>
+      <div class="br-d-info">
+        <h1>${esc(u.name)}</h1>
+        <div class="br-d-role">${esc(u.role)} · ${esc(u.rarity)}</div>
+        <div class="br-taglines"><span class="br-tagline prestige">🔮 ${esc(u.release || "Próximamente")}</span></div>
+        <p class="br-d-desc">${esc(u.description || "Información por confirmar.")}</p>
+        ${u.source ? `<a class="src-link" href="${esc(u.source)}" target="_blank" rel="noopener">Fuente oficial ↗</a>` : ""}
+      </div>
+    </div>${ab}`;
+}
 async function loadRecommendations(kind) {
   recsKind = kind || recsKind;
   document.querySelectorAll(".rec-tab").forEach((b) => b.classList.toggle("active", b.dataset.rec === recsKind));
@@ -259,14 +303,90 @@ async function loadBuffsList() {
   let d = null;
   try { d = await getJSON("/api/buffs"); } catch (e) { d = null; }
   if (!d) { host.innerHTML = ""; return; }
+  // Solo vigentes: los próximos cambios, futuros brawlers y novedades viven en "Actualizaciones".
+  host.innerHTML = `
+    <h2 class="section-title" style="margin-top:34px">Buffs y nerfs vigentes</h2>
+    <p class="hint" style="margin:2px 0 14px;max-width:760px">Los cambios de balance ya aplicados (mejoras en verde, recortes en rojo). Los próximos cambios, futuros brawlers y novedades están en la sección <b>Actualizaciones</b>.</p>
+    ${renderBuffsCols(d.current || [], "Recopilando los cambios de balance recientes…")}`;
+}
+
+/* ---------- Sección "Actualizaciones" (buffs completos + novedades + historial) ---------- */
+async function loadActualizaciones() {
+  const host = $("act-content");
+  if (!host) return;
+  host.innerHTML = `<div class="empty">Cargando novedades…</div>`;
+  let d = null;
+  try { d = await getJSON("/api/buffs"); } catch (e) { d = null; }
+  d = d || {};
   const up = d.upcoming || [];
   host.innerHTML = `
-    <h2 class="section-title" style="margin-top:34px">Buffs y nerfs</h2>
-    <p class="hint" style="margin:2px 0 14px;max-width:760px">Los cambios de balance de Brawl Stars de un vistazo: a la izquierda las mejoras (verde), a la derecha los recortes (rojo).</p>
-    <h4 class="buffs-h">Vigentes ahora</h4>
-    ${renderBuffsCols(d.current || [], "Recopilando los cambios de balance recientes…")}
-    <h4 class="buffs-h">Próximos cambios (anunciados)</h4>
-    ${up.length ? renderBuffsCols(up, "") : `<div class="buffs-none">Aún no hay cambios anunciados para la próxima actualización.</div>`}`;
+    <h3 class="buffs-h">Cambios de balance · vigentes</h3>
+    ${renderBuffsCols(d.current || [], "Recopilando los cambios recientes…")}
+    <h3 class="buffs-h">Próximos cambios (anunciados)</h3>
+    ${up.length ? renderBuffsCols(up, "") : `<div class="buffs-none">Aún no hay cambios anunciados para la próxima actualización.</div>`}
+    <button class="btn-buffs" style="margin-top:16px" onclick="openChangelog()">📜 Ver historial de cambios</button>
+    <h3 class="section-title" style="font-size:15px;margin:30px 0 10px">Próximos brawlers</h3>
+    ${renderActList(d.brawlers, "Sin brawlers anunciados por ahora.")}
+    <h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Nuevos modos y eventos</h3>
+    ${renderActList(d.modes, "Sin modos o eventos nuevos anunciados.")}
+    <h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Otros cambios y ajustes</h3>
+    ${renderActList(d.other, "Sin otros cambios anotados.")}`;
+}
+function renderActList(items, empty) {
+  if (!items || !items.length) return `<div class="buffs-none">${esc(empty)}</div>`;
+  return `<div class="act-list">${items.map((it) => `<div class="act-item">
+    <div class="act-item-h">${esc(it.name || "")}</div>
+    ${it.note ? `<div class="act-item-n">${esc(it.note)}</div>` : ""}</div>`).join("")}</div>`;
+}
+
+/* ---------- Modal: historial de cambios (notas oficiales) ---------- */
+let _clUpdates = [];
+async function openChangelog() {
+  const m = $("changelog-modal"), body = $("changelog-body");
+  if (!m || !body) return;
+  body.innerHTML = `<div class="modal-title">Historial de cambios</div><div class="empty">Cargando…</div>`;
+  m.classList.add("open");
+  try { _clUpdates = (await getJSON("/api/changelog")).updates || []; } catch (e) { _clUpdates = []; }
+  body.innerHTML = `<div class="modal-title">Historial de cambios</div>
+    <div class="modal-sub">Notas oficiales de actualización de Brawl Stars. Pulsa una para ver sus cambios.</div>
+    ${_clUpdates.length
+      ? `<div class="cl-list">${_clUpdates.map((u, i) => `<button class="cl-item" onclick="openChangelogEntry(${i})"><span class="cl-name">${esc(u.title || u.slug)}</span>${u.date ? `<span class="cl-date">${esc(u.date)}</span>` : ""}</button>`).join("")}</div>`
+      : `<div class="empty">No se pudo cargar el historial ahora mismo.</div>`}`;
+}
+async function openChangelogEntry(i) {
+  const u = _clUpdates[i], body = $("changelog-body");
+  if (!u || !body) return;
+  const back = `<button class="ghost" style="margin-bottom:12px" onclick="openChangelog()">‹ Volver al historial</button>`;
+  body.innerHTML = `${back}<div class="modal-title">${esc(u.title || u.slug)}</div><div class="empty">Cargando cambios…</div>`;
+  let txt = "";
+  try { txt = (await getJSON("/api/changelog/" + encodeURIComponent(u.slug))).text || ""; } catch (e) {}
+  body.innerHTML = `${back}<div class="modal-title">${esc(u.title || u.slug)}</div>
+    ${u.date ? `<div class="modal-sub">${esc(u.date)}</div>` : ""}
+    <div class="cl-text">${txt ? esc(txt).replace(/\n/g, "<br>") : "No se pudieron cargar los cambios de esta actualización."}</div>`;
+}
+function closeChangelog() { const m = $("changelog-modal"); if (m) m.classList.remove("open"); }
+
+/* ---------- Top del meta global (brawltime.ninja) ---------- */
+async function loadMetaGlobal() {
+  const el = $("meta-global");
+  if (!el) return;
+  el.innerHTML = `<div class="empty">Cargando meta global…</div>`;
+  let d = null;
+  try { d = await getJSON("/api/meta-global"); } catch (e) { d = null; }
+  const list = (d && d.brawlers) || [];
+  if (!list.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <h2 class="section-title" style="margin-top:34px">Top del meta global</h2>
+    <p class="hint" style="margin:2px 0 14px;max-width:760px">Los brawlers con mejor win rate ajustado del meta global (y su tasa de uso). Fuente: <a href="https://brawltime.ninja/es" target="_blank" rel="noopener" style="color:var(--cyan)">brawltime.ninja</a>.</p>
+    <div class="mg-list">${list.map(mgRow).join("")}</div>`;
+}
+function mgRow(b) {
+  const por = (typeof brawlerPortrait === "function") ? brawlerPortrait(b.name) : null;
+  const img = por ? `<img src="${por}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="mg-noimg"></span>`;
+  return `<div class="mg-row"><span class="mg-rank">${b.rank}</span>${img}
+    <span class="mg-name">${esc(b.name)}</span>
+    <span class="mg-wr">${esc(b.win_rate)}%<small> WR</small></span>
+    <span class="mg-use">${esc(b.use_rate)}%<small> uso</small></span></div>`;
 }
 function renderBuffsCols(list, emptyMsg) {
   if (!list.length) return `<div class="buffs-none">${esc(emptyMsg || "Sin datos por ahora.")}</div>`;
@@ -302,9 +422,9 @@ function buffEntry(e) {
   </div>`;
 }
 function goToBuffs() {
-  showSection("tierlists");
+  showSection("actualizaciones");
   setTimeout(() => {
-    const el = $("buffs-section");
+    const el = $("act-content");
     if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600); }
   }, 220);
 }
@@ -496,8 +616,37 @@ function renderBrawlerDetail(d) {
     <div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>
     <div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>
     ${hcHtml}${buildsHtml}${modeHtml}
-    <div style="margin-top:22px"><button class="ghost" onclick="goBrawlerRanking('${esc(d.name).replace(/'/g, "\\'")}')">Ver ranking de ${esc(d.name)} ↗</button></div>`;
+    <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="ghost" onclick="openBrawlerHistory(${d.id}, '${esc(d.name).replace(/'/g, "\\'")}')">📜 Histórico de cambios</button>
+      <button class="ghost" onclick="goBrawlerRanking('${esc(d.name).replace(/'/g, "\\'")}')">Ver ranking de ${esc(d.name)} ↗</button>
+    </div>`;
 }
+
+/* ---------- Modal: histórico de cambios de un brawler (notas oficiales) ---------- */
+async function openBrawlerHistory(id, name) {
+  const m = $("br-history-modal"), body = $("br-history-body");
+  if (!m || !body) return;
+  body.innerHTML = `<div class="modal-title">Histórico de ${esc(name)}</div><div class="empty">Cargando cambios…</div>`;
+  m.classList.add("open");
+  let d = null;
+  try { d = await getJSON(`/api/brawler/${id}/changes`); } catch (e) { d = null; }
+  const hist = (d && d.history) || [];
+  body.innerHTML = `<div class="modal-title">Histórico de cambios</div>
+    <div class="modal-sub">Buffs, nerfs y reworks de <b>${esc(name)}</b> en las notas oficiales (más reciente primero).</div>
+    ${hist.length
+      ? `<div class="bh-list">${hist.map(bhRow).join("")}</div>`
+      : `<div class="empty">No se han registrado cambios de balance para este brawler en las notas disponibles.</div>`}`;
+}
+function bhRow(c) {
+  return `<div class="bh-row ${c.kind}">
+    <span class="chg-flag ${c.kind}">${chgIcon(c.kind)}</span>
+    <div class="bh-body">
+      <div class="bh-head"><b>${chgLabel(c.kind).replace(" reciente", "")}</b>
+        <span class="bh-target">${TARGET_ICON[c.target] || ""} ${esc(TARGET_LABEL[c.target] || c.target)}</span>
+        ${c.date ? `<span class="bh-date">${esc(c.date)}</span>` : ""}</div>
+      ${c.note ? `<div class="bh-note">${esc(c.note)}</div>` : ""}</div></div>`;
+}
+function closeBrawlerHistory() { const m = $("br-history-modal"); if (m) m.classList.remove("open"); }
 
 function goBrawlerRanking(name) {
   switchTab("rankings");
