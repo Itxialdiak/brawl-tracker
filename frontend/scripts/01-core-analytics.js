@@ -12,6 +12,7 @@ let playersById = {};
 let activeTab = "stats";
 let histOffset = 0, histTotal = 0;
 let ASSETS = { brawlers: {}, modes: {}, maps: {} };
+let _navPop = false;   // true mientras se procesa un "atrás" del navegador (evita re-apilar historial)
 let filterSel = { brawler: [], mode: [], map: [], role: [] };  // filtros multi-selección
 
 function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -22,6 +23,20 @@ function fmtClock(iso) { try { return new Date(iso).toLocaleTimeString("es-ES", 
 
 /* ---------- Recursos visuales (Brawlify) ---------- */
 function brawlerPortrait(name) { return name ? ASSETS.brawlers[name.toUpperCase()] || null : null; }
+/* id del brawler a partir del nombre (la URL del retrato termina en /<id>.png) */
+function brawlerIdByName(name) {
+  const url = brawlerPortrait(name);
+  const m = url && /\/(\d{6,})\.[a-z]+(?:[?#]|$)/i.exec(url);
+  return m ? +m[1] : null;
+}
+/* Abre la ficha de un brawler por NOMBRE desde cualquier sección (tier list, buffs…) */
+function goBrawlerByName(name) {
+  const id = brawlerIdByName(name);
+  if (!id) return;
+  if (typeof showSection === "function") showSection("brawlytics");
+  if (typeof switchTab === "function") switchTab("brawlers");
+  if (typeof showBrawlerDetail === "function") showBrawlerDetail(id);
+}
 function modeAsset(mode) { return mode ? ASSETS.modes[mode.toLowerCase()] || null : null; }
 function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
 function imgTag(url, cls) { return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'" />`; }

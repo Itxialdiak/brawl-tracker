@@ -359,7 +359,30 @@ function showSection(name) {
   if (name === "actualizaciones") loadActualizaciones();
   if (name === "servers") loadServerStatus();
   if (name === "tierlists") { loadTierlist("community"); loadMetaGlobal(); loadBuffsList(); }
+  // Historial: cada navegación de sección apila una entrada para que "Atrás" vuelva dentro
+  // de la app (a la sección anterior) en vez de salir de la página. La primera (al cargar)
+  // reemplaza para no dejar una entrada fantasma.
+  if (!_navPop) {
+    const st = { nav: "section", section: name };
+    if (history.state && history.state.nav) history.pushState(st, "", "#" + name);
+    else history.replaceState(st, "", "#" + name);
+  }
 }
+
+/* "Atrás" del navegador → navega DENTRO de la app (sección anterior / cierra la ficha). */
+window.addEventListener("popstate", function (e) {
+  _navPop = true;
+  try {
+    const st = e.state || {};
+    if (st.nav === "brawler" && st.brawler && typeof showBrawlerDetail === "function") {
+      showSection("brawlytics"); switchTab("brawlers"); showBrawlerDetail(st.brawler);
+    } else {
+      const sec = st.section || "brawlytics";
+      showSection(sec);
+      if (sec === "brawlytics" && typeof showBrawlersGridView === "function") showBrawlersGridView();
+    }
+  } finally { _navPop = false; }
+});
 
 /* ---------- Pestañas ---------- */
 const FILTER_TABS = { stats: "tab-stats" };  // filtros compartidos solo en Analíticas (el Sensei tiene su propio cuestionario)

@@ -1892,3 +1892,23 @@
 .bh-row.rework { border-left-color: var(--cyan); background: rgba(107,198,255,.06); }
 .bh-row .chg-flag { margin-top: 1px; flex: 0 0 auto; }
 .bh-note { font-size: 12.8px; color: var(--text); line-height: 1.5; min-width: 0; }
+
+
+/* === recomendaciones horizontales (imagen izq · texto+barra dcha) + imágenes clicables === */
+.tl-brawler.clickable { cursor: pointer; transition: outline .12s, transform .12s; }
+.tl-brawler.clickable:hover { outline: 2px solid var(--cyan); outline-offset: -1px; transform: translateY(-1px); }
+.buff-entry.clickable { cursor: pointer; transition: border-color .12s, transform .12s; }
+.buff-entry.clickable:hover { border-color: rgba(255,255,255,.32); transform: translateY(-1px); }
+
+.br-rec-cards, .br-rec-group.full .br-rec-cards { grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); }
+.br-rec-card { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; }
+.br-rec-card .por { width: 44px; height: 44px; margin: 0; flex: 0 0 auto; }
+.br-rec-body { min-width: 0; flex: 1; }
+.br-rec-card .nm { font-size: .82rem; }
+.br-rec-card .nt { font-size: .66rem; margin-top: 2px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.br-rec-card .rel-bar { margin-top: 6px; }
+/* móvil: lista vertical de tarjetas horizontales (no carrusel) */
+@media (max-width: 768px) {
+  .br-rec-cards, .br-rec-group.full .br-rec-cards { display: grid; grid-template-columns: 1fr; overflow: visible; gap: 8px; }
+  .br-rec-cards > .br-rec-card { flex: 1 1 auto; }
+}

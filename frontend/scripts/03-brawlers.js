@@ -174,7 +174,8 @@ function renderTierBoard(tiers) {
       const p = brawlerPortrait(b.name);
       const img = p ? `<img src="${p}" alt="" onerror="this.style.display='none'">` : `<span class="tl-noimg">${esc((b.name || "?")[0])}</span>`;
       const tip = b.winrate != null ? `${b.name} · ${b.winrate}% WR · uso ${b.pick_rate}%` : b.name;
-      return `<div class="tl-brawler" title="${esc(tip)}">${img}</div>`;
+      const go = `goBrawlerByName('${esc(b.name || "").replace(/'/g, "\\'")}')`;
+      return `<div class="tl-brawler clickable" title="${esc(tip)}" onclick="${go}">${img}</div>`;
     }).join("");
     return `<div class="tl-row tier-${t}"><div class="tl-label">${t}</div><div class="tl-cells">${cells || '<span class="tl-empty-row">—</span>'}</div></div>`;
   }).join("");
@@ -281,9 +282,11 @@ function renderRecGroup(g) {
     const num = numbered ? `<span class="rec-num">${i + 1}</span>` : "";
     return `<div class="br-rec-card" onclick="showBrawlerDetail(${b.id})" title="${esc(b.name)}">
       <div class="por">${num}${por}${tier}${chgFlag}</div>
-      <div class="nm">${esc(b.name)}</div>
-      <div class="nt">${esc(b.note || "")}</div>
-      ${b.reliability != null ? `<div class="rel-bar" title="Fiabilidad ${b.reliability}% · según partidas jugadas"><span style="width:${b.reliability}%"></span></div>` : ""}
+      <div class="br-rec-body">
+        <div class="nm">${esc(b.name)}</div>
+        <div class="nt">${esc(b.note || "")}</div>
+        ${b.reliability != null ? `<div class="rel-bar" title="Fiabilidad ${b.reliability}% · según partidas jugadas"><span style="width:${b.reliability}%"></span></div>` : ""}
+      </div>
     </div>`;
   }).join("");
   const body = cards || `<div class="rec-empty">Aún no hay datos suficientes aquí. Juega más partidas y se recalculará.</div>`;
@@ -426,7 +429,8 @@ function buffEntry(e) {
     : e.status === "announced"
       ? ` <span class="be-status ann">Anunciado</span>`
       : (e.date ? ` <small>${esc(e.date)}</small>` : "");
-  return `<div class="buff-entry ${cls}" title="${esc(e.note || "")}">
+  const go = `goBrawlerByName('${esc(e.brawler || "").replace(/'/g, "\\'")}')`;
+  return `<div class="buff-entry ${cls} clickable" title="${esc(e.note || "")}" onclick="${go}">
     <div class="be-face">${img}<span class="be-target" title="${TARGET_LABEL[e.target] || ""}">${ti}</span></div>
     <div class="be-body">
       <div class="be-name">${esc(titleCaseName(e.brawler))}${meta}</div>
@@ -493,6 +497,7 @@ function renderBrawlerCard(b) {
 function showBrawlersGridView() { $("brawlers-grid-view").style.display = ""; $("brawler-detail-view").style.display = "none"; }
 
 async function showBrawlerDetail(id) {
+  if (!_navPop) history.pushState({ nav: "brawler", section: "brawlytics", brawler: id }, "", "#brawler-" + id);
   $("brawlers-grid-view").style.display = "none"; $("brawler-detail-view").style.display = "";
   $("br-detail").innerHTML = `<div class="empty">Cargando ficha…</div>`;
   window.scrollTo({ top: 0, behavior: "smooth" });
