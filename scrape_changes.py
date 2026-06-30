@@ -24,6 +24,7 @@ OUT = os.path.join("app", "data", "brawler_changes.json")
 # Nombre del catálogo -> título de la página en la wiki EN, cuando difieren.
 PAGE_OVERRIDES = {
     "8-BIT": "8-Bit", "MR. P": "Mr. P", "LARRY & LAWRIE": "Larry & Lawrie",
+    "JAE-YONG": "Jae-yong",
 }
 
 try:

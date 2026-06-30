@@ -1480,7 +1480,7 @@
         "star_power_id": 23001047,
         "gadget_id": 23001049,
         "gear": "Speed",
-        "win_rate": 66.6
+        "win_rate": 66.7
       }
     ]
   },
@@ -1757,7 +1757,7 @@
         "star_power_id": 23000990,
         "gadget_id": 23000992,
         "gear": "Shield",
-        "win_rate": 66.2
+        "win_rate": 66.3
       }
     ]
   },
@@ -1804,7 +1804,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/kaze",
-        "star_power_id": 23000939,
+        "star_power_id": 23000938,
         "gadget_id": 23000940,
         "gear": "Shield",
         "win_rate": 65.5
@@ -1898,7 +1898,7 @@
         "star_power_id": 23000929,
         "gadget_id": 23000932,
         "gear": "Speed",
-        "win_rate": 67.0
+        "win_rate": 66.9
       }
     ]
   },
@@ -2068,7 +2068,7 @@
         "star_power_id": 23000905,
         "gadget_id": 23000908,
         "gear": "Damage",
-        "win_rate": 67.1
+        "win_rate": 67.0
       }
     ]
   },
@@ -2587,7 +2587,7 @@
         "star_power_id": 23000805,
         "gadget_id": 23000807,
         "gear": "Shield",
-        "win_rate": 65.6
+        "win_rate": 65.7
       }
     ]
   },
@@ -2678,7 +2678,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/clancy",
         "star_power_id": 23000773,
         "gadget_id": 23000775,
-        "gear": "Damage",
+        "gear": "Shield",
         "win_rate": 67.8
       }
     ]
@@ -3204,7 +3204,7 @@
         "star_power_id": 23000660,
         "gadget_id": 23000662,
         "gear": "Shield",
-        "win_rate": 64.9
+        "win_rate": 65.0
       }
     ]
   },
@@ -4164,7 +4164,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/gray",
-        "star_power_id": 23000535,
+        "star_power_id": 23000536,
         "gadget_id": 23000538,
         "gear": "Shield",
         "win_rate": 63.1
@@ -5332,7 +5332,7 @@
         "star_power_id": 23000390,
         "gadget_id": 23000490,
         "gear": "Shield",
-        "win_rate": 63.1
+        "win_rate": 63.2
       }
     ]
   },
@@ -5506,7 +5506,7 @@
         "star_power_id": 23000376,
         "gadget_id": 23000462,
         "gear": "Shield",
-        "win_rate": 62.5
+        "win_rate": 62.4
       }
     ]
   },
@@ -7852,9 +7852,9 @@
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/darryl",
         "star_power_id": 23000094,
-        "gadget_id": 23000313,
+        "gadget_id": 23000260,
         "gear": "Shield",
-        "win_rate": 66.2
+        "win_rate": 66.1
       }
     ]
   },
@@ -9023,7 +9023,7 @@
         "star_power_id": 23000205,
         "gadget_id": 23000349,
         "gear": "Speed",
-        "win_rate": 65.9
+        "win_rate": 66.0
       }
     ]
   }
