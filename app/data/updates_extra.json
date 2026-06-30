@@ -1,0 +1,16 @@
+{
+  "_note": "Novedades NO de balance (modos, eventos, otros) de la última actualización, curadas a mano de las notas oficiales. Editar al salir cada actualización. La IA de buffs.py no las extrae fiablemente.",
+  "update": "Junio 2026 · Ramen Rebellion",
+  "modes": [
+    {"name": "Temporadas NanoNoodles + Windstock", "note": "Dos temporadas conectadas (9 semanas) con una historia continua. La T1 (NanoNoodles) trae NanoDrops y NanoPowers; la T2 (Windstock) trae Smoothie Drops y Fusiones."},
+    {"name": "NanoPowers", "note": "Mejoras por brawler: 106 en total, en 4 rarezas (Baseline, Augmented, Cybernetic y Quantum). En los modos con el modificador activo, eliges 1 de 2 poderes al empezar la partida."},
+    {"name": "Fusiones (Fusions)", "note": "Variantes más potentes de los NanoPowers (T2 Windstock). Al activarse, 2 de tus 3 poderes se fusionan y ganas los efectos de ambos durante la partida."},
+    {"name": "Daily Contests (evento)", "note": "Cada día aparece un set nuevo de retos: eliges 1 de 3 modos y tienes intentos limitados. Juega al menos una partida para llevarte NanoDrops."},
+    {"name": "Topple the Tower (evento)", "note": "Sube una torre de 5 pisos, cada uno con un mapa y modo distinto. Pool curado de brawlers (todos al máximo, Buffies incluidos). Necesitas 8 brawlers (≈325 copas) para jugarlo."},
+    {"name": "Side Quests", "note": "Misiones especiales ligadas a los brawlers destacados de la semana que hacen avanzar un marcador de hitos con recompensas extra. Algunas piden un nivel de poder concreto."},
+    {"name": "Jefes nuevos (Boss Fights)", "note": "3 jefes nuevos en versión nano: Nori (con peces y embestidas de caña), Tara (ejército de clones y agujeros negros) y Brock (oleadas de cohetes)."}
+  ],
+  "other": [
+    {"name": "NanoDrops / Smoothie Drops", "note": "Nueva progresión: cada caja da 3 elecciones de un set de 5 vasos (1 a 9 recompensas). Además llenan el NanoMeter / Smoothie Meter para recompensas extra. Se ganan con victorias diarias, mega misiones, jefes, side quests, concursos y códigos QR de creadores."}
+  ]
+}

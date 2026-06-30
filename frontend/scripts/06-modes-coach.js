@@ -469,8 +469,8 @@ function renderModeDonuts(modeData) {
 /* ---------- Radares de rol (Preferencia de rol / Estilo de juego) ---------- */
 // Orden alrededor del radar pensado para que roles parecidos queden contiguos:
 // frontline -> cuerpo a cuerpo -> daño -> rango -> lanzado -> control -> apoyo.
-const ROLE_ORDER = ["Tanque", "Agresor", "Asesino", "Destructor", "Tiro de Élite",
-                    "Artillería", "Lanzador", "Invocador", "Control", "Apoyo", "Curador"];
+const ROLE_ORDER = ["Tanque", "Destructor", "Agresor", "Asesino", "Tiro de Élite",
+                    "Lanzador", "Invocador", "Control", "Apoyo", "Curador"];
 const ROLE_SHORT = { "Tiro de Élite": "T. Élite" };
 function roleRadar(data, key, color, gid) {
   const by = {}; (data || []).forEach((d) => { by[d.label] = d; });

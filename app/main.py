@@ -336,10 +336,12 @@ def api_server_status(user: dict = Depends(auth.require_user)):
 async def api_changelog(user: dict = Depends(auth.require_user)):
     """Historial COMPLETO de cambios de balance del juego (todas las fechas, todos los brawlers),
     derivado del dataset de la wiki ya traducido (`brawler_changes.json`). + próximos brawlers."""
-    from . import changes, upcoming
+    from . import changes, upcoming, updates_extra
+    extra = updates_extra.get()
     return {"updates": await asyncio.to_thread(changes.timeline),
             "latest": await asyncio.to_thread(changes.latest_changes),
-            "upcoming": upcoming.list_all()}
+            "upcoming": upcoming.list_all(),
+            "update": extra.get("update"), "modes": extra.get("modes"), "other": extra.get("other")}
 
 
 @app.get("/api/meta-global")

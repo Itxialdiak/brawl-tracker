@@ -322,6 +322,7 @@ async function loadActualizaciones() {
   d = d || {}; b = b || {};
   const updates = d.updates || [], latest = (d.latest || []).filter((c) => c.kind !== "neutral");
   const up = d.upcoming || [], announced = b.upcoming || [];
+  const modes = d.modes || [], other = d.other || [];
   const latestLbl = updates[0] ? bhDate({ date: updates[0].date }) : "";
   host.innerHTML = `
     <h3 class="buffs-h">Cambios de balance · última actualización${latestLbl ? ` · <span style="color:var(--gold)">${esc(latestLbl)}</span>` : ""}</h3>
@@ -330,8 +331,8 @@ async function loadActualizaciones() {
     ${announced.length ? `<h3 class="buffs-h">Próximos cambios (anunciados)</h3>${renderBuffsCols(announced, "")}` : ""}
     <h3 class="section-title" style="font-size:15px;margin:30px 0 10px">Próximos brawlers</h3>
     ${up.length ? `<div class="act-list">${up.map(actUpcoming).join("")}</div>` : `<div class="buffs-none">Sin brawlers anunciados por ahora.</div>`}
-    ${b.modes && b.modes.length ? `<h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Nuevos modos y eventos</h3>${renderActList(b.modes)}` : ""}
-    ${b.other && b.other.length ? `<h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Otros cambios y ajustes</h3>${renderActList(b.other)}` : ""}`;
+    ${modes.length ? `<h3 class="section-title" style="font-size:15px;margin:30px 0 10px">Nuevos modos y eventos${d.update ? ` <span style="color:var(--muted);font-size:11px;font-weight:400">· ${esc(d.update)}</span>` : ""}</h3>${renderActList(modes)}` : ""}
+    ${other.length ? `<h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Otros cambios y ajustes</h3>${renderActList(other)}` : ""}`;
 }
 function actUpcoming(u) {
   const img = u.image ? `<img src="${esc(u.image)}" alt="" loading="lazy" style="width:34px;height:34px;border-radius:8px;object-fit:cover;float:left;margin-right:10px" onerror="this.style.display='none'">` : "";

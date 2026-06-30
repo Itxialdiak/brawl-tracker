@@ -9,5 +9,18 @@
     "image_full": "https://static.wikia.nocookie.net/brawlstars/images/6/6a/Nori_Skin-Default.png/revision/latest?cb=20260628173653",
     "abilities": [],
     "source": "https://brawlstars.fandom.com/wiki/Nori"
+  },
+  {
+    "name": "Wendy",
+    "rarity": "Mítico",
+    "role": "Apoyo",
+    "release": "Verano 2026",
+    "description": "Una científica brillante con alma nostálgica. Tras años trabajando en turbios laboratorios corporativos, lo dejó para fundar Windstock y ayudar al planeta, no dañarlo. Rasgo: camina sobre el agua y carga su Súper al recibir daño en el escudo. Llega en la temporada 2 (Windstock) de la actualización de junio 2026.",
+    "image": "https://static.wikia.nocookie.net/brawlstars/images/2/26/Wendy_Skin-Default.png/revision/latest?cb=20260628173626",
+    "image_full": "https://static.wikia.nocookie.net/brawlstars/images/2/26/Wendy_Skin-Default.png/revision/latest?cb=20260628173626",
+    "abilities": [
+      {"name": "Ataque · Secador (Blow Dryer)", "note": "Dispara una ráfaga que inflige 2400 de daño y le otorga 1386 de escudo."}
+    ],
+    "source": "https://supercell.com/en/games/brawlstars/blog/release-notes/release-notes-june-2026/"
   }
 ]
