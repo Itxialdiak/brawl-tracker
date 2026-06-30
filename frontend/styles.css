@@ -1804,3 +1804,30 @@
 /* === fiabilidad en lista de rendimiento por brawler === */
 .rel-note { grid-column: 1 / -1; text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .rel-note b { font-weight: 700; }
+
+
+/* === banner de estado (mantenimiento, azul) === */
+.banner.info { background: rgba(63,225,255,0.08); border-color: rgba(63,225,255,0.35); color: #bfeeff; }
+.banner.info b { color: #eafcff; }
+
+
+/* === estado de servidores de Supercell === */
+.srv-card { display: flex; align-items: center; gap: 16px; background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 16px; padding: 20px 22px; }
+.srv-card.srv-ok { border-left-color: var(--win); }
+.srv-card.srv-maint { border-left-color: var(--cyan); }
+.srv-card.srv-down { border-left-color: var(--loss); }
+.srv-ic { font-size: 30px; line-height: 1; flex: 0 0 auto; }
+.srv-state { font-family: var(--display); font-weight: 700; font-size: 20px; }
+.srv-card.srv-ok .srv-state { color: var(--win); }
+.srv-card.srv-maint .srv-state { color: var(--cyan); }
+.srv-card.srv-down .srv-state { color: var(--loss); }
+.srv-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.srv-sub b { color: var(--text); }
+.srv-hist { display: flex; flex-direction: column; gap: 7px; }
+.srv-hrow { display: grid; grid-template-columns: 130px 1fr auto; gap: 12px; align-items: center; background: var(--panel); border: 1px solid var(--border); border-radius: 11px; padding: 11px 15px; font-size: 13.5px; }
+.srv-htag { font-family: var(--display); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; padding: 3px 10px; border-radius: 20px; text-align: center; }
+.srv-htag.srv-maint { background: rgba(63,225,255,.16); color: var(--cyan); }
+.srv-htag.srv-down { background: rgba(255,77,115,.16); color: var(--loss); }
+.srv-hdate { color: var(--text); }
+.srv-hdur { font-family: var(--display); font-weight: 700; color: var(--gold); white-space: nowrap; }
+@media (max-width: 560px) { .srv-hrow { grid-template-columns: 1fr auto; } .srv-hrow .srv-hdate { grid-column: 1 / -1; color: var(--muted); font-size: 12px; } }

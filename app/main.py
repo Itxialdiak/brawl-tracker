@@ -45,7 +45,13 @@ from .config import REGISTRATION_OPEN, REPORT_QUOTA_ENABLED, MONTHLY_REPORT_LIMI
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
-_last_poll = {"new": None, "players": None, "error": None, "not_found": None, "at": None}
+_last_poll = {"new": None, "players": None, "error": None, "not_found": None,
+              "maintenance": None, "at": None}
+
+
+def _is_maintenance(exc) -> bool:
+    # 503 "API is currently in maintenance": estado de Supercell, NO un error nuestro.
+    return "maintenance" in str(exc).lower()
 
 
 _last_profile_refresh: dict = {}  # tag -> timestamp del último refresco de perfil
@@ -76,20 +82,40 @@ async def _poll_player(tag: str) -> int:
 async def _poll_all() -> dict:
     tags = await asyncio.to_thread(db.active_player_tags)
     total_new, errors, dead = 0, [], []
+    any_ok = maint = False
     for tag in tags:
         try:
             total_new += await _poll_player(tag)
             await asyncio.to_thread(db.clear_player_error, tag)
+            any_ok = True
         except brawl_api.NotFound:
             dead.append(tag)  # tag inexistente en la API: se omite, no es un error real
             await asyncio.to_thread(db.set_player_error, tag, "El tag no existe en la API de Brawl Stars (404).")
         except Exception as e:  # noqa: BLE001
-            errors.append(f"{tag}: {e}")
+            if _is_maintenance(e):      # 503 mantenimiento: estado de Supercell, no error nuestro
+                maint = True
+            else:
+                errors.append(f"{tag}: {e}")
+    now = datetime.now(timezone.utc).isoformat()
+    if maint:
+        state = "maintenance"
+    elif any_ok or (dead and not errors):     # 200, o solo 404 (el servidor responde) = online
+        state = "online"
+    elif errors:                              # ninguna 200 y errores no-mantenimiento = caído
+        state = "down"
+    else:
+        state = None                          # sin jugadores que sondear: nada que afirmar
+    if state:
+        await asyncio.to_thread(db.set_server_state, state, now)
+    cur = await asyncio.to_thread(db.current_incident)
     _last_poll.update(new=total_new, players=len(tags),
                       error="; ".join(errors) if errors else None,
                       not_found=dead or None,
-                      at=datetime.now(timezone.utc).isoformat())
+                      maintenance=(cur["started_at"] if cur and cur["kind"] == "maintenance" else None),
+                      at=now)
     msg = f"[poll] {len(tags)} jugador(es), {total_new} partidas nuevas"
+    if cur:
+        msg += f" | servidor Supercell: {cur['kind']} desde {cur['started_at']}"
     if dead:
         msg += f" | tags inexistentes (omitidos): {', '.join(dead)}"
     if errors:
@@ -250,7 +276,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Brawl Stars Tracker", lifespan=lifespan)
 app.add_middleware(
     SessionMiddleware, secret_key=auth.session_secret(),
-    same_site="lax", https_only=False, max_age=60 * 60 * 24 * 30,
+    # same_site=lax mitiga CSRF; la cookie es HttpOnly (Starlette) y va firmada con el secreto,
+    # así que no se puede leer ni falsear desde el navegador. En producción (HTTPS) pon
+    # SESSION_HTTPS_ONLY=1 para añadir el flag Secure.
+    same_site="lax",
+    https_only=os.environ.get("SESSION_HTTPS_ONLY", "").strip().lower() in ("1", "true", "yes"),
+    max_age=60 * 60 * 24 * 30,
 )
 
 
@@ -292,6 +323,15 @@ def api_status(user: dict = Depends(auth.require_user)):
     }
 
 
+@app.get("/api/server-status")
+def api_server_status(user: dict = Depends(auth.require_user)):
+    """Estado actual del servidor de Supercell + histórico de incidencias (con duración)."""
+    cur = db.current_incident()
+    return {"status": cur["kind"] if cur else "online",
+            "since": cur["started_at"] if cur else None,
+            "history": db.incident_history(60)}
+
+
 @app.post("/api/poll")
 async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_user)):
     if not brawl_api.TOKEN:
@@ -300,6 +340,9 @@ async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_
     try:
         if tag:
             new = await _poll_player(tag)
+            await asyncio.to_thread(db.set_server_state, "online",
+                                    datetime.now(timezone.utc).isoformat())  # 200: cierra incidencia
+            _last_poll["maintenance"] = None
             return {"new": new, "players": 1, "at": datetime.now(timezone.utc).isoformat()}
         # Sin jugador: sondea solo los jugadores de este usuario.
         tags = [p["tag"] for p in await asyncio.to_thread(db.list_players_for_user, user["id"])]
@@ -311,6 +354,15 @@ async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_
                 print(f"[poll usuario {user['id']}] {t}: {e}")
         return {"new": total, "players": len(tags), "at": datetime.now(timezone.utc).isoformat()}
     except Exception as e:  # noqa: BLE001
+        if _is_maintenance(e):     # mantenimiento de Supercell: estado, no error nuestro
+            now = datetime.now(timezone.utc).isoformat()
+            await asyncio.to_thread(db.set_server_state, "maintenance", now)
+            cur = await asyncio.to_thread(db.current_incident)
+            since = cur["started_at"] if cur else now
+            _last_poll["maintenance"] = since
+            return JSONResponse({"error": "El servidor de Supercell está en mantenimiento. "
+                                          "El tracker reanudará el sondeo cuando termine.",
+                                 "maintenance": since}, status_code=503)
         _last_poll["error"] = str(e)
         return JSONResponse({"error": str(e)}, status_code=502)
 

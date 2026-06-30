@@ -399,10 +399,62 @@ async function loadStatus() {
   let txt = `${(s.players || []).length} jugador(es) · sondeo cada <b>${s.poll_interval}s</b>`;
   if (lp.at) txt += ` · <b>${fmtClock(lp.at)}</b>`;
   $("status").innerHTML = txt;
+  $("banner").classList.remove("info");   // 'info' = estado azul (mantenimiento), no error
   if (!s.configured) { $("banner").classList.add("show"); $("banner").innerHTML = "Falta <code>BRAWL_API_TOKEN</code> en el <code>.env</code>. Configúralo y reinicia."; }
+  else if (lp.maintenance) { $("banner").classList.add("show"); $("banner").classList.add("info"); $("banner").innerHTML = "🛠️ <b>Servidor de Supercell en mantenimiento</b> desde <b>" + esc(fmtClock(lp.maintenance)) + "</b>. No es un problema del tracker: reanudará el sondeo automáticamente cuando termine."; }
   else if (lp.error) { $("banner").classList.add("show"); $("banner").innerHTML = "Último sondeo con error: <code>" + esc(lp.error) + "</code>"; }
   else if (lp.not_found && lp.not_found.length) { $("banner").classList.add("show"); $("banner").innerHTML = "Estos tags ya no existen en la API de Brawl Stars y se omiten en el sondeo: <code>" + esc(lp.not_found.join(", ")) + "</code>. Quítalos (en el desplegable de jugador o en Administración → Jugadores) para que no vuelva a aparecer este aviso."; }
   else { $("banner").classList.remove("show"); }
+}
+
+/* ---------- Estado de los servidores de Supercell ---------- */
+const SRV_META = {
+  online: { c: "ok", t: "Operativo", i: "🟢" },
+  maintenance: { c: "maint", t: "En mantenimiento", i: "🛠️" },
+  down: { c: "down", t: "Caído", i: "🔴" },
+};
+function srvDur(start, end) {
+  if (!start) return "";
+  const a = new Date(start).getTime();
+  const b = end ? new Date(end).getTime() : Date.now();
+  let s = Math.max(0, Math.round((b - a) / 1000));
+  const d = Math.floor(s / 86400); s %= 86400;
+  const h = Math.floor(s / 3600); s %= 3600;
+  const m = Math.floor(s / 60);
+  const parts = [];
+  if (d) parts.push(d + " d");
+  if (h) parts.push(h + " h");
+  if (!d) parts.push(m + " min");     // si dura días, no detallamos minutos
+  return (end ? "" : "lleva ") + (parts.join(" ") || "0 min");
+}
+async function loadServerStatus() {
+  const host = $("srv-current"), hist = $("srv-history");
+  if (!host) return;
+  host.innerHTML = `<div class="empty">Cargando estado…</div>`;
+  let d;
+  try { d = await getJSON("/api/server-status"); }
+  catch (e) { host.innerHTML = `<div class="empty">No se pudo cargar el estado.</div>`; return; }
+  const m = SRV_META[d.status] || SRV_META.online;
+  host.innerHTML = `<div class="srv-card srv-${m.c}">
+    <div class="srv-ic">${m.i}</div>
+    <div class="srv-body">
+      <div class="srv-state">${m.t}</div>
+      <div class="srv-sub">${d.status === "online"
+        ? "La API de Brawl Stars responde con normalidad."
+        : `Desde <b>${esc(fmtTime(d.since))}</b> · ${srvDur(d.since, null)}`}</div>
+    </div></div>`;
+  const rows = d.history || [];
+  hist.innerHTML = rows.length
+    ? `<div class="srv-hist">${rows.map(srvHistRow).join("")}</div>`
+    : `<div class="empty">Sin incidencias registradas. La API ha funcionado con normalidad.</div>`;
+}
+function srvHistRow(h) {
+  const k = h.kind === "down" ? { t: "Caída", c: "down" } : { t: "Mantenimiento", c: "maint" };
+  return `<div class="srv-hrow">
+    <span class="srv-htag srv-${k.c}">${k.t}</span>
+    <span class="srv-hdate">${esc(fmtTime(h.started_at))}</span>
+    <span class="srv-hdur">${srvDur(h.started_at, h.ended_at)}</span>
+  </div>`;
 }
 
 async function refreshAll() {

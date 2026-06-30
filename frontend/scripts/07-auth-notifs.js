@@ -63,13 +63,15 @@ async function doRegister() {
 
 function onAuthSuccess(user) {
   $("login-pass").value = ""; $("reg-pass").value = "";
-  hideLogin(); setUser(user); bootApp(); checkImportParam(); checkEventParam();
+  // Recargar arranca la app desde cero con los permisos del NUEVO usuario y evita heredar la
+  // vista/estado del anterior (p. ej. quedarse en el panel de administración). El arranque
+  // (10-init) vuelve a leer la sesión y deep-links de la URL.
+  window.location.reload();
 }
 
 async function doLogout() {
   try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {}
-  currentPlayer = null; playersById = {}; setUser(null);
-  showLogin(); switchAuth("login");
+  window.location.reload();   // limpia por completo el estado del cliente (vista y datos en memoria)
 }
 $("logout-btn").addEventListener("click", doLogout);
 

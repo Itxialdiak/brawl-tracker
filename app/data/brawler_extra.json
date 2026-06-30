@@ -237,7 +237,7 @@
         "star_power_id": 23000077,
         "gadget_id": 23000273,
         "gear": "Damage",
-        "win_rate": 59.6
+        "win_rate": 59.7
       }
     ]
   },
@@ -326,7 +326,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/bull",
         "star_power_id": 23000137,
         "gadget_id": 23000272,
-        "gear": "Health",
+        "gear": "Speed",
         "win_rate": 63.9
       }
     ]
@@ -510,8 +510,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/charlie",
         "star_power_id": 23000624,
         "gadget_id": 23000625,
-        "gear": "Vision",
-        "win_rate": 67.2
+        "gear": "Shield",
+        "win_rate": 67.1
       }
     ]
   },
@@ -603,7 +603,7 @@
         "star_power_id": 23000140,
         "gadget_id": 23000292,
         "gear": "Health",
-        "win_rate": 64.2
+        "win_rate": 64.3
       }
     ]
   },
@@ -856,7 +856,7 @@
         "star_power_id": 23001280,
         "gadget_id": 23001281,
         "gear": "Health",
-        "win_rate": 78.3
+        "win_rate": 78.2
       }
     ]
   },
@@ -1480,7 +1480,7 @@
         "star_power_id": 23001047,
         "gadget_id": 23001049,
         "gear": "Speed",
-        "win_rate": 66.7
+        "win_rate": 66.6
       }
     ]
   },
@@ -1804,7 +1804,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/kaze",
-        "star_power_id": 23000938,
+        "star_power_id": 23000939,
         "gadget_id": 23000940,
         "gear": "Shield",
         "win_rate": 65.5
@@ -1898,7 +1898,7 @@
         "star_power_id": 23000929,
         "gadget_id": 23000932,
         "gear": "Speed",
-        "win_rate": 66.9
+        "win_rate": 67.0
       }
     ]
   },
@@ -2157,7 +2157,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/ollie",
-        "star_power_id": 23000884,
+        "star_power_id": 23000883,
         "gadget_id": 23000886,
         "gear": "Health",
         "win_rate": 69.4
@@ -2587,7 +2587,7 @@
         "star_power_id": 23000805,
         "gadget_id": 23000807,
         "gear": "Shield",
-        "win_rate": 65.7
+        "win_rate": 65.6
       }
     ]
   },
@@ -2678,7 +2678,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/clancy",
         "star_power_id": 23000773,
         "gadget_id": 23000775,
-        "gear": "Shield",
+        "gear": "Damage",
         "win_rate": 67.8
       }
     ]
@@ -2770,7 +2770,7 @@
         "star_power_id": 23000765,
         "gadget_id": 23000767,
         "gear": "Shield",
-        "win_rate": 64.2
+        "win_rate": 64.1
       }
     ]
   },
@@ -3204,7 +3204,7 @@
         "star_power_id": 23000660,
         "gadget_id": 23000662,
         "gear": "Shield",
-        "win_rate": 65.0
+        "win_rate": 64.9
       }
     ]
   },
@@ -3687,7 +3687,7 @@
         "star_power_id": 23000586,
         "gadget_id": 23000587,
         "gear": "Health",
-        "win_rate": 64.9
+        "win_rate": 65.0
       }
     ]
   },
@@ -3767,7 +3767,7 @@
         "star_power_id": 23000578,
         "gadget_id": 23000579,
         "gear": "Speed",
-        "win_rate": 65.3
+        "win_rate": 65.4
       }
     ]
   },
@@ -4167,7 +4167,7 @@
         "star_power_id": 23000535,
         "gadget_id": 23000538,
         "gear": "Shield",
-        "win_rate": 63.0
+        "win_rate": 63.1
       }
     ]
   },
@@ -4487,7 +4487,7 @@
         "star_power_id": 23000503,
         "gadget_id": 23000505,
         "gear": "Health",
-        "win_rate": 67.2
+        "win_rate": 67.3
       }
     ]
   },
@@ -4643,7 +4643,7 @@
         "star_power_id": 23000478,
         "gadget_id": 23000480,
         "gear": "Shield",
-        "win_rate": 66.3
+        "win_rate": 66.4
       }
     ]
   },
@@ -4805,8 +4805,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/eve",
         "star_power_id": 23000452,
         "gadget_id": 23000454,
-        "gear": "Gadget Cooldown",
-        "win_rate": 66.5
+        "gear": "Quadruplets",
+        "win_rate": 66.6
       }
     ]
   },
@@ -5162,8 +5162,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/ash",
         "star_power_id": 23000414,
         "gadget_id": 23000465,
-        "gear": "Health",
-        "win_rate": 68.0
+        "gear": "Super Charge",
+        "win_rate": 67.9
       }
     ]
   },
@@ -5253,7 +5253,7 @@
         "star_power_id": 23000398,
         "gadget_id": 23000399,
         "gear": "Damage",
-        "win_rate": 66.6
+        "win_rate": 66.5
       }
     ]
   },
@@ -5331,7 +5331,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/buzz",
         "star_power_id": 23000390,
         "gadget_id": 23000490,
-        "gear": "Health",
+        "gear": "Shield",
         "win_rate": 63.1
       }
     ]
@@ -5423,7 +5423,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/grom",
         "star_power_id": 23000384,
         "gadget_id": 23000385,
-        "gear": "Vision",
+        "gear": "Shield",
         "win_rate": 63.7
       }
     ]
@@ -5506,7 +5506,7 @@
         "star_power_id": 23000376,
         "gadget_id": 23000462,
         "gear": "Shield",
-        "win_rate": 62.4
+        "win_rate": 62.5
       }
     ]
   },
@@ -5772,7 +5772,7 @@
         "star_power_id": 23000346,
         "gadget_id": 23000347,
         "gear": "Shield",
-        "win_rate": 64.1
+        "win_rate": 64.0
       }
     ]
   },
@@ -6040,7 +6040,7 @@
         "star_power_id": 23000325,
         "gadget_id": 23000400,
         "gear": "Shield",
-        "win_rate": 67.6
+        "win_rate": 67.7
       }
     ]
   },
@@ -6399,7 +6399,7 @@
         "star_power_id": 23000240,
         "gadget_id": 23000315,
         "gear": "Super Charge",
-        "win_rate": 63.5
+        "win_rate": 63.6
       }
     ]
   },
@@ -6582,7 +6582,7 @@
         "star_power_id": 23000228,
         "gadget_id": 23000277,
         "gear": "Shield",
-        "win_rate": 66.1
+        "win_rate": 66.0
       }
     ]
   },
@@ -6651,7 +6651,7 @@
         "star_power_id": 23000223,
         "gadget_id": 23000256,
         "gear": "Speed",
-        "win_rate": 68.3
+        "win_rate": 68.2
       }
     ]
   },
@@ -6910,7 +6910,7 @@
         "star_power_id": 23000193,
         "gadget_id": 23000312,
         "gear": "Shield",
-        "win_rate": 63.5
+        "win_rate": 63.4
       }
     ]
   },
@@ -6977,7 +6977,7 @@
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/sandy",
         "star_power_id": 23000187,
-        "gadget_id": 23000405,
+        "gadget_id": 23000270,
         "gear": "Exhausting Storm",
         "win_rate": 67.2
       }
@@ -7253,7 +7253,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/carl",
         "star_power_id": 23000145,
         "gadget_id": 23000262,
-        "gear": "Gadget Cooldown",
+        "gear": "Shield",
         "win_rate": 64.1
       }
     ]
@@ -7333,7 +7333,7 @@
         "star_power_id": 23000147,
         "gadget_id": 23000348,
         "gear": "Health",
-        "win_rate": 67.7
+        "win_rate": 67.6
       }
     ]
   },
@@ -7599,7 +7599,7 @@
         "star_power_id": 23000159,
         "gadget_id": 23000352,
         "gear": "Speed",
-        "win_rate": 63.5
+        "win_rate": 63.4
       }
     ]
   },
@@ -7854,7 +7854,7 @@
         "star_power_id": 23000094,
         "gadget_id": 23000313,
         "gear": "Shield",
-        "win_rate": 66.1
+        "win_rate": 66.2
       }
     ]
   },
@@ -8217,7 +8217,7 @@
         "star_power_id": 23000148,
         "gadget_id": 23000263,
         "gear": "Shield",
-        "win_rate": 64.8
+        "win_rate": 64.7
       }
     ]
   },
@@ -8309,7 +8309,7 @@
         "star_power_id": 23000144,
         "gadget_id": 23000350,
         "gear": "Damage",
-        "win_rate": 64.8
+        "win_rate": 64.9
       }
     ]
   },
@@ -8755,7 +8755,7 @@
         "star_power_id": 23000082,
         "gadget_id": 23000293,
         "gear": "Shield",
-        "win_rate": 63.1
+        "win_rate": 63.2
       }
     ]
   },

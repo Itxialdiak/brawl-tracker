@@ -57,6 +57,9 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS opponents (battle_id TEXT, brawler TEXT, trophies INTEGER);
         CREATE TABLE IF NOT EXISTS allies    (battle_id TEXT, brawler TEXT, trophies INTEGER);
+        CREATE TABLE IF NOT EXISTS server_incidents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, started_at TEXT, ended_at TEXT
+        );
         CREATE TABLE IF NOT EXISTS brawler_collection (
             player_tag TEXT NOT NULL, brawler_id INTEGER NOT NULL, brawler_name TEXT,
             power INTEGER, rank INTEGER, trophies INTEGER, highest_trophies INTEGER,
@@ -326,6 +329,46 @@ def mark_polled(tag: str) -> None:
     conn.execute("UPDATE players SET last_polled=? WHERE tag=?",
                  (datetime.now(timezone.utc).isoformat(), normalize_tag(tag)))
     conn.commit(); conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Estado del servidor de Supercell (incidencias: mantenimiento / caída)
+# ---------------------------------------------------------------------------
+def set_server_state(state: str, now: str) -> None:
+    """Máquina de estados del servidor de Supercell. 'online' CIERRA cualquier incidencia
+    abierta (registra su fin -> duración). 'maintenance'/'down' ABREN una incidencia si no hay
+    ya una del mismo tipo (la hora de inicio queda fija mientras dura)."""
+    conn = get_conn()
+    cur = conn.execute("SELECT id, kind FROM server_incidents WHERE ended_at IS NULL "
+                       "ORDER BY id DESC LIMIT 1").fetchone()
+    if state == "online":
+        if cur:
+            conn.execute("UPDATE server_incidents SET ended_at=? WHERE id=?", (now, cur["id"]))
+            conn.commit()
+        conn.close(); return
+    if cur and cur["kind"] == state:
+        conn.close(); return                       # ya abierta del mismo tipo: no cambia
+    if cur:                                         # estado distinto: cierra la anterior
+        conn.execute("UPDATE server_incidents SET ended_at=? WHERE id=?", (now, cur["id"]))
+    conn.execute("INSERT INTO server_incidents (kind, started_at, ended_at) VALUES (?,?,NULL)",
+                 (state, now))
+    conn.commit(); conn.close()
+
+
+def current_incident() -> dict | None:
+    conn = get_conn()
+    r = conn.execute("SELECT id, kind, started_at, ended_at FROM server_incidents "
+                     "WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+
+def incident_history(limit: int = 60) -> list:
+    conn = get_conn()
+    rows = conn.execute("SELECT kind, started_at, ended_at FROM server_incidents "
+                        "WHERE ended_at IS NOT NULL ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------
