@@ -311,37 +311,46 @@ async function loadBuffsList() {
     ${renderBuffsCols(d.current || [], "Recopilando los cambios de balance recientes…")}`;
 }
 
-/* ---------- Sección "Actualizaciones" (buffs completos + novedades + historial) ---------- */
+/* ---------- Sección "Actualizaciones" (balance fiable + novedades + historial) ---------- */
 async function loadActualizaciones() {
   const host = $("act-content");
   if (!host) return;
   host.innerHTML = `<div class="empty">Cargando novedades…</div>`;
-  let d = null;
-  try { d = await getJSON("/api/buffs"); } catch (e) { d = null; }
-  d = d || {};
-  const up = d.upcoming || [];
+  let d = null, b = null;
+  try { d = await getJSON("/api/changelog"); } catch (e) { d = null; }
+  try { b = await getJSON("/api/buffs"); } catch (e) { b = null; }
+  d = d || {}; b = b || {};
+  const updates = d.updates || [], latest = (d.latest || []).filter((c) => c.kind !== "neutral");
+  const up = d.upcoming || [], announced = b.upcoming || [];
+  const latestLbl = updates[0] ? bhDate({ date: updates[0].date }) : "";
   host.innerHTML = `
-    <h3 class="buffs-h">Cambios de balance · vigentes</h3>
-    ${renderBuffsCols(d.current || [], "Recopilando los cambios recientes…")}
-    <h3 class="buffs-h">Próximos cambios (anunciados)</h3>
-    ${up.length ? renderBuffsCols(up, "") : `<div class="buffs-none">Aún no hay cambios anunciados para la próxima actualización.</div>`}
-    <button class="btn-buffs" style="margin-top:16px" onclick="openChangelog()">📜 Ver historial de cambios</button>
+    <h3 class="buffs-h">Cambios de balance · última actualización${latestLbl ? ` · <span style="color:var(--gold)">${esc(latestLbl)}</span>` : ""}</h3>
+    ${renderBuffsCols(latest, "Sin cambios de balance recientes.")}
+    <button class="btn-buffs" style="margin-top:16px" onclick="openChangelog()">📜 Ver historial completo de cambios</button>
+    ${announced.length ? `<h3 class="buffs-h">Próximos cambios (anunciados)</h3>${renderBuffsCols(announced, "")}` : ""}
     <h3 class="section-title" style="font-size:15px;margin:30px 0 10px">Próximos brawlers</h3>
-    ${renderActList(d.brawlers, "Sin brawlers anunciados por ahora.")}
-    <h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Nuevos modos y eventos</h3>
-    ${renderActList(d.modes, "Sin modos o eventos nuevos anunciados.")}
-    <h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Otros cambios y ajustes</h3>
-    ${renderActList(d.other, "Sin otros cambios anotados.")}`;
+    ${up.length ? `<div class="act-list">${up.map(actUpcoming).join("")}</div>` : `<div class="buffs-none">Sin brawlers anunciados por ahora.</div>`}
+    ${b.modes && b.modes.length ? `<h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Nuevos modos y eventos</h3>${renderActList(b.modes)}` : ""}
+    ${b.other && b.other.length ? `<h3 class="section-title" style="font-size:15px;margin:26px 0 10px">Otros cambios y ajustes</h3>${renderActList(b.other)}` : ""}`;
+}
+function actUpcoming(u) {
+  const img = u.image ? `<img src="${esc(u.image)}" alt="" loading="lazy" style="width:34px;height:34px;border-radius:8px;object-fit:cover;float:left;margin-right:10px" onerror="this.style.display='none'">` : "";
+  return `<div class="act-item">${img}<div class="act-item-h">${esc(u.name)} <span style="color:var(--gold);font-size:11px">${esc(u.release || "")}</span></div>
+    <div class="act-item-n">${esc([u.rarity, u.role].filter((x) => x && x !== "Por confirmar").join(" · "))}${u.description ? " — " + esc(u.description) : ""}</div></div>`;
 }
 function renderActList(items, empty) {
-  if (!items || !items.length) return `<div class="buffs-none">${esc(empty)}</div>`;
+  if (!items || !items.length) return `<div class="buffs-none">${esc(empty || "Sin datos por ahora.")}</div>`;
   return `<div class="act-list">${items.map((it) => `<div class="act-item">
     <div class="act-item-h">${esc(it.name || "")}</div>
     ${it.note ? `<div class="act-item-n">${esc(it.note)}</div>` : ""}</div>`).join("")}</div>`;
 }
 
-/* ---------- Modal: historial de cambios (notas oficiales) ---------- */
+/* ---------- Modal: historial COMPLETO de cambios (timeline de la wiki, maquetado) ---------- */
 let _clUpdates = [];
+function clDateLabel(u) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(u.date || "");
+  return m ? `${+m[1]} ${BH_MONTHS[(+m[2] - 1) % 12] || ""} 20${m[3]}` : (u.date || "—");
+}
 async function openChangelog() {
   const m = $("changelog-modal"), body = $("changelog-body");
   if (!m || !body) return;
@@ -349,21 +358,23 @@ async function openChangelog() {
   m.classList.add("open");
   try { _clUpdates = (await getJSON("/api/changelog")).updates || []; } catch (e) { _clUpdates = []; }
   body.innerHTML = `<div class="modal-title">Historial de cambios</div>
-    <div class="modal-sub">Notas oficiales de actualización de Brawl Stars. Pulsa una para ver sus cambios.</div>
+    <div class="modal-sub">Todos los cambios de balance del juego, actualización a actualización. Pulsa una fecha para ver sus buffs y nerfs.</div>
     ${_clUpdates.length
-      ? `<div class="cl-list">${_clUpdates.map((u, i) => `<button class="cl-item" onclick="openChangelogEntry(${i})"><span class="cl-name">${esc(u.title || u.slug)}</span>${u.date ? `<span class="cl-date">${esc(u.date)}</span>` : ""}</button>`).join("")}</div>`
-      : `<div class="empty">No se pudo cargar el historial ahora mismo.</div>`}`;
+      ? `<div class="cl-list">${_clUpdates.map((u, i) => `<button class="cl-item" onclick="openChangelogEntry(${i})">
+          <span class="cl-name">${esc(clDateLabel(u))}</span>
+          <span class="cl-counts">${u.buff ? `<span class="cl-c buff">▲ ${u.buff}</span>` : ""}${u.nerf ? `<span class="cl-c nerf">▼ ${u.nerf}</span>` : ""}${u.rework ? `<span class="cl-c rework">↻ ${u.rework}</span>` : ""}${u.neutral && !(u.buff || u.nerf || u.rework) ? `<span class="cl-c neutral">● ${u.neutral}</span>` : ""}</span></button>`).join("")}</div>`
+      : `<div class="empty">No hay historial cargado.<br><small style="opacity:.7">Genera el dataset con <code>python scrape_changes.py</code>.</small></div>`}`;
 }
-async function openChangelogEntry(i) {
+function openChangelogEntry(i) {
   const u = _clUpdates[i], body = $("changelog-body");
   if (!u || !body) return;
   const back = `<button class="ghost" style="margin-bottom:12px" onclick="openChangelog()">‹ Volver al historial</button>`;
-  body.innerHTML = `${back}<div class="modal-title">${esc(u.title || u.slug)}</div><div class="empty">Cargando cambios…</div>`;
-  let txt = "";
-  try { txt = (await getJSON("/api/changelog/" + encodeURIComponent(u.slug))).text || ""; } catch (e) {}
-  body.innerHTML = `${back}<div class="modal-title">${esc(u.title || u.slug)}</div>
-    ${u.date ? `<div class="modal-sub">${esc(u.date)}</div>` : ""}
-    <div class="cl-text">${txt ? esc(txt).replace(/\n/g, "<br>") : "No se pudieron cargar los cambios de esta actualización."}</div>`;
+  const cards = (u.changes || []).filter((c) => c.kind !== "neutral");
+  const otros = (u.changes || []).filter((c) => c.kind === "neutral");
+  body.innerHTML = `${back}<div class="modal-title">${esc(clDateLabel(u))}</div>
+    <div class="modal-sub">Cambios de balance de esta actualización.</div>
+    ${renderBuffsCols(cards, "Sin buffs ni nerfs ese día.")}
+    ${otros.length ? `<h3 class="buffs-h" style="margin-top:16px">Otros ajustes</h3><div class="buffs-grid">${otros.map(buffEntry).join("")}</div>` : ""}`;
 }
 function closeChangelog() { const m = $("changelog-modal"); if (m) m.classList.remove("open"); }
 
@@ -408,7 +419,7 @@ function buffEntry(e) {
   const por = (typeof brawlerPortrait === "function") ? brawlerPortrait(e.brawler) : null;
   const img = por ? `<img src="${por}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
   const ti = TARGET_ICON[e.target] || "•";
-  const cls = e.kind === "nerf" ? "nerf" : e.kind === "rework" ? "rework" : "buff";
+  const cls = e.kind === "nerf" ? "nerf" : e.kind === "rework" ? "rework" : e.kind === "neutral" ? "neutral" : "buff";
   const meta = e.status === "confirmed"
     ? ` <span class="be-status conf">Confirmado${e.date ? ` · <i>${esc(e.date)}</i>` : ""}</span>`
     : e.status === "announced"

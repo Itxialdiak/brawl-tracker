@@ -174,9 +174,11 @@ def build_entry(wt: str) -> dict:
     has_hc = bool(hc_mult)  # "lanzada" = el infobox trae el multiplicador
     hc_img = None
     if hc_body:
-        mimg = re.search(r"Img[^|}]*\|\s*([^|}\]]+\.png)", hc_body)
-        if mimg:
-            hc_img = mimg.group(1).strip()
+        # Salta las variantes "Buffie" (skin): coge la PRIMERA imagen que NO sea Buffie.
+        for cand in re.findall(r"Img[^|}]*\|\s*([^|}\]]+\.png)", hc_body):
+            if "buffie" not in cand.lower():
+                hc_img = cand.strip()
+                break
 
     entry = {}
     desc = sentence_cut(lead_paragraph(wt), 900)
@@ -194,8 +196,11 @@ def build_entry(wt: str) -> dict:
         pv = sentence_cut(clean(passive_body), 400)
         if pv:
             entry["passive"] = pv
-    sps = all_subsections(section(wt, "Habilidades Estelares"))
-    gds = all_subsections(section(wt, "Gadgets"))
+    # Las "Buffie" son variantes de skin (otro tema): NO son gadgets/estelares reales.
+    def _no_buffie(items):
+        return [x for x in (items or []) if "buffie" not in str(x.get("name", "")).lower()]
+    sps = _no_buffie(all_subsections(section(wt, "Habilidades Estelares")))
+    gds = _no_buffie(all_subsections(section(wt, "Gadgets")))
     if sps:
         entry["star_powers_es"] = sps
     if gds:

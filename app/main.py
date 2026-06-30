@@ -334,19 +334,12 @@ def api_server_status(user: dict = Depends(auth.require_user)):
 
 @app.get("/api/changelog")
 async def api_changelog(user: dict = Depends(auth.require_user)):
-    """Historial de actualizaciones (índice oficial de release notes de Supercell)."""
-    from . import spider
-    return {"updates": await asyncio.to_thread(spider.release_index)}
-
-
-@app.get("/api/changelog/{slug}")
-async def api_changelog_entry(slug: str, user: dict = Depends(auth.require_user)):
-    """Cambios de una actualización concreta. El `slug` se valida en el spider (sin SSRF)."""
-    from . import spider
-    text = await asyncio.to_thread(spider.update_text, slug)
-    if not text:
-        return JSONResponse({"error": "No se pudo cargar esta actualización."}, status_code=404)
-    return {"slug": slug, "text": text}
+    """Historial COMPLETO de cambios de balance del juego (todas las fechas, todos los brawlers),
+    derivado del dataset de la wiki ya traducido (`brawler_changes.json`). + próximos brawlers."""
+    from . import changes, upcoming
+    return {"updates": await asyncio.to_thread(changes.timeline),
+            "latest": await asyncio.to_thread(changes.latest_changes),
+            "upcoming": upcoming.list_all()}
 
 
 @app.get("/api/meta-global")

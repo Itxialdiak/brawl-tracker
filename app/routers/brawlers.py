@@ -49,17 +49,19 @@ def _clean_abilities(cat_items, es_list):
     orden; si no, quitamos posibles duplicados traducidos y devolvemos el catálogo dedup."""
     cat = _dedup_by_id(cat_items)
     es_list = es_list or []
+    if not es_list:
+        return cat
     ids = [e.get("id") for e in es_list if e.get("id")]
     if ids and len(ids) == len(es_list):           # el dataset fija los actuales por id
         by_id = {it.get("id"): it for it in cat}
         picked = [by_id[i] for i in ids if i in by_id]
         if len(picked) == len(ids):
             return picked
-    es_norm = {_norm_name(e.get("name")) for e in es_list if e.get("name")}
-    if es_norm:
-        cleaned = [it for it in cat if _norm_name(it.get("name")) not in es_norm]
-        if len(cleaned) >= len(es_list):
-            return cleaned
+    # Sin ids fiables: si el catálogo trae MÁS que la lista curada, son gadgets/estelares
+    # RETIRADOS de un rework (BrawlAPI los lista primero, por id más bajo). Nos quedamos con
+    # los ÚLTIMOS N (los actuales), que es lo que la wiki recoge en `es_list`.
+    if len(cat) > len(es_list):
+        return cat[-len(es_list):]
     return cat
 
 

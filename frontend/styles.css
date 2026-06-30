@@ -1844,6 +1844,14 @@
 .cl-item:hover { border-color: var(--cyan); background: rgba(63,225,255,.05); }
 .cl-name { font-family: var(--display); font-weight: 700; font-size: 14px; }
 .cl-date { font-size: 12px; color: var(--gold); font-family: var(--display); white-space: nowrap; }
+.cl-counts { display: flex; gap: 6px; flex: 0 0 auto; }
+.cl-c { font-family: var(--display); font-weight: 700; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.cl-c.buff { color: #5be38a; background: rgba(91,227,138,.12); }
+.cl-c.nerf { color: #ff6b7e; background: rgba(255,107,126,.12); }
+.cl-c.rework { color: #6bc6ff; background: rgba(107,198,255,.12); }
+.cl-c.neutral { color: var(--muted); background: rgba(148,141,196,.12); }
+.buff-entry.neutral { background: rgba(148,141,196,.1); border-color: rgba(148,141,196,.28); }
+.buff-entry.neutral .be-target { background: #1a1830; }
 .cl-text { font-size: 13.5px; line-height: 1.6; color: var(--text); max-height: 62vh; overflow-y: auto; }
 @media (max-width: 640px) { .act-list { grid-template-columns: 1fr; } }
 
