@@ -115,9 +115,25 @@ def _relevant_videos(channel_id: str) -> list:
 
 
 # ------------------------------- agregación -------------------------------
+def _note_urls() -> list:
+    """URLs de notas oficiales: las MÁS RECIENTES del índice del blog (auto-detecta futuras
+    actualizaciones) + las configuradas en BUFFS_NOTES_URLS como respaldo."""
+    urls, seen = [], set()
+    try:
+        for u in release_index()[:2]:
+            if u["url"] not in seen:
+                seen.add(u["url"]); urls.append(u["url"])
+    except Exception as e:  # noqa: BLE001
+        print(f"[spider] release_index en _note_urls: {e}")
+    for u in NOTES_URLS:
+        if u not in seen:
+            seen.add(u); urls.append(u)
+    return urls[:3]
+
+
 def official_notes() -> list:
     items = []
-    for url in NOTES_URLS:
+    for url in _note_urls():
         raw = _get(url)
         if raw:
             items.append({"source": "Notas oficiales Supercell", "url": url,
@@ -151,9 +167,10 @@ def youtube_news() -> list:
 
 
 def signature() -> str:
-    """Firma BARATA de las fuentes (URLs de notas + IDs de vídeos relevantes recientes), para
-    detectar novedades SIN descargar descripciones ni llamar a la IA. Solo notas + RSS."""
-    parts = list(NOTES_URLS) + list(SOCIAL_URLS)
+    """Firma BARATA de las fuentes (URLs de las notas MÁS RECIENTES + IDs de vídeos relevantes),
+    para detectar novedades SIN descargar descripciones ni llamar a la IA. Solo índice + RSS.
+    Al usar la última nota del blog, una nota NUEVA cambia la firma y fuerza el recálculo."""
+    parts = _note_urls() + list(SOCIAL_URLS)
     for handle in CREATORS:
         cid = resolve_channel_id(handle)
         if cid:
@@ -166,8 +183,8 @@ def gather() -> dict:
     descripciones); usar solo cuando la firma cambió."""
     notes = official_notes()
     news = youtube_news() + social()
-    sig_parts = list(NOTES_URLS) + list(SOCIAL_URLS) + [n["url"].rsplit("/", 1)[-1] for n in news
-                                                        if "youtu.be" in n["url"]]
+    sig_parts = ([n["url"] for n in notes] + list(SOCIAL_URLS)
+                 + [n["url"].rsplit("/", 1)[-1] for n in news if "youtu.be" in n["url"]])
     return {"notes": notes, "news": news, "signature": "|".join(sig_parts)}
 
 

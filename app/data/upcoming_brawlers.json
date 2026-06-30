@@ -1,12 +1,13 @@
 [
   {
-    "name": "Nano Starr",
-    "rarity": "Por confirmar",
-    "role": "Por confirmar",
+    "name": "Nori",
+    "rarity": "Legendario",
+    "role": "Asesino",
     "release": "Verano 2026",
-    "description": "Nuevo brawler presentado en la actualización de junio 2026, ligado a la nueva temporada (Season Nano). La rareza, el rol, las habilidades y las estadísticas se completarán a medida que Supercell publique la información oficial.",
-    "image": null,
+    "description": "Nori siempre estuvo destinado a grandes cosas. Ser el primer brawler nacido en Starr Park le ha otorgado poderes extraordinarios… ¡y además no cocina nada mal! Hijo de Kenji y Kaze, llega con la actualización Ramen Rebellion (junio 2026) y la temporada Nano.",
+    "image": "https://static.wikia.nocookie.net/brawlstars/images/7/7c/Nori_Portrait.png/revision/latest?cb=20260629154039",
+    "image_full": "https://static.wikia.nocookie.net/brawlstars/images/6/6a/Nori_Skin-Default.png/revision/latest?cb=20260628173653",
     "abilities": [],
-    "source": "https://supercell.com/en/games/brawlstars/blog/release-notes/release-notes-june-2026/"
+    "source": "https://brawlstars.fandom.com/wiki/Nori"
   }
 ]

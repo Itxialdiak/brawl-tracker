@@ -31,6 +31,7 @@ def list_all() -> list:
                 "release": e.get("release") or "Próximamente",
                 "description": e.get("description") or "",
                 "image": e.get("image") or None,
+                "image_full": e.get("image_full") or e.get("image") or None,
                 "abilities": [{"name": str(a.get("name", "")), "note": str(a.get("note", ""))}
                               for a in (e.get("abilities") or [])
                               if isinstance(a, dict) and a.get("name")],

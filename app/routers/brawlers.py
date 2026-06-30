@@ -88,7 +88,6 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     wr_by_name = {(r["label"] or "").upper(): r for r in wr}
     hc_ids = brawler_extra.hypercharge_ids()
     await buffs.get_buffs()                                     # calienta la caché (no bloquea)
-    changes.schedule_build()                                    # construye el histórico en 2º plano
     bchanges = buffs.changes_map()                              # cambios vigentes por brawler
 
     items = []
@@ -252,14 +251,14 @@ async def api_buffs(user: dict = Depends(auth.require_user)):
 
 @router.get("/api/brawler/{brawler_id}/changes")
 async def api_brawler_changes(brawler_id: int, user: dict = Depends(auth.require_user)):
-    """Histórico de cambios (buffs/nerfs/reworks) de un brawler en las notas oficiales.
-    La primera llamada construye el histórico (IA por nota); luego sirve de la caché en disco."""
+    """Histórico COMPLETO de cambios (buffs/nerfs/reworks) de un brawler, desde la wiki
+    (dataset `brawler_changes.json`, traducido). Lectura instantánea, sin IA en la petición."""
     catalog = await assets.get_brawler_catalog()
     cat = (catalog.get("by_id") or {}).get(brawler_id)
     if not cat:
         return JSONResponse({"error": "Brawler no encontrado."}, status_code=404)
-    await changes.ensure_built()
-    return {"name": cat.get("name"), "history": changes.history_for(cat.get("name"))}
+    name = cat.get("name")
+    return {"name": name, "history": changes.history_for(name), "summary": changes.summary_for(name)}
 
 
 @router.get("/api/account-rating")

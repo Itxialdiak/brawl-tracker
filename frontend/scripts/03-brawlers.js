@@ -240,7 +240,8 @@ function showUpcomingDetail(i) {
   if (!u) return;
   $("brawlers-grid-view").style.display = "none"; $("brawler-detail-view").style.display = "";
   window.scrollTo({ top: 0, behavior: "smooth" });
-  const img = u.image ? `<img src="${esc(u.image)}" alt="">` : `<div class="empty" style="font-size:64px;margin:0">🔮</div>`;
+  const heroImg = u.image_full || u.image;
+  const img = heroImg ? `<img src="${esc(heroImg)}" alt="" onerror="this.src='${esc(u.image || "")}'">` : `<div class="empty" style="font-size:64px;margin:0">🔮</div>`;
   const ab = (u.abilities || []).length
     ? `<div class="br-section"><h3>Habilidades (anticipo)</h3><div class="ability-grid">${u.abilities.map((a) => `<div class="ability"><div class="be-body"><div class="nm">${esc(a.name)}</div><div class="ds">${esc(a.note || "")}</div></div></div>`).join("")}</div></div>`
     : "";
@@ -622,7 +623,22 @@ function renderBrawlerDetail(d) {
     </div>`;
 }
 
-/* ---------- Modal: histórico de cambios de un brawler (notas oficiales) ---------- */
+/* ---------- Modal: histórico COMPLETO de cambios de un brawler (wiki) ---------- */
+const BH_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+function bhIcon(k) { return k === "buff" ? "▲" : k === "nerf" ? "▼" : k === "rework" ? "↻" : "•"; }
+function bhDate(c) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(c.date || "");
+  if (!m) return c.date || "—";
+  return `${+m[1]} ${BH_MONTHS[(+m[2] - 1) % 12] || ""} 20${m[3]}`;
+}
+function bhTargetIcon(note) {
+  const n = (note || "").toLowerCase();
+  if (/hiperc|hyperch/.test(n)) return "⚡ ";
+  if (/estelar|star power/.test(n)) return "★ ";
+  if (/gadget/.test(n)) return "◆ ";
+  if (/súper|super/.test(n)) return "✦ ";
+  return "";
+}
 async function openBrawlerHistory(id, name) {
   const m = $("br-history-modal"), body = $("br-history-body");
   if (!m || !body) return;
@@ -630,21 +646,27 @@ async function openBrawlerHistory(id, name) {
   m.classList.add("open");
   let d = null;
   try { d = await getJSON(`/api/brawler/${id}/changes`); } catch (e) { d = null; }
-  const hist = (d && d.history) || [];
+  const hist = (d && d.history) || [], sum = (d && d.summary) || {};
+  const chips = [];
+  if (sum.buff) chips.push(`<span class="bh-chip buff"><span class="chg-flag buff">▲</span>${sum.buff} buffs</span>`);
+  if (sum.nerf) chips.push(`<span class="bh-chip nerf"><span class="chg-flag nerf">▼</span>${sum.nerf} nerfs</span>`);
+  if (sum.rework) chips.push(`<span class="bh-chip rework"><span class="chg-flag rework">↻</span>${sum.rework} reworks</span>`);
+  let tl = "", curDate = null;
+  hist.forEach((c) => {
+    if (c.date !== curDate) { curDate = c.date; tl += `<div class="bh-date-h">${esc(bhDate(c))}</div>`; }
+    tl += bhRow(c);
+  });
   body.innerHTML = `<div class="modal-title">Histórico de cambios</div>
-    <div class="modal-sub">Buffs, nerfs y reworks de <b>${esc(name)}</b> en las notas oficiales (más reciente primero).</div>
+    <div class="modal-sub">Todos los buffs, nerfs y reworks de <b>${esc(name)}</b> a lo largo de la historia del juego. Fuente: <a href="https://brawlstars.fandom.com/wiki/${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:var(--cyan)">wiki de Brawl Stars</a>.</div>
+    ${chips.length ? `<div class="bh-chips">${chips.join("")}</div>` : ""}
     ${hist.length
-      ? `<div class="bh-list">${hist.map(bhRow).join("")}</div>`
-      : `<div class="empty">No se han registrado cambios de balance para este brawler en las notas disponibles.</div>`}`;
+      ? `<div class="bh-timeline">${tl}</div>`
+      : `<div class="empty">Aún no hay histórico para este brawler.<br><small style="opacity:.7">Genera el dataset con <code>python scrape_changes.py</code>.</small></div>`}`;
 }
 function bhRow(c) {
   return `<div class="bh-row ${c.kind}">
-    <span class="chg-flag ${c.kind}">${chgIcon(c.kind)}</span>
-    <div class="bh-body">
-      <div class="bh-head"><b>${chgLabel(c.kind).replace(" reciente", "")}</b>
-        <span class="bh-target">${TARGET_ICON[c.target] || ""} ${esc(TARGET_LABEL[c.target] || c.target)}</span>
-        ${c.date ? `<span class="bh-date">${esc(c.date)}</span>` : ""}</div>
-      ${c.note ? `<div class="bh-note">${esc(c.note)}</div>` : ""}</div></div>`;
+    <span class="chg-flag ${c.kind}">${bhIcon(c.kind)}</span>
+    <div class="bh-note">${bhTargetIcon(c.note)}${esc(c.note || "")}</div></div>`;
 }
 function closeBrawlerHistory() { const m = $("br-history-modal"); if (m) m.classList.remove("open"); }
 
