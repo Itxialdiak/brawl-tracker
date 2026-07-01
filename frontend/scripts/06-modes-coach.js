@@ -686,6 +686,7 @@ async function generateReport() {
     mode: senseiSel.mode.join(",") || null,
     map: senseiSel.map.join(",") || null,
     role: senseiSel.role.join(",") || null,
+    lang: (typeof currentLang === "function" ? currentLang() : "es"),  // el Sensei contesta en el idioma de la app
   };
   setCoachButton(true);
   try {

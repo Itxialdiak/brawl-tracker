@@ -40,6 +40,24 @@ SYSTEM = (
 )
 
 
+_LANG_NAMES = {"en": "English", "fr": "French", "de": "German", "zh": "Chinese (Simplified)",
+               "ko": "Korean", "ja": "Japanese", "eu": "Basque (Euskera)", "ca": "Catalan"}
+
+
+def _system_for(lang: str | None) -> str:
+    """SYSTEM con override de idioma: el Sensei responde en el idioma de la app."""
+    lang = (lang or "es").lower()
+    if lang != "es" and lang in _LANG_NAMES:
+        return SYSTEM + (
+            f" MUY IMPORTANTE: aunque estas instrucciones estén en castellano, escribe TODO el informe, "
+            f"el título y los retos (name, theme, description) en {_LANG_NAMES[lang]}, NUNCA en castellano. "
+            "Mantén EXACTAMENTE los marcadores literales 'TÍTULO:' y '<<<RETOS>>>' sin traducir ni cambiar, "
+            "y las CLAVES del JSON en inglés (name, theme, description, difficulty, conditions, metric, "
+            "target, scope, min_games)."
+        )
+    return SYSTEM
+
+
 def scope_label_from(filters: dict) -> str:
     parts = []
     if filters.get("brawler"): parts.append(filters["brawler"])
@@ -152,7 +170,7 @@ async def generate_report(player: str, filters: dict) -> tuple[str, str, list]:
 
     client = AsyncAnthropic(api_key=API_KEY)
     msg = await client.messages.create(
-        model=MODEL, max_tokens=3000, system=SYSTEM,
+        model=MODEL, max_tokens=3000, system=_system_for(filters.get("lang")),
         messages=[{
             "role": "user",
             "content": (

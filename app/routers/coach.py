@@ -78,6 +78,7 @@ async def api_create_report(payload: dict = Body(...), user: dict = Depends(auth
         "mode": (payload or {}).get("mode") or None,
         "map": (payload or {}).get("map") or None,
         "role": (payload or {}).get("role") or None,
+        "lang": (payload or {}).get("lang") or "es",  # el Sensei responde en el idioma de la app
     }
     label = coach.scope_label_from(filters)
     rid = await asyncio.to_thread(db.create_report, player, json.dumps(filters), label)

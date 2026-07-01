@@ -24,17 +24,26 @@
   var LANG = localStorage.getItem(LS_KEY) || BASE;
 
   // Idiomas ofrecidos en el selector. De momento ES/EN; el resto, "próximamente".
+  // `cc` = código de bandera (país/región) para el icono. Windows no dibuja los emoji
+  // de bandera (los muestra como letras), así que usamos imágenes reales (flagcdn).
   var LANGS = [
-    { code: "es", label: "Español", flag: "🇪🇸" },
-    { code: "en", label: "English", flag: "🇬🇧" },
-    { code: "fr", label: "Français", flag: "🇫🇷", soon: true },
-    { code: "de", label: "Deutsch", flag: "🇩🇪", soon: true },
-    { code: "zh", label: "中文", flag: "🇨🇳", soon: true },
-    { code: "ko", label: "한국어", flag: "🇰🇷", soon: true },
-    { code: "ja", label: "日本語", flag: "🇯🇵", soon: true },
-    { code: "eu", label: "Euskera", flag: "🏴", soon: true },
-    { code: "ca", label: "Català", flag: "🏴", soon: true },
+    { code: "es", label: "Español", cc: "es" },
+    { code: "en", label: "English", cc: "gb" },
+    { code: "fr", label: "Français", cc: "fr", soon: true },
+    { code: "de", label: "Deutsch", cc: "de", soon: true },
+    { code: "zh", label: "中文", cc: "cn", soon: true },
+    { code: "ko", label: "한국어", cc: "kr", soon: true },
+    { code: "ja", label: "日本語", cc: "jp", soon: true },
+    { code: "eu", label: "Euskera", cc: "es-pv", soon: true },
+    { code: "ca", label: "Català", cc: "es-ct", soon: true },
   ];
+
+  /* Icono de bandera (imagen). Si la imagen falla, muestra el código como texto. */
+  function flagImg(l, cls) {
+    return '<img class="' + cls + '" src="https://flagcdn.com/w40/' + l.cc + '.png" alt="" ' +
+      'loading="lazy" onerror="this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'inline-flex\'">' +
+      '<span class="lang-code-fb" style="display:none">' + l.code.toUpperCase() + '</span>';
+  }
 
   var _dicts = {};   // { en: {es: en}, ... } ya cargados
   var dict = null;   // diccionario activo (null si idioma base)
@@ -189,13 +198,13 @@
       return '<button class="lang-opt' + (l.code === LANG ? " active" : "") + (l.soon ? " soon" : "") +
         '" role="option"' + (l.soon ? " disabled" : "") +
         ' onclick="' + (l.soon ? "" : "setLang('" + l.code + "')") + '">' +
-        '<span class="lang-flag">' + l.flag + "</span><span class=\"lang-name\">" + l.label + "</span>" +
+        flagImg(l, "lang-flag-img") + '<span class="lang-name">' + l.label + "</span>" +
         (l.soon ? '<span class="lang-soon">pronto</span>' : "") + "</button>";
     }).join("");
     host.innerHTML =
       '<button class="lang-toggle" id="lang-toggle" title="Idioma / Language" aria-label="Idioma" data-i18n-skip>' +
-        '<span class="lang-flag">' + cur.flag + "</span>" +
-        '<span class="lang-code">' + cur.code.toUpperCase() + "</span>" +
+        flagImg(cur, "lang-flag-img") +
+        '<span class="lang-caret">▾</span>' +
       "</button>" +
       '<div class="lang-menu" id="lang-menu" role="listbox" data-i18n-skip>' + opts + "</div>";
     host.setAttribute("data-i18n-skip", "");
