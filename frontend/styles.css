@@ -1927,3 +1927,31 @@
 .reto-done-link:hover { text-decoration: underline; color: #9af0ff; }
 /* la ficha del reto abre por encima del modal de cumplidos */
 #reto-detail-modal.modal-overlay { z-index: 1160; }
+
+
+/* === selector de idioma (bandera, a la izquierda del menú de jugador) === */
+#lang-switch { position: relative; align-self: center; }
+.lang-toggle { display: inline-flex; align-items: center; gap: 6px; background: transparent;
+  border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px; cursor: pointer;
+  color: var(--text); font-family: var(--display); font-weight: 600; font-size: 12px; line-height: 1;
+  transition: border-color .12s; }
+.lang-toggle:hover, .lang-toggle.open { border-color: var(--cyan); }
+.lang-toggle .lang-flag { font-size: 15px; }
+.lang-toggle .lang-code { letter-spacing: .5px; color: var(--muted); }
+.lang-toggle.open .lang-code { color: var(--cyan); }
+.lang-menu { display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 1200;
+  min-width: 168px; background: #181436; border: 1px solid #3a3470; border-radius: 12px; padding: 5px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.lang-menu.open { display: block; animation: rise .18s ease both; }
+.lang-opt { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; background: transparent;
+  border: none; border-radius: 8px; padding: 8px 10px; cursor: pointer; color: var(--text); font-size: 13px;
+  font-family: var(--body); }
+.lang-opt:hover:not(:disabled) { background: var(--bg-elev); }
+.lang-opt.active { background: rgba(63,225,255,.12); }
+.lang-opt.active .lang-name { color: var(--cyan); font-weight: 600; }
+.lang-opt .lang-flag { font-size: 16px; flex: 0 0 auto; }
+.lang-opt .lang-name { flex: 1; }
+.lang-opt.soon { opacity: .5; cursor: default; }
+.lang-soon { font-family: var(--display); font-weight: 700; font-size: 8.5px; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--gold); border: 1px solid rgba(245,184,42,.4); border-radius: 20px; padding: 1px 6px; }
+@media (max-width: 768px) { .lang-toggle .lang-code { display: none; } .lang-menu { right: auto; left: 0; } }

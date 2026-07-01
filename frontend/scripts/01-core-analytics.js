@@ -39,8 +39,13 @@ function goBrawlerByName(name) {
 }
 function modeAsset(mode) { return mode ? ASSETS.modes[mode.toLowerCase()] || null : null; }
 function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
-/* Nombre de mapa para MOSTRAR (español si lo tenemos); el identificador sigue en inglés. */
-function mapNameEs(name) { return name && ASSETS.map_names_es ? (ASSETS.map_names_es[String(name).toLowerCase()] || name) : name; }
+/* Nombre de mapa para MOSTRAR: en español si el idioma activo es español (y lo tenemos);
+   en otros idiomas se muestra el nombre original en inglés. El id interno sigue en inglés. */
+function mapNameEs(name) {
+  if (!name) return name;
+  if (typeof currentLang === "function" && currentLang() !== "es") return name;
+  return ASSETS.map_names_es ? (ASSETS.map_names_es[String(name).toLowerCase()] || name) : name;
+}
 function imgTag(url, cls) { return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'" />`; }
 
 /* Copia texto al portapapeles con feedback breve en el elemento pulsado */

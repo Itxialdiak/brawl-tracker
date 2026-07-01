@@ -344,6 +344,7 @@
       <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
     <div class="toolbar">
+      <div id="lang-switch" data-i18n-skip></div>
       <button class="notif-bell" id="notif-bell" onclick="openNotifications()" title="Notificaciones" aria-label="Notificaciones">🔔<span class="notif-dot" id="notif-dot" style="display:none">0</span></button>
       <button class="user-pill" id="user-pill" onclick="openAccount()"></button>
       <button class="ghost" id="logout-btn" title="Cerrar sesión">Salir</button>
@@ -1200,6 +1201,7 @@
     </div>
   </div>
 
+<script src="/static/scripts/00-i18n.js"></script>
 <script src="/static/scripts/01-core-analytics.js"></script>
 <script src="/static/scripts/02-rankings-leagues.js"></script>
 <script src="/static/scripts/03-brawlers.js"></script>

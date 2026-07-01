@@ -41,9 +41,9 @@ function condSummary(conds) {
 function retoCondText(c) {
   const sc = c.scope || {};
   const bits = [];
-  if (sc.brawler) bits.push("con " + (Array.isArray(sc.brawler) ? sc.brawler.join(", ") : sc.brawler));
-  if (sc.mode) bits.push("en " + (Array.isArray(sc.mode) ? sc.mode.map(modeName).join(", ") : modeName(sc.mode)));
-  if (sc.map) bits.push("en " + (Array.isArray(sc.map) ? sc.map.join(", ") : sc.map));
+  if (sc.brawler) bits.push(t("con") + " " + (Array.isArray(sc.brawler) ? sc.brawler.join(", ") : sc.brawler));
+  if (sc.mode) bits.push(t("en") + " " + (Array.isArray(sc.mode) ? sc.mode.map((m) => t(modeName(m))).join(", ") : t(modeName(sc.mode))));
+  if (sc.map) bits.push(t("en") + " " + (Array.isArray(sc.map) ? sc.map.map(mapNameEs).join(", ") : mapNameEs(sc.map)));
   const s = bits.length ? " " + bits.join(" ") : "";
   const t = parseInt(c.target, 10) || 0;
   switch (c.metric) {
