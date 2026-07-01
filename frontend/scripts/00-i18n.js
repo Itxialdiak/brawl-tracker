@@ -31,11 +31,25 @@
     { code: "en", label: "English", cc: "gb" },
     { code: "fr", label: "Français", cc: "fr", soon: true },
     { code: "de", label: "Deutsch", cc: "de", soon: true },
+    { code: "it", label: "Italiano", cc: "it", soon: true },
+    { code: "fi", label: "Suomi", cc: "fi", soon: true },
+    { code: "nl", label: "Nederlands", cc: "nl", soon: true },
+    { code: "ru", label: "Русский", cc: "ru", soon: true },
+    { code: "pl", label: "Polski", cc: "pl", soon: true },
     { code: "zh", label: "中文", cc: "cn", soon: true },
     { code: "ko", label: "한국어", cc: "kr", soon: true },
     { code: "ja", label: "日本語", cc: "jp", soon: true },
+    { code: "ar", label: "العربية", cc: "sa", soon: true },
+    { code: "tr", label: "Türkçe", cc: "tr", soon: true },
+    { code: "hi", label: "हिन्दी", cc: "in", soon: true },
+    { code: "th", label: "ไทย", cc: "th", soon: true },
+    { code: "id", label: "Bahasa Indonesia", cc: "id", soon: true },
+    { code: "bn", label: "বাংলা", cc: "bd", soon: true },
+    { code: "vi", label: "Tiếng Việt", cc: "vn", soon: true },
+    { code: "pa", label: "ਪੰਜਾਬੀ", cc: "in", soon: true },
     { code: "eu", label: "Euskera", cc: "es-pv", soon: true },
     { code: "ca", label: "Català", cc: "es-ct", soon: true },
+    { code: "gl", label: "Galego", cc: "es-ga", soon: true },
   ];
 
   /* Icono de bandera (imagen). Si la imagen falla, muestra el código como texto. */
@@ -199,7 +213,7 @@
         '" role="option"' + (l.soon ? " disabled" : "") +
         ' onclick="' + (l.soon ? "" : "setLang('" + l.code + "')") + '">' +
         flagImg(l, "lang-flag-img") + '<span class="lang-name">' + l.label + "</span>" +
-        (l.soon ? '<span class="lang-soon">pronto</span>' : "") + "</button>";
+        (l.soon ? '<span class="lang-soon">Próximamente</span>' : "") + "</button>";
     }).join("");
     host.innerHTML =
       '<button class="lang-toggle" id="lang-toggle" title="Idioma / Language" aria-label="Idioma" data-i18n-skip>' +

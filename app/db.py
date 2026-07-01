@@ -111,6 +111,12 @@ def init_db():
             title TEXT, body TEXT, parent_id INTEGER,
             change_kind TEXT, by_user_id INTEGER, changed_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS wiki_translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, node_id INTEGER NOT NULL,
+            lang TEXT NOT NULL, title TEXT NOT NULL, body TEXT,
+            translator_user_id INTEGER, updated_at TEXT,
+            UNIQUE(node_id, lang)
+        );
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT, owner_user_id INTEGER NOT NULL,
             name TEXT NOT NULL, kind TEXT NOT NULL, mode TEXT NOT NULL, visibility TEXT NOT NULL,
@@ -199,11 +205,14 @@ def init_db():
     _ensure_column(cur, "brawler_collection", "skin_id", "INTEGER")
     _ensure_column(cur, "brawler_collection", "skin_name", "TEXT")
     _ensure_column(cur, "brawler_collection", "prestige_level", "INTEGER")
+    _ensure_column(cur, "wiki_nodes", "orig_lang", "TEXT DEFAULT 'es'")   # idioma del contenido original
+    _ensure_column(cur, "wiki_history", "lang", "TEXT DEFAULT 'es'")       # idioma de la versión guardada
     # El usuario itxialdiak es administrador por defecto.
     cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
     conn.commit()
     conn.close()
     seed_wiki_if_empty()
+    seed_wiki_translations()
 
 
 # ---------------------------------------------------------------------------
@@ -704,23 +713,136 @@ def seed_wiki_if_empty() -> None:
     conn.commit(); conn.close()
 
 
-def get_wiki_tree() -> list:
+WIKI_TR_SEED_PATH = os.path.join(os.path.dirname(__file__), "data", "wiki_translations_seed.json")
+
+
+def seed_wiki_translations() -> None:
+    """Carga traducciones sembradas (p.ej. inglés) desde data/wiki_translations_seed.json,
+    casando por el TÍTULO ORIGINAL del nodo (los ids no son estables entre BDs). No pisa
+    traducciones ya existentes (para no machacar mejoras de la comunidad)."""
+    try:
+        seed = json.load(open(WIKI_TR_SEED_PATH, encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return
+    now = datetime.now(timezone.utc).isoformat()
     conn = get_conn()
+    for e in seed or []:
+        orig, lang = e.get("orig_title"), e.get("lang")
+        if not orig or not lang or lang == "es":
+            continue
+        row = conn.execute("SELECT id FROM wiki_nodes WHERE title=? ORDER BY id LIMIT 1", (orig,)).fetchone()
+        if not row:
+            continue
+        if conn.execute("SELECT 1 FROM wiki_translations WHERE node_id=? AND lang=?", (row["id"], lang)).fetchone():
+            continue
+        conn.execute(
+            "INSERT INTO wiki_translations (node_id,lang,title,body,translator_user_id,updated_at) "
+            "VALUES (?,?,?,?,?,?)", (row["id"], lang, e.get("title") or orig, e.get("body"), None, now))
+    conn.commit(); conn.close()
+
+
+def get_wiki_tree(lang: str | None = None) -> list:
+    """Árbol del índice. Si `lang` no es el original (es), los títulos se muestran en ese
+    idioma con fallback: idioma pedido → inglés → original."""
+    conn = get_conn()
+    tmap, emap = {}, {}
+    if lang and lang != "es":
+        for r in conn.execute("SELECT node_id,title FROM wiki_translations WHERE lang=?", (lang,)).fetchall():
+            tmap[r["node_id"]] = r["title"]
+        if lang != "en":
+            for r in conn.execute("SELECT node_id,title FROM wiki_translations WHERE lang='en'").fetchall():
+                emap[r["node_id"]] = r["title"]
+
+    def title_of(nid, orig):
+        return tmap.get(nid) or emap.get(nid) or orig
+
     tops = conn.execute(
         "SELECT id,type,title FROM wiki_nodes WHERE parent_id IS NULL ORDER BY sort_order, id").fetchall()
     result, secnum = [], 0
     for t in tops:
-        d = {"id": t["id"], "type": t["type"], "title": t["title"]}
+        d = {"id": t["id"], "type": t["type"], "title": title_of(t["id"], t["title"])}
         if t["type"] == "section":
             secnum += 1
             d["number"] = secnum
             subs = conn.execute(
                 "SELECT id,title FROM wiki_nodes WHERE parent_id=? ORDER BY sort_order, id", (t["id"],)).fetchall()
-            d["subs"] = [{"id": s["id"], "title": s["title"], "number": f"{secnum}.{i + 1}"}
+            d["subs"] = [{"id": s["id"], "title": title_of(s["id"], s["title"]), "number": f"{secnum}.{i + 1}"}
                          for i, s in enumerate(subs)]
         result.append(d)
     conn.close()
     return result
+
+
+# --------------------------- Traducciones de la wiki (comunidad) ---------------------------
+
+def wiki_translations_for(node_id: int) -> list:
+    """Idiomas con traducción disponible para un nodo (para el selector de versiones)."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT lang, title, updated_at FROM wiki_translations WHERE node_id=? ORDER BY lang", (node_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_wiki_translation(node_id: int, lang: str) -> dict | None:
+    conn = get_conn()
+    r = conn.execute("SELECT * FROM wiki_translations WHERE node_id=? AND lang=?", (node_id, lang)).fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+
+def wiki_upsert_translation(node_id: int, lang: str, title: str, body, user_id) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO wiki_translations (node_id,lang,title,body,translator_user_id,updated_at) "
+        "VALUES (?,?,?,?,?,?) ON CONFLICT(node_id,lang) DO UPDATE SET "
+        "title=excluded.title, body=excluded.body, translator_user_id=excluded.translator_user_id, "
+        "updated_at=excluded.updated_at",
+        (node_id, lang, title, body, user_id, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def _wiki_tr_snapshot(tr: dict, lang: str, change_kind: str, by_user_id) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO wiki_history (node_id,type,title,body,parent_id,change_kind,by_user_id,changed_at,lang) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
+        (tr["node_id"], "translation", tr["title"], tr.get("body"), None, change_kind, by_user_id,
+         datetime.now(timezone.utc).isoformat(), lang))
+    conn.commit(); conn.close()
+
+
+def wiki_node_localized(nid: int, lang: str | None = None, view: str | None = None) -> dict | None:
+    """Nodo listo para mostrar con fallback de idioma (o una versión concreta si `view`).
+    `view`='orig' → original; `view`=<lang> → esa traducción; sin `view` → idioma→en→original."""
+    node = get_wiki_node(nid)
+    if not node:
+        return None
+    orig_lang = node.get("orig_lang") or "es"
+    avail = [t["lang"] for t in wiki_translations_for(nid)]
+    base = {"id": node["id"], "type": node["type"], "parent_id": node["parent_id"],
+            "orig_lang": orig_lang, "available_langs": avail}
+
+    def as_orig():
+        return {**base, "title": node["title"], "body": node.get("body"),
+                "shown_lang": orig_lang, "is_translation": False}
+
+    def as_tr(code):
+        tr = get_wiki_translation(nid, code)
+        return {**base, "title": tr["title"], "body": tr.get("body"),
+                "shown_lang": code, "is_translation": True}
+
+    if view == "orig" or (view and view == orig_lang):
+        return as_orig()
+    if view and view in avail:
+        return as_tr(view)
+    lang = lang or orig_lang
+    if lang != orig_lang:
+        if lang in avail:
+            return as_tr(lang)
+        if lang != "en" and "en" in avail:
+            return as_tr("en")
+    return as_orig()
 
 
 def get_wiki_node(nid: int) -> dict | None:
@@ -769,6 +891,7 @@ def wiki_update_node(nid: int, title: str, body) -> None:
 def wiki_delete_node(nid: int) -> None:
     conn = get_conn()
     conn.execute("DELETE FROM wiki_nodes WHERE id=?", (nid,))
+    conn.execute("DELETE FROM wiki_translations WHERE node_id=?", (nid,))  # y sus traducciones
     conn.commit(); conn.close()
 
 
@@ -874,6 +997,14 @@ def apply_proposal(pid: int, reviewer_id) -> bool:
             _wiki_snapshot(node, "delete", p["author_user_id"]); wiki_delete_node(p["node_id"])
     elif kind == "reorder":
         wiki_reorder(payload.get("top", []), payload.get("subs", {}))
+    elif kind == "translate":
+        lang = payload.get("lang")
+        if p["node_id"] and lang and lang != "es":
+            existing = get_wiki_translation(p["node_id"], lang)
+            if existing:
+                _wiki_tr_snapshot(existing, lang, "edit", p["author_user_id"])
+            wiki_upsert_translation(p["node_id"], lang, payload.get("title", ""),
+                                    payload.get("body", ""), p["author_user_id"])
     set_proposal_status(pid, "approved", reviewer_id)
     return True
 
@@ -899,6 +1030,14 @@ def revert_wiki_version(hid: int, by_user_id) -> bool:
     h = get_wiki_history_entry(hid)
     if not h:
         return False
+    # Entrada de una traducción: restaura en wiki_translations (no en el nodo original).
+    if h.get("type") == "translation" and (h.get("lang") or "es") != "es":
+        lang = h["lang"]
+        cur = get_wiki_translation(h["node_id"], lang)
+        if cur:
+            _wiki_tr_snapshot(cur, lang, "revert", by_user_id)
+        wiki_upsert_translation(h["node_id"], lang, h["title"], h["body"], by_user_id)
+        return True
     node = get_wiki_node(h["node_id"])
     if node:
         _wiki_snapshot(node, "revert", by_user_id)

@@ -26,7 +26,10 @@ def api_admin_proposal_detail(pid: int, admin: dict = Depends(auth.require_admin
     parent = None
     if p["kind"] == "create_subsection" and p["payload"].get("parent_id"):
         parent = db.get_wiki_node(p["payload"]["parent_id"])
-    return {"proposal": p, "current": current, "parent": parent}
+    current_tr = None
+    if p["kind"] == "translate" and p.get("node_id") and p["payload"].get("lang"):
+        current_tr = db.get_wiki_translation(p["node_id"], p["payload"]["lang"])
+    return {"proposal": p, "current": current, "parent": parent, "current_translation": current_tr}
 
 
 @router.post("/api/admin/proposals/{pid}/approve")

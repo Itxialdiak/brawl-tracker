@@ -20,7 +20,8 @@ function showAdminTab(name) {
 
 const KIND_LABEL = { edit: ["Edición", "pk-edit"], create_section: ["Nueva sección", "pk-create"],
   create_subsection: ["Nueva subsección", "pk-create"], create_separator: ["Nuevo separador", "pk-create"],
-  delete: ["Eliminación", "pk-delete"], reorder: ["Reordenación", "pk-reorder"] };
+  delete: ["Eliminación", "pk-delete"], reorder: ["Reordenación", "pk-reorder"],
+  translate: ["Traducción", "pk-edit"] };
 
 async function loadAdminPending() {
   const wrap = $("pending-list");
@@ -58,7 +59,7 @@ async function openReview(pid) {
     $("rv-title").textContent = lab;
     $("rv-meta").innerHTML = `Propuesto por <b>${esc(p.username || "—")}</b> · ${new Date(p.created_at).toLocaleString("es-ES")}`;
     $("rv-just").innerHTML = `<b>Resumen:</b> ${esc(p.summary || "—")}<br><b>Justificación:</b> ${esc(p.justification || "—")}`;
-    $("rv-diff").innerHTML = renderDiff(p, cur, parent);
+    $("rv-diff").innerHTML = renderDiff(p, cur, parent, d.current_translation);
     $("rv-err").textContent = "";
     $("review-modal").classList.add("open");
   } catch (e) { wikiToast("No se pudo abrir la propuesta", "err"); }
@@ -68,8 +69,14 @@ function closeReview() { $("review-modal").classList.remove("open"); reviewId = 
 function diffCol(side, header, title, bodyHtml) {
   return `<div class="rv-col ${side}"><div class="rv-col-h">${header}</div>${title ? "<h4>" + esc(title) + "</h4>" : ""}<div class="wiki-body">${wrapTables(bodyHtml) || ""}</div></div>`;
 }
-function renderDiff(p, cur, parent) {
+function renderDiff(p, cur, parent, curTr) {
   const pl = p.payload || {};
+  if (p.kind === "translate") {
+    const lg = (pl.lang || "").toUpperCase();
+    return diffCol("before", "Traducción actual (" + lg + ")", curTr ? curTr.title : "",
+        curTr ? curTr.body : "<p style='color:var(--muted)'>Aún no hay traducción en este idioma.</p>")
+      + diffCol("after", "Traducción propuesta (" + lg + ")", pl.title, pl.body);
+  }
   if (p.kind === "edit") {
     return diffCol("before", "Versión actual (pública)", cur ? cur.title : "", cur ? cur.body : "")
          + diffCol("after", "Propuesta", pl.title, pl.body);

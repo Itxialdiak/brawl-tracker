@@ -61,10 +61,13 @@ def api_retos_mine(user: dict = Depends(auth.require_user)):
     groups = db.list_my_retos(user["id"])
     for key in ("sensei", "joined", "created"):
         for r in groups.get(key, []):
-            part = db.reto_participant(r["id"], user["id"])
-            if part:
-                r["my_progress"] = _sync_completion(r, user["id"], part)
-                r["my_status"] = part.get("status")
+            try:   # un reto problemático no debe tumbar toda la sección "Tus retos"
+                part = db.reto_participant(r["id"], user["id"])
+                if part:
+                    r["my_progress"] = _sync_completion(r, user["id"], part)
+                    r["my_status"] = part.get("status")
+            except Exception:  # noqa: BLE001
+                pass
     return groups
 
 

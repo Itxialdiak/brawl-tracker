@@ -45,15 +45,15 @@ function retoCondText(c) {
   if (sc.mode) bits.push(t("en") + " " + (Array.isArray(sc.mode) ? sc.mode.map((m) => t(modeName(m))).join(", ") : t(modeName(sc.mode))));
   if (sc.map) bits.push(t("en") + " " + (Array.isArray(sc.map) ? sc.map.map(mapNameEs).join(", ") : mapNameEs(sc.map)));
   const s = bits.length ? " " + bits.join(" ") : "";
-  const t = parseInt(c.target, 10) || 0;
+  const tgt = parseInt(c.target, 10) || 0;   // OJO: no llamar 't' (colisiona con la función i18n t())
   switch (c.metric) {
-    case "wins": return `Gana ${t} partidas${s}`;
-    case "games": return `Juega ${t} partidas${s}`;
-    case "winrate": return `Mantén ${t}% de victorias${s}${c.min_games ? ` (mín. ${c.min_games})` : ""}`;
-    case "win_streak": return `Encadena ${t} victorias${s}`;
-    case "distinct_brawlers": return `Gana con ${t} brawlers distintos${s}`;
-    case "trophies": return `Suma ${t} copas${s}`;
-    case "star_player": return `Sé jugador estelar ${t} veces${s}`;
+    case "wins": return `Gana ${tgt} partidas${s}`;
+    case "games": return `Juega ${tgt} partidas${s}`;
+    case "winrate": return `Mantén ${tgt}% de victorias${s}${c.min_games ? ` (mín. ${c.min_games})` : ""}`;
+    case "win_streak": return `Encadena ${tgt} victorias${s}`;
+    case "distinct_brawlers": return `Gana con ${tgt} brawlers distintos${s}`;
+    case "trophies": return `Suma ${tgt} copas${s}`;
+    case "star_player": return `Sé jugador estelar ${tgt} veces${s}`;
     default: return c.metric;
   }
 }
@@ -87,12 +87,14 @@ async function loadRetoMine() {
   try {
     const g = await getJSON("/api/retos/mine");
     const groups = [
-      ["sensei", "🥋 Asignados por el Sensei", "Aún no tienes retos del Sensei. Pídele un informe en la pestaña Sensei."],
+      ["sensei", "🥋 Asignados por el Sensei", "No tienes tareas del Sensei."],
       ["created", "✍️ Creados por ti", "No has creado ningún reto todavía."],
       ["joined", "🤝 Apuntado / siguiendo", "No estás en ningún reto de la comunidad. Mira el tablón de abajo."],
     ];
+    // Se OCULTAN las tarjetas de los retos ya cumplidos (siguen accesibles en el contador
+    // de arriba); las categorías se muestran SIEMPRE, con su mensaje si no hay activos.
     $("retos-mine").innerHTML = groups.map(([key, title, empty]) => {
-      const items = g[key] || [];
+      const items = (g[key] || []).filter((r) => r.my_status !== "completed");
       const body = items.length
         ? `<div class="reto-grid">${items.map((r) => retoCardHTML(r, true)).join("")}</div>`
         : `<div class="lg-empty">${empty}</div>`;

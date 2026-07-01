@@ -5,7 +5,16 @@
 /* ============================ WIKI / GUÍA DE ESTRATEGIA ============================ */
 let wikiTree = [], wikiActiveId = null, wikiIsAdmin = false, reorderMode = false;
 let weMode = null, weEditId = null;       // editor de nodos
+let weTrLang = null;                        // idioma destino al traducir
+let wikiViewOverride = null;                // versión forzada al ver ('orig' | código de idioma | null)
 let justifyCtx = null;                     // contexto para borrar/reordenar
+
+/* Idioma activo de la app y su nombre visible (para el sistema de traducción de la wiki). */
+function wLang() { return (typeof currentLang === "function" ? currentLang() : "es"); }
+function langLabel(code) {
+  const L = (window.I18N_LANGS || []).find((l) => l.code === code);
+  return L ? L.label : (code || "").toUpperCase();
+}
 
 async function apiSend(url, method, body) {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" },
@@ -26,7 +35,7 @@ function wrapTables(html) {
 
 async function loadWikiTree(keepActive) {
   try {
-    const d = await getJSON("/api/wiki/tree");
+    const d = await getJSON("/api/wiki/tree?lang=" + encodeURIComponent(wLang()));
     wikiTree = d.tree || []; wikiIsAdmin = !!d.is_admin;
     buildWikiNav();
     updatePendingBadge(d.pending || 0);
@@ -61,6 +70,8 @@ function buildWikiNav() {
 }
 
 function onNavClick(e, id) { if (reorderMode) return; loadWikiNode(id); }
+/* Cambia la versión mostrada del artículo actual (automática / original / una traducción). */
+function wikiViewFrom(val) { wikiViewOverride = val || null; loadWikiNode(wikiActiveId, true); }
 
 function findNavMeta(id) {
   for (const n of wikiTree) {
@@ -70,11 +81,14 @@ function findNavMeta(id) {
   return null;
 }
 
-async function loadWikiNode(id) {
+async function loadWikiNode(id, keepView) {
+  if (!keepView) wikiViewOverride = null;   // al cambiar de artículo, versión automática
   wikiActiveId = id; buildWikiNav();
   const cont = $("wiki-content");
   try {
-    const n = await getJSON("/api/wiki/node/" + id);
+    let url = "/api/wiki/node/" + id + "?lang=" + encodeURIComponent(wLang());
+    if (wikiViewOverride) url += "&view=" + encodeURIComponent(wikiViewOverride);
+    const n = await getJSON(url);
     renderWikiNode(n);
   } catch (e) { cont.innerHTML = '<div class="wiki-welcome"><p>No se pudo cargar el apartado.</p></div>'; }
 }
@@ -84,14 +98,39 @@ function renderWikiNode(n) {
   const eyebrow = n.type === "separator" ? "Separador"
     : (n.type === "subsection" ? "Subsección " + (meta ? meta.number : "")
       : "Apartado " + (meta ? meta.number : ""));
+  const origLang = n.orig_lang || "es";
+  const avail = n.available_langs || [];
+  const canTranslate = wLang() !== origLang;
+  const trBtn = canTranslate
+    ? `<button class="wc-tr" onclick="openTranslateNode(${n.id})">🌐 ${avail.includes(wLang())
+        ? "Editar traducción (" + esc(wLang().toUpperCase()) + ")" : "Traducir a " + esc(langLabel(wLang()))}</button>`
+    : "";
+  // Barra de traducción: cuando ves una traducción o cuando hay traducciones disponibles.
+  let trBar = "";
+  if (n.is_translation || avail.length) {
+    const cur = wikiViewOverride || "";
+    const optSel = (v) => (cur === v ? " selected" : "");
+    const opts = [`<option value=""${optSel("")}>Automático (tu idioma)</option>`,
+      `<option value="orig"${optSel("orig")}>Original — ${esc(langLabel(origLang))}</option>`]
+      .concat(avail.map((l) => `<option value="${esc(l)}"${optSel(l)}>${esc(langLabel(l))}</option>`)).join("");
+    const msg = n.is_translation
+      ? `Estás viendo una traducción (<b>${esc(langLabel(n.shown_lang))}</b>). Artículo original en <b>${esc(langLabel(origLang))}</b>.`
+      : `Artículo original en <b>${esc(langLabel(origLang))}</b>. Hay traducciones disponibles.`;
+    trBar = `<div class="wk-tr-bar">
+       <span class="wk-tr-msg">🌐 ${msg}</span>
+       <label class="wk-tr-pick">Versión: <select class="wk-tr-sel" onchange="wikiViewFrom(this.value)">${opts}</select></label>
+     </div>`;
+  }
   $("wiki-content").innerHTML =
     `<div class="wc-head">
        <div><div class="wc-eyebrow">${esc(eyebrow)}</div><div class="wc-title">${esc(n.title)}</div></div>
        <div class="wc-tools">
+         ${trBtn}
          <button class="wc-edit" onclick="openEditNode(${n.id})">✎ Editar</button>
          <button class="wc-del" onclick="openDeleteNode(${n.id})">🗑 Eliminar</button>
        </div>
      </div>
+     ${trBar}
      <div class="wc-divider"></div>
      <div class="wiki-body">${wrapTables(n.body) || '<p style="color:var(--muted)">(Sin contenido todavía. Pulsa «Editar» para añadirlo.)</p>'}</div>`;
 }
@@ -107,10 +146,12 @@ function fillParentSelect(selected) {
   });
 }
 function openEditNode(id) {
-  getJSON("/api/wiki/node/" + id).then((n) => {
+  // Editar SIEMPRE el contenido original (?view=orig), no una traducción.
+  getJSON("/api/wiki/node/" + id + "?view=orig").then((n) => {
     weMode = "edit"; weEditId = id;
     $("we-title").textContent = "Editar: " + n.title;
     $("we-sub").textContent = "Tus cambios se enviarán a revisión y se publicarán cuando un administrador los apruebe.";
+    $("we-source-row").style.display = "none";
     $("we-parent-row").style.display = "none";
     $("we-name").value = n.title;
     const isSep = n.type === "separator";
@@ -128,6 +169,7 @@ function openCreateNode(type) {
                  subsection: "Indica a qué sección pertenece. Pasa por revisión.",
                  separator: "Un separador organiza un bloque temático. Pasa por revisión." };
   $("we-sub").textContent = subs[type];
+  $("we-source-row").style.display = "none";
   $("we-parent-row").style.display = type === "subsection" ? "" : "none";
   if (type === "subsection") fillParentSelect(wikiActiveId);
   $("we-body-row").style.display = type === "separator" ? "none" : "";
@@ -136,6 +178,31 @@ function openCreateNode(type) {
   $("wiki-edit-modal").classList.add("open"); $("we-name").focus();
 }
 function closeWikiEdit() { $("wiki-edit-modal").classList.remove("open"); }
+
+/* ---------- Traducir un artículo al idioma activo (pasa por revisión) ---------- */
+async function openTranslateNode(id) {
+  const lang = wLang();
+  if (lang === "es") return;   // el original ya está en español
+  let src, cur = null;
+  try {
+    src = await getJSON("/api/wiki/node/" + id + "?view=orig");
+    if ((src.available_langs || []).includes(lang)) cur = await getJSON("/api/wiki/node/" + id + "?view=" + encodeURIComponent(lang));
+  } catch (e) { wikiToast("No se pudo cargar el artículo.", "err"); return; }
+  weMode = "translate"; weEditId = id; weTrLang = lang;
+  $("we-title").textContent = "Traducir a " + langLabel(lang) + ": " + src.title;
+  $("we-sub").textContent = "La traducción se enviará a revisión y se publicará cuando un administrador la apruebe.";
+  $("we-source-row").style.display = "";
+  $("we-source-title").textContent = src.title;
+  $("we-source-body").innerHTML = wrapTables(src.body) || '<p style="color:var(--muted)">(sin contenido)</p>';
+  $("we-parent-row").style.display = "none";
+  const isSep = src.type === "separator";
+  $("we-body-row").style.display = isSep ? "none" : "";
+  $("we-name").value = cur ? cur.title : "";
+  $("we-body").innerHTML = cur ? (cur.body || "") : "";
+  $("we-summary").value = cur ? ("Actualizo la traducción " + lang.toUpperCase()) : ("Traduzco a " + langLabel(lang));
+  $("we-justify").value = ""; $("we-err").textContent = "";
+  $("wiki-edit-modal").classList.add("open"); $("we-name").focus();
+}
 
 async function submitWikiEdit() {
   const err = $("we-err"); err.textContent = "";
@@ -152,6 +219,7 @@ async function submitWikiEdit() {
     kind = "create_subsection";
     data = { title, body: $("we-body").innerHTML, parent_id: parseInt($("we-parent").value, 10) };
   } else if (weMode === "create_separator") { kind = "create_separator"; data = { title }; }
+  else if (weMode === "translate") { kind = "translate"; node_id = weEditId; data = { lang: weTrLang, title, body: $("we-body").innerHTML }; }
   const btn = $("we-save"); btn.disabled = true;
   const { ok, d } = await apiSend("/api/wiki/proposals", "POST", { kind, node_id, data, summary, justification });
   btn.disabled = false;

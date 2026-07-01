@@ -3,15 +3,12 @@
    Se carga como <script src> desde index.html, en orden. El JS de cliente
    SIEMPRE es visible en el navegador: aquí no van secretos. */
 /* ============================ LIGAS Y TORNEOS ============================ */
-const EV_LANGS = [
-  { c: "es", n: "Castellano" }, { c: "ca", n: "Català" }, { c: "gl", n: "Galego" },
-  { c: "eu", n: "Euskara" }, { c: "ast", n: "Asturianu" }, { c: "oc", n: "Aranés / Occitan" },
-  { c: "en", n: "English" }, { c: "pt", n: "Português" }, { c: "fr", n: "Français" },
-  { c: "it", n: "Italiano" }, { c: "de", n: "Deutsch" }, { c: "nl", n: "Nederlands" },
-  { c: "pl", n: "Polski" }, { c: "tr", n: "Türkçe" }, { c: "ru", n: "Русский" },
-  { c: "ar", n: "العربية" }, { c: "zh", n: "中文" }, { c: "ja", n: "日本語" },
-  { c: "ko", n: "한국어" }, { c: "other", n: "Otro idioma" },
-];
+// Idiomas de eventos = los MISMOS del selector de idioma (window.I18N_LANGS, definido en
+// 00-i18n.js que carga antes), en el mismo orden, + "Otro idioma" al final.
+const EV_LANGS = (Array.isArray(window.I18N_LANGS) && window.I18N_LANGS.length
+  ? window.I18N_LANGS.map((l) => ({ c: l.code, n: l.label }))
+  : [{ c: "es", n: "Español" }, { c: "en", n: "English" }]
+).concat([{ c: "other", n: "Otro idioma" }]);
 function evLangName(c) { const x = EV_LANGS.find((l) => l.c === c); return x ? x.n : (c || "—"); }
 const EV_KIND_LABEL = { league: "Liga", tournament: "Torneo" };
 const EV_MODE_LABEL = { individual: "Individual", teams: "Por equipos" };

@@ -13,22 +13,22 @@ router = APIRouter()
 
 # --------------------------- Wiki / Guía de estrategia ---------------------------
 
-_PROP_KINDS = {"edit", "create_section", "create_subsection", "create_separator", "delete", "reorder"}
+_PROP_KINDS = {"edit", "create_section", "create_subsection", "create_separator", "delete", "reorder", "translate"}
 
 
 @router.get("/api/wiki/tree")
-def api_wiki_tree(user: dict = Depends(auth.require_user)):
-    return {"tree": db.get_wiki_tree(), "is_admin": bool(user.get("is_admin")),
+def api_wiki_tree(lang: str | None = Query(None), user: dict = Depends(auth.require_user)):
+    return {"tree": db.get_wiki_tree(lang), "is_admin": bool(user.get("is_admin")),
             "pending": db.count_pending_proposals() if user.get("is_admin") else 0}
 
 
 @router.get("/api/wiki/node/{nid}")
-def api_wiki_node(nid: int, user: dict = Depends(auth.require_user)):
-    node = db.get_wiki_node(nid)
+def api_wiki_node(nid: int, lang: str | None = Query(None), view: str | None = Query(None),
+                  user: dict = Depends(auth.require_user)):
+    node = db.wiki_node_localized(nid, lang, view)
     if not node:
         return JSONResponse({"error": "No encontrado."}, status_code=404)
-    return {"id": node["id"], "type": node["type"], "title": node["title"],
-            "body": node.get("body"), "parent_id": node.get("parent_id")}
+    return node
 
 
 @router.post("/api/wiki/proposals")
@@ -57,6 +57,13 @@ def api_wiki_propose(payload: dict = Body(...), user: dict = Depends(auth.requir
             return JSONResponse({"error": "Indica a qué sección pertenece."}, status_code=400)
         if not (data.get("title") or "").strip():
             return JSONResponse({"error": "Ponle un título."}, status_code=400)
+    if kind == "translate":
+        if not node_id:
+            return JSONResponse({"error": "Falta el nodo objetivo."}, status_code=400)
+        if (data.get("lang") or "").strip() in ("", "es"):
+            return JSONResponse({"error": "Idioma de traducción no válido."}, status_code=400)
+        if not (data.get("title") or "").strip():
+            return JSONResponse({"error": "El título traducido no puede quedar vacío."}, status_code=400)
     pid = db.create_proposal(user["id"], kind, node_id, data, summary, justification)
     return {"ok": True, "id": pid}
 
