@@ -38,8 +38,8 @@ MODES = [
     {"name": "Noqueo", "kind": "core", "maps": [
         "Belleza Oculta", "Fin de la Línea", "Jardín Flotante",
         "Nuevos Horizontes", "Cráneo Árido", "Cizaña"]},
-    {"name": "Duelos", "kind": "duel", "maps": [
-        "Choque de Cactus", "Anillo Tóxico", "Refugio Acogedor", "Doble Problema"]},
+    {"name": "Duelos", "kind": "duel", "maps": [   # respaldo si BrawlAPI cae (los reales van en vivo)
+        "Coin Flip", "Flaring Phoenix", "No Surrender", "Monkey Maze", "Warriors Way"]},
     {"name": "Supervivencia solo", "kind": "sd_solo", "maps": list(_SD)},
     {"name": "Supervivencia dúo", "kind": "sd_duo", "maps": list(_SD)},
     {"name": "Supervivencia trío", "kind": "sd_trio", "maps": list(_SD)},
@@ -52,6 +52,16 @@ EN = {
     "Duelos": "Duels", "Supervivencia solo": "Showdown",
     "Supervivencia dúo": "Showdown", "Supervivencia trío": "Showdown",
 }
+
+# nombre castellano -> nombre de modo EN BrawlAPI (para traer los mapas ACTIVOS reales).
+# Ojo: Supervivencia se separa en Solo/Duo/Trio (BrawlAPI los distingue).
+BRAWLAPI_MODE = {
+    "Atrapagemas": "Gem Grab", "Balón Brawl": "Brawl Ball", "Atraco": "Heist",
+    "Caza Estelar": "Bounty", "Zona Restringida": "Hot Zone", "Noqueo": "Knockout",
+    "Duelos": "Duels", "Supervivencia solo": "Solo Showdown",
+    "Supervivencia dúo": "Duo Showdown", "Supervivencia trío": "Trio Showdown",
+}
+
 
 # nombre castellano -> código de modo del battlelog (para la detección automática)
 MODE_CODE = {
@@ -68,8 +78,23 @@ for _m in MODES:
 
 
 def catalog() -> list:
-    """Lista completa de modos con sus mapas y su `kind` (sin icono)."""
+    """Lista completa de modos con sus mapas y su `kind` (sin icono). Mapas hardcodeados
+    (respaldo); usa `catalog_with_live()` para los mapas jugables reales."""
     return [{"name": m["name"], "kind": m["kind"], "maps": list(m["maps"])} for m in MODES]
+
+
+def catalog_with_live(maps_by_mode: dict | None) -> list:
+    """Como `catalog()` pero con los mapas ACTIVOS de BrawlAPI (los que HOY se pueden jugar
+    en amistoso), en inglés (igual que el battlelog). Si de un modo no hay datos en vivo,
+    mantiene los hardcodeados como respaldo. `maps_by_mode`: {modo_EN_minúsculas: [mapas]}."""
+    mbm = maps_by_mode or {}
+    out = []
+    for m in MODES:
+        en = (BRAWLAPI_MODE.get(m["name"]) or "").lower()
+        live = mbm.get(en) or []
+        out.append({"name": m["name"], "kind": m["kind"],
+                    "maps": list(live) if live else list(m["maps"])})
+    return out
 
 
 def allowed_modes(event_mode: str, showdown: str) -> list:
@@ -94,8 +119,11 @@ def mode_for_map(map_name: str) -> str | None:
     return _MAP_TO_MODE.get((map_name or "").strip())
 
 
-def random_mode_map(event_mode: str = "individual", showdown: str = "exclude") -> tuple:
-    """(modo, mapa) al azar dentro de los modos permitidos para el evento."""
+def random_mode_map(event_mode: str = "individual", showdown: str = "exclude",
+                    catalog: list | None = None) -> tuple:
+    """(modo, mapa) al azar dentro de los modos permitidos. Si se pasa `catalog`
+    (p. ej. `catalog_with_live(...)`), usa esos mapas reales; si no, los hardcodeados."""
+    cat = catalog or MODES
     names = set(allowed_modes(event_mode, showdown))
-    pool = [(m["name"], mp) for m in MODES if m["name"] in names for mp in m["maps"]]
+    pool = [(m["name"], mp) for m in cat if m["name"] in names for mp in (m.get("maps") or [])]
     return random.choice(pool) if pool else (None, None)

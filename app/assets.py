@@ -13,6 +13,8 @@ simplemente muestra los nombres sin imagen.
 
 from __future__ import annotations
 
+import os
+import json
 import time
 import httpx
 
@@ -21,6 +23,24 @@ HEADERS = {"User-Agent": "BrawlTracker/1.0 (personal stats app)"}
 CACHE_TTL = 60 * 60 * 12  # 12 horas
 
 _cache = {"data": None, "at": 0.0}
+_MAPES_PATH = os.path.join(os.path.dirname(__file__), "data", "map_names_es.json")
+_mapes_cache = {"data": None, "mtime": 0.0}
+
+
+def _load_map_names_es() -> dict:
+    """{nombre_mapa_EN_minúsculas: 'Nombre ES'} (de scrape_map_names.py). Cache por mtime."""
+    try:
+        mt = os.path.getmtime(_MAPES_PATH)
+    except OSError:
+        return _mapes_cache["data"] or {}
+    if _mapes_cache["data"] is None or mt != _mapes_cache["mtime"]:
+        try:
+            with open(_MAPES_PATH, encoding="utf-8") as f:
+                _mapes_cache["data"] = json.load(f)
+            _mapes_cache["mtime"] = mt
+        except Exception:  # noqa: BLE001
+            _mapes_cache["data"] = _mapes_cache["data"] or {}
+    return _mapes_cache["data"] or {}
 
 
 def _extract_list(data):
@@ -61,29 +81,37 @@ def _build(brawlers, gamemodes, maps) -> dict:
         mmap.setdefault("siege", mmap["brawl arena"])
 
     pmap = {}
+    maps_by_mode = {}
     for m in maps:
         name, url = m.get("name"), m.get("imageUrl")
         if name and url:
             pmap[name.lower()] = {"id": m.get("id"), "image": url}
+        # Mapas JUGABLES EN AMISTOSO hoy = los NO deshabilitados, agrupados por modo.
+        if name and not m.get("disabled"):
+            gm = (m.get("gameMode") or {}).get("name")
+            if gm:
+                maps_by_mode.setdefault(gm.lower(), []).append(name)
+    for gm in maps_by_mode:
+        maps_by_mode[gm] = sorted(dict.fromkeys(maps_by_mode[gm]))  # dedup + orden alfabético
 
-    return {"brawlers": bmap, "modes": mmap, "maps": pmap}
+    return {"brawlers": bmap, "modes": mmap, "maps": pmap, "maps_by_mode": maps_by_mode}
 
 
 async def get_assets() -> dict:
     now = time.time()
-    if _cache["data"] is not None and (now - _cache["at"]) < CACHE_TTL:
-        return _cache["data"]
-    try:
-        async with httpx.AsyncClient() as client:
-            brawlers = await _fetch(client, "brawlers")
-            gamemodes = await _fetch(client, "gamemodes")
-            maps = await _fetch(client, "maps")
-        _cache["data"] = _build(brawlers, gamemodes, maps)
-        _cache["at"] = now
-    except Exception as e:  # noqa: BLE001
-        print(f"[assets] no se pudieron cargar recursos de Brawlify: {e}")
-        if _cache["data"] is None:
-            _cache["data"] = {"brawlers": {}, "modes": {}, "maps": {}}
+    if _cache["data"] is None or (now - _cache["at"]) >= CACHE_TTL:
+        try:
+            async with httpx.AsyncClient() as client:
+                brawlers = await _fetch(client, "brawlers")
+                gamemodes = await _fetch(client, "gamemodes")
+                maps = await _fetch(client, "maps")
+            _cache["data"] = _build(brawlers, gamemodes, maps)
+            _cache["at"] = now
+        except Exception as e:  # noqa: BLE001
+            print(f"[assets] no se pudieron cargar recursos de Brawlify: {e}")
+            if _cache["data"] is None:
+                _cache["data"] = {"brawlers": {}, "modes": {}, "maps": {}, "maps_by_mode": {}}
+    _cache["data"]["map_names_es"] = _load_map_names_es()  # nombres ES para mostrar (barato, por mtime)
     return _cache["data"]
 
 

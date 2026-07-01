@@ -1920,3 +1920,10 @@
 .ptag.copyable:hover { color: #9af0ff; }
 .ptag.copied { color: var(--win); }
 .ptag.copied::after { content: ""; }
+
+
+/* === reto cumplido: nombre como enlace a la ficha completa === */
+.reto-done-link { color: var(--cyan); cursor: pointer; font-weight: 600; text-decoration: none; }
+.reto-done-link:hover { text-decoration: underline; color: #9af0ff; }
+/* la ficha del reto abre por encima del modal de cumplidos */
+#reto-detail-modal.modal-overlay { z-index: 1160; }

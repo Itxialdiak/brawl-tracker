@@ -10,6 +10,7 @@ El resultado es solo una propuesta: el organizador puede editarlo o borrarlo.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone, timedelta
 
 from . import bs_maps
@@ -46,6 +47,12 @@ def parse_event_date(s: str, end: bool = False):
 
 def _norm_mode(s: str) -> str:
     return (s or "").replace(" ", "").replace("-", "").replace("_", "").lower()
+
+
+def _norm_map(s: str) -> str:
+    """Normaliza un nombre de mapa (quita todo lo no alfanumérico) para casar el mapa del
+    torneo con el de la partida, tolerando diferencias de espacios/apóstrofes/mayúsculas."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
 def mode_code(es_name: str):
@@ -128,8 +135,9 @@ def _finalize(found, best_of):
             "evidence": found[-1][0]["raw_time"], "map": found[-1][0]["map"], "n": len(found)}
 
 
-def match_individual(pool, a_tag, b_tag, code, start, end, best_of=1):
+def match_individual(pool, a_tag, b_tag, code, start, end, best_of=1, map_name=None):
     a, b = normalize_tag(a_tag), normalize_tag(b_tag)
+    want_map = _norm_map(map_name) if map_name else None
     found = []
     for batt in pool:
         if not _in_window(batt["time"], start, end):
@@ -139,21 +147,26 @@ def match_individual(pool, a_tag, b_tag, code, start, end, best_of=1):
             continue
         if code and batt["mode"] and batt["mode"] != code:  # modo (si se conoce)
             continue
+        if want_map and _norm_map(batt.get("map")) != want_map:  # MAPA exacto del torneo
+            continue
         w = "draw" if batt["winner_side"] is None else ("a" if batt["winner_side"] == sa else "b")
         found.append((batt, w))
     return _finalize(found, best_of)
 
 
-def match_teams(pool, roster_a, roster_b, code, start, end, best_of=1):
+def match_teams(pool, roster_a, roster_b, code, start, end, best_of=1, map_name=None):
     ra = set(normalize_tag(t) for t in (roster_a or []) if t)
     rb = set(normalize_tag(t) for t in (roster_b or []) if t)
     if not ra or not rb:
         return None
+    want_map = _norm_map(map_name) if map_name else None
     found = []
     for batt in pool:
         if not _in_window(batt["time"], start, end):
             continue
         if code and batt["mode"] and batt["mode"] != code:
+            continue
+        if want_map and _norm_map(batt.get("map")) != want_map:  # MAPA exacto del torneo
             continue
         s0, s1 = set(batt["sides"][0]), set(batt["sides"][1])
         if len(s0 & ra) >= 2 and len(s1 & rb) >= 2:

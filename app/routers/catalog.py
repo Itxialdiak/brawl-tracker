@@ -25,5 +25,7 @@ async def api_bs_modes_maps(user: dict = Depends(auth.require_user)):
         if not info and "showdown" in en:
             info = mmap.get("solo showdown") or mmap.get("showdown")
         return (info or {}).get("icon")
-    modes = [{**m, "icon": icon_for(m["name"])} for m in bs_maps.catalog()]
+    # Mapas ACTIVOS reales (jugables en amistoso hoy), de BrawlAPI; respaldo hardcodeado.
+    live = bs_maps.catalog_with_live(data.get("maps_by_mode"))
+    modes = [{**m, "icon": icon_for(m["name"])} for m in live]
     return {"modes": modes}

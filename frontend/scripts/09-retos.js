@@ -263,7 +263,7 @@ async function openRetoCompleted(source) {
     $("reto-completed-title").textContent = source === "sensei" ? "Retos del Sensei cumplidos" : "Retos de la comunidad cumplidos";
     const items = d.retos || [];
     $("reto-completed-body").innerHTML = items.length
-      ? items.map((r) => `<details class="reto-done-item"><summary><span class="reto-done-date">${(r.my_completed || "").slice(0, 10)}</span> ${esc(r.name)}</summary>
+      ? items.map((r) => `<details class="reto-done-item"><summary><span class="reto-done-date">${(r.my_completed || "").slice(0, 10)}</span> <a class="reto-done-link" title="Ver ficha completa" onclick="event.preventDefault();event.stopPropagation();openReto(${r.id})">${esc(r.name)}</a></summary>
           ${r.description ? `<p class="rcd-desc">${esc(r.description)}</p>` : ""}
           <div class="rcd-conds">${(r.conditions || []).map((c) => `<div class="rcd-cond done"><div class="rcd-cond-top"><span>✅ ${esc(retoCondText(c))}</span></div></div>`).join("")}</div></details>`).join("")
       : `<div class="hint">Todavía no has cumplido ninguno. ¡A por ellos!</div>`;

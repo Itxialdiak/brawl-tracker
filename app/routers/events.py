@@ -928,10 +928,11 @@ async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dic
     detected = 0
     for m in pend:
         code = detect.mode_code(m.get("mode"))
+        mp = m.get("map")  # mapa concreto del torneo: si está fijado, la partida debe ser en ÉL
         if teams_mode:
-            res = detect.match_teams(pool, roster_of(m, "a"), roster_of(m, "b"), code, start, end, best_of)
+            res = detect.match_teams(pool, roster_of(m, "a"), roster_of(m, "b"), code, start, end, best_of, mp)
         else:
-            res = detect.match_individual(pool, m["a_tag"], m["b_tag"], code, start, end, best_of)
+            res = detect.match_individual(pool, m["a_tag"], m["b_tag"], code, start, end, best_of, mp)
         if not res:
             continue
         sa, sb, w = res["score_a"], res["score_b"], res["winner"]
@@ -978,6 +979,8 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
     ev_mode = e["mode"]
     showdown = settings.get("showdown") or "exclude"
     _mm = {}
+    from .. import assets
+    _live_cat = bs_maps.catalog_with_live((await assets.get_assets()).get("maps_by_mode"))
 
     def round_mm(rn):  # modo/mapa de la ronda rn
         manual = round_maps.get(str(rn)) or round_maps.get(rn)  # selección manual por ronda
@@ -987,7 +990,7 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
             return (fm, fmap)
         if policy == "random":
             if rn not in _mm:
-                _mm[rn] = bs_maps.random_mode_map(ev_mode, showdown)
+                _mm[rn] = bs_maps.random_mode_map(ev_mode, showdown, _live_cat)
             return _mm[rn]
         return (None, None)
     teams_mode = e["mode"] == "teams"

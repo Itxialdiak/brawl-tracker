@@ -217,7 +217,7 @@ function hubMapCard(m, mode) {
   const wr = m.your_winrate == null ? `<span class="map-wr none">—</span>` : `<span class="map-wr" style="color:${pctColor(m.your_winrate)}">${m.your_winrate}%</span>`;
   return `<div class="hub-map-card ${m.active ? "" : "inactive"}" data-map="${esc(m.name)}" data-mode="${esc(mode)}">
     <div class="hub-map-img">${img}${badge}</div>
-    <div class="hub-map-foot"><span class="hub-map-name">${esc(m.name)}</span>${wr}</div></div>`;
+    <div class="hub-map-foot"><span class="hub-map-name">${esc(mapNameEs(m.name))}</span>${wr}</div></div>`;
 }
 function renderHubMaps(mode, maps) {
   const rot = (maps.rotation || []).map((m) => hubMapCard(m, mode)).join("");
@@ -235,7 +235,7 @@ function draftRow(x) {
 }
 async function openMapModal(map, mode) {
   const modal = $("map-modal"), card = $("map-modal-card");
-  card.innerHTML = `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button><div class="empty" style="padding:46px">Cargando ${esc(map)}…</div>`;
+  card.innerHTML = `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button><div class="empty" style="padding:46px">Cargando ${esc(mapNameEs(map))}…</div>`;
   modal.classList.add("show");
   try {
     const d = await getJSON(`/api/map-detail?player=${encodeURIComponent(currentPlayer)}&map=${encodeURIComponent(map)}&mode=${encodeURIComponent(mode || "")}`);
@@ -252,7 +252,7 @@ function renderMapModal(d) {
   const headBg = d.image ? ` style="background-image:linear-gradient(180deg,rgba(12,12,30,.4),rgba(12,12,30,.94)),url('${d.image}')"` : "";
   return `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button>
     <div class="mm-head"${headBg}>
-      <h2>${esc(d.map)}</h2>
+      <h2>${esc(mapNameEs(d.map))}</h2>
       <div class="mm-wr">${wr == null ? "Aún no juegas aquí" : `Tu win rate: <b style="color:${pctColor(wr)}">${wr}%</b> · ${d.your.total} partidas`}</div>
     </div>
     <div class="mm-body">
@@ -346,7 +346,7 @@ function hlCard(icon, label, item, kind, valueFn, cat) {
     value = valueFn(item); name = esc(item.label);
     if (kind === "brawler" && brawlerPortrait(item.label)) inner = imgTag(brawlerPortrait(item.label), "hl-portrait");
     else if (kind === "mode") { name = esc(modeName(item.label)); const a = modeAsset(item.label); if (a) inner = imgTag(a.icon, "hl-portrait"); }
-    else if (kind === "map" && mapAsset(item.label)) name = `<span class="map-link" data-map="${esc(item.label)}">${esc(item.label)}</span>`;
+    else if (kind === "map" && mapAsset(item.label)) name = `<span class="map-link" data-map="${esc(item.label)}">${esc(mapNameEs(item.label))}</span>`;
   }
   const open = cat && item
     ? `<div class="hl-card hl-clickable" onclick="openHlModal('${cat}')" title="Ver el Top 15">`

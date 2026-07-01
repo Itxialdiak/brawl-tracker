@@ -39,6 +39,8 @@ function goBrawlerByName(name) {
 }
 function modeAsset(mode) { return mode ? ASSETS.modes[mode.toLowerCase()] || null : null; }
 function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
+/* Nombre de mapa para MOSTRAR (español si lo tenemos); el identificador sigue en inglés. */
+function mapNameEs(name) { return name && ASSETS.map_names_es ? (ASSETS.map_names_es[String(name).toLowerCase()] || name) : name; }
 function imgTag(url, cls) { return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'" />`; }
 
 /* Copia texto al portapapeles con feedback breve en el elemento pulsado */
@@ -76,7 +78,8 @@ function qs() {
 function labelCell(item, kind) {
   const lbl = esc(item.label);
   if (kind === "map") {
-    return mapAsset(item.label) ? `<span class="map-link" data-map="${lbl}">${lbl}</span>` : lbl;
+    const disp = esc(mapNameEs(item.label));
+    return mapAsset(item.label) ? `<span class="map-link" data-map="${lbl}">${disp}</span>` : disp;
   }
   if (kind === "mode") {
     const a = modeAsset(item.label);
@@ -210,7 +213,7 @@ function battleCard(b) {
   const tro = b.trophy_change != null ? `${b.trophy_change >= 0 ? "+" : ""}${b.trophy_change}🏆` : "";
   const ma = modeAsset(b.mode);
   const modeIcon = ma && ma.icon ? imgTag(ma.icon, "bc-mode-icon") : "";
-  const mapHtml = mapAsset(b.map) ? `<span class="map-link" data-map="${esc(b.map)}">${esc(b.map)}</span>` : esc(b.map);
+  const mapHtml = mapAsset(b.map) ? `<span class="map-link" data-map="${esc(b.map)}">${esc(mapNameEs(b.map))}</span>` : esc(mapNameEs(b.map));
   const accent = ma && ma.color ? ` style="border-left-color:${ma.color}"` : "";
   const mine = [bchip({ brawler: b.my_brawler, trophies: b.my_trophies }, true)].concat((b.allies || []).map((a) => bchip(a))).join("");
   const enemies = (b.opponents || []).map((o) => bchip(o)).join("") || `<div class="bc-brawler"><div class="bc-portrait"></div><span class="bc-bname">—</span></div>`;
@@ -304,7 +307,8 @@ function msOption(kind, value) {
   let label = value, img = "";
   if (kind === "brawler") { const p = brawlerPortrait(value); if (p) img = `<img src="${p}" alt="" onerror="this.style.display='none'">`; }
   else if (kind === "mode") { const a = modeAsset(value); if (a && a.icon) img = `<img src="${a.icon}" alt="" onerror="this.style.display='none'">`; label = modeName(value); }
-  return { label, img };  // mapa y rol: solo el nombre
+  else if (kind === "map") { label = mapNameEs(value); }  // muestra el nombre ES (valor = EN)
+  return { label, img };  // rol: solo el nombre
 }
 function msTriggerLabel(key) {
   const sel = filterSel[key] || [];
@@ -575,7 +579,7 @@ function renderRotCard(e) {
   return `<div class="rot-card ${cls}"${mapAttr}>
     <div class="rot-head"${headStyle}>
       ${modeIc ? `<img class="rot-mode-ic" src="${modeIc}" alt="" onerror="this.style.display='none'">` : ""}
-      <div class="rot-title"><div class="rot-map">${esc(e.map)}</div><div class="rot-mode">${esc(modeName(e.mode))}</div></div>
+      <div class="rot-title"><div class="rot-map">${esc(mapNameEs(e.map))}</div><div class="rot-mode">${esc(modeName(e.mode))}</div></div>
       ${wrHtml}
     </div>${brsHtml}</div>`;
 }

@@ -41,7 +41,7 @@ function refillMaps(modeId, mapId, curMap) {
   const ms = $(modeId), ps = $(mapId), mode = ms.value;
   const maps = mode ? bsMapsOf(mode) : BS_MODES.flatMap((m) => m.maps);
   const uniq = [...new Set(maps)];
-  ps.innerHTML = `<option value="">— Mapa —</option>` + uniq.map((mp) => `<option value="${esc(mp)}">${esc(mp)}</option>`).join("");
+  ps.innerHTML = `<option value="">— Mapa —</option>` + uniq.map((mp) => `<option value="${esc(mp)}">${esc(mapNameEs(mp))}</option>`).join("");
   ps.value = (curMap && uniq.includes(curMap)) ? curMap : "";
 }
 function modeChanged(modeId, mapId) { refillMaps(modeId, mapId, $(mapId).value); }
@@ -98,7 +98,7 @@ function modeChip(mode) {
   return `<span class="mm-chip">${ic ? `<img src="${esc(ic)}" alt="" onerror="this.remove()">` : ""}${esc(mode)}</span>`;
 }
 function mapChip(mp) {
-  return mp ? `<a class="mm-map" href="${esc(mapImageSearch(mp))}" target="_blank" rel="noopener" title="Ver imagen del mapa">${esc(mp)}</a>` : "";
+  return mp ? `<a class="mm-map" href="${esc(mapImageSearch(mp))}" target="_blank" rel="noopener" title="Ver imagen del mapa">${esc(mapNameEs(mp))}</a>` : "";
 }
 function renderModeMap(mode, mp, s, asBlock) {
   const showMode = mapsRevealed(s, "mode"), showMap = mapsRevealed(s, "map");
