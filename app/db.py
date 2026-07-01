@@ -2832,6 +2832,9 @@ def reto_metric(player_tag, since, until, metric, scope) -> float:
         elif metric == "distinct_brawlers":
             extra = "AND" if where else "WHERE"
             q = f"SELECT COUNT(DISTINCT my_brawler) FROM battles {where} {extra} is_win=1"
+        elif metric == "distinct_played":
+            extra = "AND" if where else "WHERE"
+            q = f"SELECT COUNT(DISTINCT my_brawler) FROM battles {where} {extra} my_brawler IS NOT NULL"
         elif metric == "winrate":
             row = conn.execute(
                 f"SELECT SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS w, "

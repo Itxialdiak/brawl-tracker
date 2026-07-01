@@ -28,6 +28,8 @@ METRICS = {
                           "help": "Encadena victorias seguidas (una derrota corta la racha)."},
     "distinct_brawlers": {"label": "Ganar con brawlers distintos",  "unit": "brawlers",  "scope": True,  "min_games": False,
                           "help": "Gana al menos una vez con cierto número de brawlers diferentes."},
+    "distinct_played":   {"label": "Jugar con brawlers distintos",  "unit": "brawlers",  "scope": True,  "min_games": False,
+                          "help": "Juega al menos una partida con cierto número de brawlers diferentes (para 'juega con cada brawler'; acótalo a un modo/mapa si quieres)."},
     "trophies":          {"label": "Sumar copas",                   "unit": "copas",     "scope": True,  "min_games": False,
                           "help": "Suma copas netas (lo que ganas menos lo que pierdes) durante el reto."},
     "star_player":       {"label": "Ser jugador estelar",      "unit": "veces",     "scope": True,  "min_games": False,
@@ -80,6 +82,7 @@ def describe_condition(c) -> str:
         "games": f"Juega {ti} partidas{scope}",
         "win_streak": f"Encadena {ti} victorias seguidas{scope}",
         "distinct_brawlers": f"Gana con {ti} brawlers distintos{scope}",
+        "distinct_played": f"Juega con {ti} brawlers distintos{scope}",
         "trophies": f"Suma {ti} copas{scope}",
         "star_player": f"Sé jugador estelar {ti} veces{scope}",
     }.get(metric, f"{METRICS.get(metric, {}).get('label', '?')}: {t}")
@@ -162,7 +165,7 @@ def _condition_effort(c, player_tag):
     histórico reciente en ese ámbito."""
     metric, target = c["metric"], float(c["target"])
     scope = c.get("scope") or {}
-    if metric in ("wins", "games", "trophies", "star_player", "distinct_brawlers"):
+    if metric in ("wins", "games", "trophies", "star_player", "distinct_brawlers", "distinct_played"):
         base = "games" if metric == "trophies" else metric
         recent = db.reto_metric(player_tag, None, None, base, scope)
         pace = max(5.0, recent / 4.0)                     # ~un cuarto de su histórico como "ritmo"

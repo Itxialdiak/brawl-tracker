@@ -21,7 +21,7 @@ function showAdminTab(name) {
 const KIND_LABEL = { edit: ["Edición", "pk-edit"], create_section: ["Nueva sección", "pk-create"],
   create_subsection: ["Nueva subsección", "pk-create"], create_separator: ["Nuevo separador", "pk-create"],
   delete: ["Eliminación", "pk-delete"], reorder: ["Reordenación", "pk-reorder"],
-  translate: ["Traducción", "pk-edit"] };
+  translate: ["Traducción", "pk-translate"] };
 
 async function loadAdminPending() {
   const wrap = $("pending-list");

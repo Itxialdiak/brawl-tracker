@@ -401,6 +401,7 @@
 "Italia": "Italy",
 "Japón": "Japan",
 "Jornada": "Matchday",
+"Juega al menos una partida con cierto número de brawlers diferentes (para 'juega con cada brawler'; acótalo a un modo/mapa si quieres).": "Play at least one match with a certain number of different brawlers (for 'play with each brawler'; narrow it to a mode/map if you want).",
 "Juega este mapa para ver tus mejores brawlers.": "Play this map to see your best brawlers.",
 "Juega más partidas para compararte con la media.": "Play more matches to compare yourself to the average.",
 "Juega o espera más datos de la comunidad.": "Play or wait for more community data.",
@@ -412,6 +413,7 @@
 "Jugador y partidas borrados": "Player and matches deleted",
 "Jugadores": "Players",
 "Jugadores trackeados": "Tracked players",
+"Jugar con brawlers distintos": "Play with distinct brawlers",
 "Justifica el cambio.": "Justify the change.",
 "Justificación": "Justification",
 "La API de Brawl Stars responde con normalidad.": "The Brawl Stars API is responding normally.",
@@ -762,6 +764,7 @@
 "Sin jugadores válidos todavía.": "No valid players yet.",
 "Sin mapas para este modo.": "No maps for this mode.",
 "Sin nerfs.": "No nerfs.",
+"Sin opciones (juega alguna partida primero)": "No options (play a match first)",
 "Sin opciones todavía": "No options yet",
 "Sin país (solo global)": "No country (global only)",
 "Sin resultados.": "No results.",
@@ -979,6 +982,10 @@
 [
 "^Sé\\ jugador\\ estelar\\ (\\d+)\\ veces(.*?)$",
 "Be Star Player $1 times$2"
+],
+[
+"^Juega con (\\d+) brawlers distintos(.*?)$",
+"Play with $1 different brawlers$2"
 ],
 [
 "^(\\d+)\\ jugador\\(es\\)\\ ·\\ sondeo\\ cada$",

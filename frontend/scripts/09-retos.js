@@ -52,6 +52,7 @@ function retoCondText(c) {
     case "winrate": return `Mantén ${tgt}% de victorias${s}${c.min_games ? ` (mín. ${c.min_games})` : ""}`;
     case "win_streak": return `Encadena ${tgt} victorias${s}`;
     case "distinct_brawlers": return `Gana con ${tgt} brawlers distintos${s}`;
+    case "distinct_played": return `Juega con ${tgt} brawlers distintos${s}`;
     case "trophies": return `Suma ${tgt} copas${s}`;
     case "star_player": return `Sé jugador estelar ${tgt} veces${s}`;
     default: return c.metric;
@@ -275,9 +276,65 @@ async function openRetoCompleted(source) {
 
 /* ---------- crear reto ---------- */
 
+let RETO_OPTS = null;   // opciones de ámbito {mode:[{v,label,img}], map:[...]}; brawler = catálogo completo
+
+/* Ámbito opcional (brawler/modo/mapa) como multi-selección: checkbox para activar (por
+   defecto desactivado y deshabilitado) + desplegable con imágenes y "Todos/Ninguno". */
+function scopeMsHTML(kind, label) {
+  return `<div class="rc-scope" data-kind="${kind}">
+      <label class="rc-scope-en"><input type="checkbox" onchange="retoScopeToggle(this)"> ${esc(label)}</label>
+      <div class="rc-ms">
+        <button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Cualquiera</button>
+        <div class="rc-ms-panel">
+          <div class="rc-ms-actions"><button type="button" onclick="retoMsAll(event,this,true)">✓ Todos</button><button type="button" onclick="retoMsAll(event,this,false)">Ninguno</button></div>
+          <div class="rc-ms-opts"></div>
+        </div>
+      </div>
+    </div>`;
+}
+function retoScopeOpts(kind) {
+  if (kind === "brawler") return Object.keys(ASSETS.brawlers || {}).sort()
+    .map((n) => ({ v: n, label: n, img: ASSETS.brawlers[n] }));
+  return (RETO_OPTS && RETO_OPTS[kind]) || [];
+}
+function retoScopeToggle(chk) {
+  const sc = chk.closest(".rc-scope");
+  sc.classList.toggle("on", chk.checked);
+  if (chk.checked && !sc.querySelector(".rc-ms-opts").childElementCount) {
+    const opts = retoScopeOpts(sc.dataset.kind);
+    sc.querySelector(".rc-ms-opts").innerHTML = opts.length
+      ? opts.map((o) => `<label class="rc-ms-opt"><input type="checkbox" value="${esc(o.v)}" onchange="retoMsUpd(this)">${o.img ? `<img src="${esc(o.img)}" alt="" onerror="this.style.display='none'">` : ""}<span>${esc(o.label)}</span></label>`).join("")
+      : `<div class="ms-empty">Sin opciones (juega alguna partida primero)</div>`;
+  }
+}
+function retoMsOpen(e, btn) { e.preventDefault(); btn.parentElement.classList.toggle("open"); }
+function retoMsAll(e, btn, all) {
+  e.preventDefault();
+  const ms = btn.closest(".rc-ms");
+  ms.querySelectorAll(".rc-ms-opt input").forEach((c) => { c.checked = all; });
+  retoMsTrigger(ms);
+}
+function retoMsUpd(inp) { retoMsTrigger(inp.closest(".rc-ms")); }
+function retoMsTrigger(ms) {
+  const sel = [...ms.querySelectorAll(".rc-ms-opt input:checked")];
+  const t = ms.querySelector(".rc-ms-trigger");
+  t.textContent = !sel.length ? "Cualquiera"
+    : sel.length === 1 ? sel[0].closest(".rc-ms-opt").querySelector("span").textContent
+      : sel.length + " seleccionados";
+}
+
 async function openCreateReto() {
   if (!RETO_META) {
     try { RETO_META = await getJSON("/api/retos/meta"); } catch (_) { return; }
+  }
+  if (!RETO_OPTS) {   // modos/mapas con valores que casan con las partidas
+    try {
+      const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
+      RETO_OPTS = {
+        mode: (f.modes || []).map((m) => ({ v: m, label: modeName(m), img: (modeAsset(m) || {}).icon })),
+        map: (f.maps || []).map((m) => ({ v: m, label: mapNameEs(m), img: (mapAsset(m) || {}).image })),
+      };
+    } catch (_) { RETO_OPTS = { mode: [], map: [] }; }
   }
   $("rc-name").value = ""; $("rc-theme").value = ""; $("rc-diff").value = "3";
   $("rc-vis").value = "public"; $("rc-limit").value = ""; $("rc-desc").value = "";
@@ -289,8 +346,7 @@ async function openCreateReto() {
       <div class="rc-cond-fields">
         <span class="rc-f">objetivo <input type="number" min="1" class="rc-target" placeholder="${key === "winrate" ? "%" : "nº"}"></span>
         ${m.min_games ? `<span class="rc-f">mín. partidas <input type="number" min="1" class="rc-mingames" placeholder="p.ej. 20"></span>` : ""}
-        <span class="rc-f">brawler <input type="text" class="rc-sc-brawler" placeholder="opcional"></span>
-        <span class="rc-f">modo <input type="text" class="rc-sc-mode" placeholder="opcional"></span>
+        <div class="rc-scopes">${scopeMsHTML("brawler", "Brawler")}${scopeMsHTML("mode", "Modo")}${scopeMsHTML("map", "Mapa")}</div>
       </div>
       <div class="rc-cond-help">${esc(m.help)}</div>
     </div>`).join("");
@@ -313,10 +369,12 @@ function collectRetoConditions() {
     const mg = row.querySelector(".rc-mingames");
     if (mg && mg.value) c.min_games = parseInt(mg.value, 10);
     const scope = {};
-    const br = row.querySelector(".rc-sc-brawler").value.trim();
-    const mo = row.querySelector(".rc-sc-mode").value.trim();
-    if (br) scope.brawler = br.toUpperCase();
-    if (mo) scope.mode = mo;
+    row.querySelectorAll(".rc-scope").forEach((sc) => {
+      const en = sc.querySelector(".rc-scope-en input");
+      if (!en || !en.checked) return;   // ámbito no activado = opcional, se ignora
+      const vals = [...sc.querySelectorAll(".rc-ms-opt input:checked")].map((c) => c.value);
+      if (vals.length) scope[sc.dataset.kind] = vals.length === 1 ? vals[0] : vals;
+    });
     if (Object.keys(scope).length) c.scope = scope;
     conds.push(c);
   });
