@@ -147,3 +147,13 @@ def brawlers_with_role(role: str) -> list:
 def all_roles() -> list:
     """Todos los roles distintos del índice (orden alfabético)."""
     return sorted({r for rs in _load_roles_index().values() for r in rs})
+
+
+def active_brawler_names() -> list:
+    """Nombres (MAYÚS, orden alfabético) de los brawlers ACTIVOS actuales.
+
+    Fuente: el índice de roles (roster curado del juego), excluyendo los brawlers
+    temporales de colaboración (p. ej. Buzz Lightyear) que no forman parte del
+    plantel jugable permanente. Se usa para el selector de ámbito de los retos:
+    solo tiene sentido pedir "jugar con cada brawler" sobre los jugables actuales."""
+    return sorted(n for n in _load_roles_index().keys() if not is_temporary(name=n))

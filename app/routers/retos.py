@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Body, Query, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from .. import db, auth, retos
+from .. import db, auth, retos, brawler_extra
 from ..api_common import _require_follow
 
 router = APIRouter()
@@ -40,7 +40,8 @@ def _sync_completion(reto: dict, user_id: int, part: dict) -> dict:
 @router.get("/api/retos/meta")
 def api_retos_meta(user: dict = Depends(auth.require_user)):
     """Catálogo de métricas medibles (para el formulario de crear reto y el manual)."""
-    return {"metrics": retos.METRICS, "max_conditions": retos.MAX_CONDITIONS}
+    return {"metrics": retos.METRICS, "max_conditions": retos.MAX_CONDITIONS,
+            "brawlers": brawler_extra.active_brawler_names()}
 
 
 @router.get("/api/retos/counters")

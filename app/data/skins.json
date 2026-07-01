@@ -1513,5 +1513,15 @@
 "image": null,
 "brawler": "POCO",
 "skin": "DJ POCO"
+},
+"29001406": {
+"image": "https://static.wikia.nocookie.net/brawlstars/images/c/c8/Brock_Skin-Boss.png/revision/latest/scale-to-width-down/500?cb=20251217113706",
+"brawler": "BROCK",
+"skin": "BOSS BROCK"
+},
+"29001231": {
+"image": "https://static.wikia.nocookie.net/brawlstars/images/0/00/Gus_Skin-Grim.png/revision/latest/scale-to-width-down/500?cb=20251011033153",
+"brawler": "GUS",
+"skin": "GRIM GUS"
 }
 }

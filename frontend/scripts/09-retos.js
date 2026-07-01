@@ -293,8 +293,15 @@ function scopeMsHTML(kind, label) {
     </div>`;
 }
 function retoScopeOpts(kind) {
-  if (kind === "brawler") return Object.keys(ASSETS.brawlers || {}).sort()
-    .map((n) => ({ v: n, label: n, img: ASSETS.brawlers[n] }));
+  if (kind === "brawler") {
+    // Solo brawlers ACTIVOS actuales (del catálogo del servidor), sin colabs temporales
+    // como Buzz Lightyear. Si aún no llegó la meta, caemos a las imágenes disponibles.
+    const names = (RETO_META && RETO_META.brawlers && RETO_META.brawlers.length)
+      ? RETO_META.brawlers
+      : Object.keys(ASSETS.brawlers || {});
+    return names.slice().sort()
+      .map((n) => ({ v: n, label: n, img: (ASSETS.brawlers || {})[n] }));
+  }
   return (RETO_OPTS && RETO_OPTS[kind]) || [];
 }
 function retoScopeToggle(chk) {
