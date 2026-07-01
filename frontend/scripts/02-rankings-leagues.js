@@ -349,12 +349,15 @@ async function confirmImport() {
 function showSection(name) {
   // Guardia de permisos (defensa en profundidad): nadie sin rol admin ve el panel de
   // administración aunque llegue aquí. Los datos ya están protegidos en el servidor (403).
-  if (name === "admin" && !(typeof currentUser !== "undefined" && currentUser && currentUser.is_admin)) name = "brawlytics";
+  if (name === "admin" && !(typeof currentUser !== "undefined" && currentUser && (currentUser.is_admin || currentUser.is_translator))) name = "brawlytics";
   document.querySelectorAll(".app-section").forEach((s) => s.classList.toggle("active", s.id === "section-" + name));
   document.querySelectorAll(".snav").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (name === "guide") loadWikiTree();
-  if (name === "admin") { loadAdminPending(); }
+  if (name === "admin") {
+    if (currentUser && !currentUser.is_admin && currentUser.is_translator) showAdminTab("i18n");
+    else loadAdminPending();
+  }
   if (name === "leagues") loadLeagues();
   if (name === "actualizaciones") loadActualizaciones();
   if (name === "servers") loadServerStatus();

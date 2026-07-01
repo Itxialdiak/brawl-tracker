@@ -2011,3 +2011,22 @@ header { position: relative; z-index: 200; }
 .rc-ms-opt img { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
 .rc-ms-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 640px) { .rc-ms-opts { grid-template-columns: 1fr; } .rc-ms-trigger { max-width: 150px; } }
+
+
+/* === Rosetta: editor de traducciones de la interfaz (Administración) === */
+body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
+.i18n-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.i18n-lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.i18n-lbl select { min-width: 150px; }
+#i18n-search { flex: 1; min-width: 180px; }
+.i18n-sec-h { font-family: var(--display); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--gold); margin: 16px 0 8px; }
+.i18n-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+#i18n-rows.with-ref .i18n-row { grid-template-columns: 1.2fr 1fr 1fr; }
+.i18n-src { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px; min-width: 0; }
+.i18n-src { overflow-wrap: anywhere; }
+.i18n-badge { flex: 0 0 auto; font-family: var(--display); font-weight: 700; font-size: 8.5px; text-transform: uppercase; color: var(--magenta); border: 1px solid rgba(198,79,240,.4); border-radius: 20px; padding: 1px 6px; }
+.i18n-ref-cell { font-size: 12.5px; color: var(--muted); font-style: italic; overflow-wrap: anywhere; }
+.i18n-inp { width: 100%; box-sizing: border-box; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-family: var(--body); font-size: 13px; }
+.i18n-inp:focus { border-color: var(--cyan); outline: none; }
+.i18n-row.done .i18n-inp { border-color: rgba(54,224,160,.4); }
+@media (max-width: 760px) { .i18n-row, #i18n-rows.with-ref .i18n-row { grid-template-columns: 1fr; } }

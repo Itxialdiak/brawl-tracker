@@ -1093,6 +1093,7 @@
       <button class="atab" data-atab="players" onclick="showAdminTab('players')">Jugadores</button>
       <button class="atab" data-atab="metrics" onclick="showAdminTab('metrics')">Métricas</button>
       <button class="atab" data-atab="history" onclick="showAdminTab('history')">Historial</button>
+      <button class="atab" data-atab="i18n" onclick="showAdminTab('i18n')">Traducciones</button>
     </div>
 
     <div class="admin-panel active" id="admin-pending">
@@ -1129,6 +1130,18 @@
       <div class="admin-panel-head"><h3>Historial de cambios de la wiki</h3></div>
       <p class="admin-hint">Cada vez que se aprueba un cambio se guarda la versión anterior. Si se ha perdido información, puedes restaurarla.</p>
       <div id="history-list"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
+    <div class="admin-panel" id="admin-i18n">
+      <div class="admin-panel-head"><h3>Traducciones de la interfaz</h3></div>
+      <p class="admin-hint">Traduce los textos de la app. El <b>origen es siempre el español</b>; elige un <b>idioma de referencia</b> para apoyarte en otra traducción más cercana. Se guarda al instante. En los patrones (con <code>{n}</code>/<code>{s}</code>) conserva esos mismos marcadores en la traducción.</p>
+      <div class="i18n-bar">
+        <label class="i18n-lbl">Traducir a <select id="i18n-target" onchange="loadI18nEditor()"></select></label>
+        <label class="i18n-lbl">Referencia <select id="i18n-ref" onchange="loadI18nRef()"></select></label>
+        <input type="text" id="i18n-search" class="br-search" placeholder="Buscar texto…" oninput="renderI18nRows()" />
+        <span id="i18n-stat" class="admin-hint" style="margin:0"></span>
+      </div>
+      <div id="i18n-rows"><div class="wk-loading">Elige un idioma para empezar…</div></div>
     </div>
   </section>
 

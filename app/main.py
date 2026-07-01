@@ -291,7 +291,8 @@ from .routers.wiki import router as _r_wiki
 from .routers.admin import router as _r_admin
 from .routers.catalog import router as _r_catalog
 from .routers.notifications import router as _r_notifications
-for _r in (_r_auth, _r_wiki, _r_admin, _r_catalog, _r_notifications):
+from .routers.i18n import router as _r_i18n
+for _r in (_r_auth, _r_wiki, _r_admin, _r_catalog, _r_notifications, _r_i18n):
     app.include_router(_r)
 
 from .routers.players import router as _r_players

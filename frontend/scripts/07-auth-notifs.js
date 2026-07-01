@@ -10,7 +10,10 @@ function setUser(user) {
   $("user-pill").textContent = user && user.username ? "@" + user.username : "";
   const cs = $("um-country"); if (cs) cs.value = (user && user.country) || "";
   const navAdmin = $("nav-admin");
-  if (navAdmin) navAdmin.style.display = (user && user.is_admin) ? "" : "none";
+  // Administración: visible para admins y para traductores/colaboradores (estos solo verán
+  // la pestaña "Traducciones"; el resto se ocultan por CSS con body.tr-only).
+  if (navAdmin) navAdmin.style.display = (user && (user.is_admin || user.is_translator)) ? "" : "none";
+  document.body.classList.toggle("tr-only", !!(user && user.is_translator && !user.is_admin));
   const bell = $("notif-bell"); if (bell) bell.style.display = user ? "inline-flex" : "none";
   if (user) startNotifPolling(); else { clearInterval(_notifTimer); }
 }

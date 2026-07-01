@@ -16,6 +16,81 @@ function showAdminTab(name) {
   if (name === "players") loadAdminPlayers();
   if (name === "metrics") loadAdminMetrics();
   if (name === "history") loadAdminHistory();
+  if (name === "i18n") initI18nEditor();
+}
+
+/* ---------- Traducciones de la interfaz (Rosetta) ---------- */
+let I18N_CAT = null;               // catálogo {exact:[], patterns:[]}
+let i18nTargetMap = {}, i18nRefMap = {};
+
+async function initI18nEditor() {
+  const tsel = $("i18n-target"), rsel = $("i18n-ref");
+  if (tsel.options.length) return;   // ya inicializado
+  const langs = window.I18N_LANGS || [];
+  tsel.innerHTML = langs.filter((l) => l.code !== "es")
+    .map((l) => `<option value="${l.code}">${esc(l.label)}${l.soon ? " ·" : ""}</option>`).join("");
+  rsel.innerHTML = `<option value="">— sin referencia —</option>` +
+    langs.map((l) => `<option value="${l.code}"${l.code === "en" ? " selected" : ""}>${esc(l.label)}</option>`).join("");
+  try { I18N_CAT = await getJSON("/static/i18n/_sources.json"); } catch (_) { I18N_CAT = { exact: [], patterns: [] }; }
+  loadI18nEditor();
+}
+
+async function loadI18nEditor() {
+  const lang = $("i18n-target").value;
+  if (!lang) return;
+  try { i18nTargetMap = (await getJSON("/api/admin/i18n?lang=" + encodeURIComponent(lang))).map || {}; }
+  catch (_) { i18nTargetMap = {}; }
+  await loadI18nRef();
+}
+async function loadI18nRef() {
+  const ref = $("i18n-ref").value;
+  if (ref && ref !== "es") {
+    try { i18nRefMap = (await getJSON("/api/admin/i18n?lang=" + encodeURIComponent(ref))).map || {}; }
+    catch (_) { i18nRefMap = {}; }
+  } else { i18nRefMap = {}; }
+  renderI18nRows();
+}
+
+function i18nRowHTML(src, kind) {
+  const cur = (i18nTargetMap[src] || {}).target || "";
+  const refV = $("i18n-ref").value;
+  const ref = refV === "es" ? src : ((i18nRefMap[src] || {}).target || "");
+  const refHTML = refV ? `<div class="i18n-ref-cell" title="Referencia">${esc(ref)}</div>` : "";
+  return `<div class="i18n-row${cur ? " done" : ""}" data-src="${esc(src)}" data-kind="${kind}">
+      <div class="i18n-src">${esc(src)}${kind === "pattern" ? '<span class="i18n-badge">patrón</span>' : ""}</div>
+      ${refHTML}
+      <input type="text" class="i18n-inp" value="${esc(cur)}" placeholder="traducción…"
+        onchange="saveI18n(this)" onkeydown="if(event.key==='Enter')this.blur()">
+    </div>`;
+}
+
+function renderI18nRows() {
+  if (!I18N_CAT) return;
+  const q = ($("i18n-search").value || "").trim().toLowerCase();
+  const refOn = !!$("i18n-ref").value;
+  const match = (s) => !q || s.toLowerCase().includes(q);
+  const exact = I18N_CAT.exact.filter(match);
+  const pats = I18N_CAT.patterns.filter(match);
+  const wrap = $("i18n-rows");
+  wrap.classList.toggle("with-ref", refOn);
+  let done = 0;
+  (I18N_CAT.exact.concat(I18N_CAT.patterns)).forEach((s) => { if ((i18nTargetMap[s] || {}).target) done++; });
+  $("i18n-stat").textContent = `${done}/${I18N_CAT.exact.length + I18N_CAT.patterns.length} traducidas`;
+  const sec = (title, arr, kind) => arr.length
+    ? `<div class="i18n-sec-h">${title} <span class="reto-count">${arr.length}</span></div>${arr.map((s) => i18nRowHTML(s, kind)).join("")}` : "";
+  wrap.innerHTML = (sec("Textos", exact, "exact") + sec("Frases con variables (patrones)", pats, "pattern"))
+    || `<div class="lg-empty">Sin resultados para «${esc(q)}».</div>`;
+}
+
+async function saveI18n(inp) {
+  const row = inp.closest(".i18n-row");
+  const source = row.dataset.src, kind = row.dataset.kind, lang = $("i18n-target").value;
+  const target = inp.value.trim();
+  const { ok, d } = await apiSend("/api/admin/i18n", "POST", { lang, source, kind, target });
+  if (!ok) { wikiToast(d.error || "No se pudo guardar.", "err"); return; }
+  i18nTargetMap[source] = { kind, target };
+  row.classList.toggle("done", !!target);
+  wikiToast("Guardado ✓", "ok");
 }
 
 const KIND_LABEL = { edit: ["Edición", "pk-edit"], create_section: ["Nueva sección", "pk-create"],
@@ -131,9 +206,10 @@ async function loadAdminUsers() {
     wrap.innerHTML = (d.users || []).map((u) => {
       const me = currentUser && u.id === currentUser.id;
       return `<div class="user-row">
-        <div class="user-name">${esc(u.username)}${u.is_admin ? '<span class="badge-admin">admin</span>' : ""}${me ? '<span class="you">(tú)</span>' : ""}</div>
+        <div class="user-name">${esc(u.username)}${u.is_admin ? '<span class="badge-admin">admin</span>' : ""}${u.is_translator ? '<span class="badge-admin" style="background:rgba(91,84,255,.2);color:#b8b3ff">traductor</span>' : ""}${me ? '<span class="you">(tú)</span>' : ""}</div>
         <div class="user-actions">
           <button onclick="toggleUserAdmin(${u.id}, ${u.is_admin ? 0 : 1})" ${me && u.is_admin ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>${u.is_admin ? "Quitar admin" : "Hacer admin"}</button>
+          <button onclick="toggleUserTranslator(${u.id}, ${u.is_translator ? 0 : 1})">${u.is_translator ? "Quitar traductor" : "Hacer traductor"}</button>
           <button onclick="openUserPw(${u.id}, '${esc(u.username)}')">Resetear contraseña</button>
           <button class="danger" onclick="deleteUser(${u.id}, '${esc(u.username)}')" ${me ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>Borrar</button>
         </div></div>`;
@@ -142,6 +218,11 @@ async function loadAdminUsers() {
 }
 async function toggleUserAdmin(uid, val) {
   const { ok, d } = await apiSend("/api/admin/users/" + uid + "/admin", "POST", { is_admin: !!val });
+  if (!ok) { wikiToast(d.error || "No se pudo cambiar", "err"); return; }
+  loadAdminUsers();
+}
+async function toggleUserTranslator(uid, val) {
+  const { ok, d } = await apiSend("/api/admin/users/" + uid + "/translator", "POST", { is_translator: !!val });
   if (!ok) { wikiToast(d.error || "No se pudo cambiar", "err"); return; }
   loadAdminUsers();
 }

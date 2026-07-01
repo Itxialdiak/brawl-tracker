@@ -94,3 +94,13 @@ def require_admin(request: Request) -> dict:
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Necesitas permisos de administrador.")
     return user
+
+
+def require_translator(request: Request) -> dict:
+    """Dependencia: exige sesión válida y rol de admin O de traductor/colaborador."""
+    user = current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="No has iniciado sesión.")
+    if not (user.get("is_admin") or user.get("is_translator")):
+        raise HTTPException(status_code=403, detail="Necesitas permisos de traductor.")
+    return user

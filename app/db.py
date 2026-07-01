@@ -117,6 +117,12 @@ def init_db():
             translator_user_id INTEGER, updated_at TEXT,
             UNIQUE(node_id, lang)
         );
+        CREATE TABLE IF NOT EXISTS ui_translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, lang TEXT NOT NULL,
+            source TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'exact', target TEXT,
+            updated_by INTEGER, updated_at TEXT,
+            UNIQUE(lang, source)
+        );
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT, owner_user_id INTEGER NOT NULL,
             name TEXT NOT NULL, kind TEXT NOT NULL, mode TEXT NOT NULL, visibility TEXT NOT NULL,
@@ -207,12 +213,14 @@ def init_db():
     _ensure_column(cur, "brawler_collection", "prestige_level", "INTEGER")
     _ensure_column(cur, "wiki_nodes", "orig_lang", "TEXT DEFAULT 'es'")   # idioma del contenido original
     _ensure_column(cur, "wiki_history", "lang", "TEXT DEFAULT 'es'")       # idioma de la versión guardada
+    _ensure_column(cur, "users", "is_translator", "INTEGER DEFAULT 0")    # colaborador de traducción (Rosetta)
     # El usuario itxialdiak es administrador por defecto.
     cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
     conn.commit()
     conn.close()
     seed_wiki_if_empty()
     seed_wiki_translations()
+    seed_ui_translations()
 
 
 # ---------------------------------------------------------------------------
@@ -741,6 +749,64 @@ def seed_wiki_translations() -> None:
     conn.commit(); conn.close()
 
 
+# --------------------------- Traducción de la interfaz (Rosetta) ---------------------------
+
+UI_SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "frontend", "i18n", "_seed.json")
+
+
+def ui_upsert_translation(lang: str, source: str, kind: str, target, user_id) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO ui_translations (lang,source,kind,target,updated_by,updated_at) VALUES (?,?,?,?,?,?) "
+        "ON CONFLICT(lang,source) DO UPDATE SET kind=excluded.kind, target=excluded.target, "
+        "updated_by=excluded.updated_by, updated_at=excluded.updated_at",
+        (lang, source, kind or "exact", target, user_id, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def ui_translations_rows(lang: str) -> list:
+    """Filas {source, kind, target} de un idioma (para servir y para el editor)."""
+    conn = get_conn()
+    rows = conn.execute("SELECT source, kind, target FROM ui_translations WHERE lang=?", (lang,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def ui_translated_langs() -> list:
+    conn = get_conn()
+    rows = conn.execute("SELECT DISTINCT lang FROM ui_translations ORDER BY lang").fetchall()
+    conn.close()
+    return [r["lang"] for r in rows]
+
+
+def set_user_translator(user_id: int, val: bool) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE users SET is_translator=? WHERE id=?", (1 if val else 0, user_id))
+    conn.commit(); conn.close()
+
+
+def seed_ui_translations() -> None:
+    """Precarga traducciones sembradas (p.ej. inglés) en ui_translations desde
+    frontend/i18n/_seed.json, para que sean editables y sirvan de referencia. No pisa lo ya
+    guardado (respeta mejoras de la comunidad). Estructura: {lang: {exact:{}, patterns:{}}}."""
+    try:
+        seed = json.load(open(UI_SEED_PATH, encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    have = {(r["lang"], r["source"]) for r in conn.execute("SELECT lang, source FROM ui_translations").fetchall()}
+    for lang, data in (seed or {}).items():
+        for kind, key in (("exact", "exact"), ("pattern", "patterns")):
+            for src, tgt in (data.get(key) or {}).items():
+                if (lang, src) in have:
+                    continue
+                conn.execute(
+                    "INSERT INTO ui_translations (lang,source,kind,target,updated_by,updated_at) "
+                    "VALUES (?,?,?,?,?,?)", (lang, src, kind, tgt, None, now))
+    conn.commit(); conn.close()
+
+
 def get_wiki_tree(lang: str | None = None) -> list:
     """Árbol del índice. Si `lang` no es el original (es), los títulos se muestran en ese
     idioma con fallback: idioma pedido → inglés → original."""
@@ -1052,7 +1118,7 @@ def revert_wiki_version(hid: int, by_user_id) -> bool:
 def list_users() -> list:
     conn = get_conn()
     rows = conn.execute(
-        "SELECT id, username, is_admin, country, created_at FROM users ORDER BY username").fetchall()
+        "SELECT id, username, is_admin, is_translator, country, created_at FROM users ORDER BY username").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

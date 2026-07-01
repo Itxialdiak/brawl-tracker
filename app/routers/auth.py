@@ -13,7 +13,7 @@ router = APIRouter()
 
 def _public_user(u: dict) -> dict:
     return {"id": u["id"], "username": u["username"], "country": u.get("country"),
-            "is_admin": bool(u.get("is_admin"))}
+            "is_admin": bool(u.get("is_admin")), "is_translator": bool(u.get("is_translator"))}
 
 
 @router.get("/api/auth/config")

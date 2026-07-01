@@ -173,10 +173,25 @@
   function loadDict(code) {
     if (code === BASE) return Promise.resolve(null);
     if (_dicts[code]) return Promise.resolve(_dicts[code]);
-    return fetch("/static/i18n/" + code + ".json")
-      .then(function (r) { return r.ok ? r.json() : {}; })
-      .catch(function () { return {}; })
-      .then(function (d) { _dicts[code] = d || {}; return _dicts[code]; });
+    // Base: el .json estático sembrado. Overrides: traducciones de la comunidad (Rosetta),
+    // que ganan sobre lo sembrado. Se fusionan exactas y patrones (dedup por regex).
+    var staticP = fetch("/static/i18n/" + code + ".json")
+      .then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; });
+    var commP = fetch("/api/i18n/" + code)
+      .then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; });
+    return Promise.all([staticP, commP]).then(function (arr) {
+      var base = arr[0] || {}, comm = arr[1] || {}, merged = {}, k;
+      for (k in base) if (k !== "__patterns__") merged[k] = base[k];
+      var cex = comm.exact || {};
+      for (k in cex) if (cex[k]) merged[k] = cex[k];              // la comunidad gana
+      var pats = [], seen = {}, i, cp = comm.patterns || [], sp = base.__patterns__ || [];
+      for (i = 0; i < cp.length; i++) if (cp[i] && !seen[cp[i][0]]) { seen[cp[i][0]] = 1; pats.push(cp[i]); }
+      for (i = 0; i < sp.length; i++) if (sp[i] && !seen[sp[i][0]]) { seen[sp[i][0]] = 1; pats.push(sp[i]); }
+      pats.sort(function (a, b) { return b[0].length - a[0].length; });  // más específicos primero
+      merged.__patterns__ = pats;
+      _dicts[code] = merged;
+      return merged;
+    });
   }
 
   /* Cambia el idioma: persiste y recarga (re-render limpio en el nuevo idioma). */

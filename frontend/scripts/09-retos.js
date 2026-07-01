@@ -299,7 +299,7 @@ function retoScopeOpts(kind) {
 }
 function retoScopeToggle(chk) {
   const sc = chk.closest(".rc-scope");
-  sc.classList.toggle("on", chk.checked);
+  sc.querySelector(".rc-ms").classList.toggle("on", chk.checked);   // el activable es .rc-ms, no .rc-scope
   if (chk.checked && !sc.querySelector(".rc-ms-opts").childElementCount) {
     const opts = retoScopeOpts(sc.dataset.kind);
     sc.querySelector(".rc-ms-opts").innerHTML = opts.length

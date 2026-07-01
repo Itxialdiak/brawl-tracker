@@ -96,6 +96,12 @@ def api_admin_user_setadmin(uid: int, payload: dict = Body(...), admin: dict = D
     return {"ok": True}
 
 
+@router.post("/api/admin/users/{uid}/translator")
+def api_admin_user_settranslator(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    db.set_user_translator(uid, bool((payload or {}).get("is_translator")))
+    return {"ok": True}
+
+
 @router.post("/api/admin/users/{uid}/password")
 def api_admin_user_password(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
     pw = (payload or {}).get("password") or ""
