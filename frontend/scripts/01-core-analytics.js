@@ -41,6 +41,30 @@ function modeAsset(mode) { return mode ? ASSETS.modes[mode.toLowerCase()] || nul
 function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
 function imgTag(url, cls) { return `<img class="${cls}" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'" />`; }
 
+/* Copia texto al portapapeles con feedback breve en el elemento pulsado */
+function copyToClipboard(text, el) {
+  const done = () => {
+    if (!el) return;
+    const old = el.dataset.label || el.textContent;
+    el.dataset.label = old;
+    el.classList.add("copied");
+    el.textContent = "¡Copiado!";
+    clearTimeout(el._copyT);
+    el._copyT = setTimeout(() => { el.textContent = el.dataset.label || old; el.classList.remove("copied"); }, 1100);
+  };
+  const fallback = () => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta); done();
+    } catch (e) { /* sin portapapeles */ }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else { fallback(); }
+}
+
 function qs() {
   const p = new URLSearchParams();
   if (currentPlayer) p.set("player", currentPlayer);
@@ -383,7 +407,14 @@ async function loadPlayerStats() {
 function updatePlayerHeader() {
   const p = playersById[currentPlayer];
   $("player-name").textContent = p && p.name ? p.name : (currentPlayer || "—");
-  $("player-tag").textContent = currentPlayer || "—";
+  const tagEl = $("player-tag");
+  tagEl.textContent = currentPlayer || "—";
+  tagEl.dataset.label = currentPlayer || "—";
+  if (currentPlayer) {
+    tagEl.classList.add("copyable");
+    tagEl.title = "Clic para copiar el ID";
+    tagEl.onclick = () => copyToClipboard(currentPlayer, tagEl);
+  } else { tagEl.classList.remove("copyable"); tagEl.onclick = null; }
   const club = $("player-club");
   if (p && p.club_name) { club.innerHTML = `Club · <b>${esc(p.club_name)}</b>`; club.style.display = ""; }
   else { club.style.display = "none"; }

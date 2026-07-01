@@ -1912,3 +1912,11 @@
   .br-rec-cards, .br-rec-group.full .br-rec-cards { display: grid; grid-template-columns: 1fr; overflow: visible; gap: 8px; }
   .br-rec-cards > .br-rec-card { flex: 1 1 auto; }
 }
+
+
+/* === ID de jugador: clic para copiar === */
+.ptag.copyable { cursor: pointer; transition: color .12s, opacity .12s; }
+.ptag.copyable::after { content: " ⧉"; opacity: .55; font-size: .85em; }
+.ptag.copyable:hover { color: #9af0ff; }
+.ptag.copied { color: var(--win); }
+.ptag.copied::after { content: ""; }
