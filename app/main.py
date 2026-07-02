@@ -174,6 +174,47 @@ async def _event_notifier():
         await asyncio.sleep(EVENT_NOTIFY_INTERVAL)
 
 
+EVENT_DETECT_INTERVAL = 3600  # cada hora
+
+
+def _active_event_ids():
+    """IDs de eventos cuyo rango de fechas incluye AHORA (torneo en curso). Fuera de
+    ese rango el evento no se sondea (el poller queda inactivo para él)."""
+    now = datetime.now(timezone.utc)
+    out = []
+    for eid in db.event_ids_with_start():
+        e = db.get_event(eid)
+        if not e:
+            continue
+        start = detect.parse_event_date(e.get("date_start"))
+        end = detect.parse_event_date(e.get("date_end"), end=True)
+        if start and now >= start and (end is None or now <= end):
+            out.append(eid)
+    return out
+
+
+async def _event_result_poller():
+    """Cada hora, y SOLO durante las fechas de un evento activo, cruza automáticamente
+    las partidas pendientes con los battlelogs amistosos de los participantes y propone
+    resultados. Sustituye al antiguo botón manual «Detectar resultados»; cuando no hay
+    ningún evento en curso, este poller no hace nada."""
+    from .routers.events import detect_event_matches
+    while True:
+        try:
+            if brawl_api.TOKEN:
+                eids = await asyncio.to_thread(_active_event_ids)
+                for eid in eids:
+                    try:
+                        res = await detect_event_matches(eid)
+                        if res.get("detected"):
+                            print(f"[event-detect] evento {eid}: {res['detected']} resultado(s) detectados")
+                    except Exception as ee:  # noqa: BLE001
+                        print(f"[event-detect] evento {eid} error: {ee}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[event-detect] error: {e}")
+        await asyncio.sleep(EVENT_DETECT_INTERVAL)
+
+
 WIKI_UPDATE_INTERVAL = 24 * 3600  # una vez al día
 
 
@@ -266,11 +307,13 @@ async def lifespan(app: FastAPI):
         print("⚠️  Falta BRAWL_API_TOKEN en .env; el poller está parado.")
     notifier = asyncio.create_task(_event_notifier())  # avisos de cercanía/inicio (Fase 6)
     wiki_task = asyncio.create_task(_wiki_updater())   # refresco diario de datos de brawlers
+    detector = asyncio.create_task(_event_result_poller())  # auto-detección horaria de resultados en eventos activos
     yield
     if task:
         task.cancel()
     notifier.cancel()
     wiki_task.cancel()
+    detector.cancel()
 
 
 app = FastAPI(title="Brawl Stars Tracker", lifespan=lifespan)

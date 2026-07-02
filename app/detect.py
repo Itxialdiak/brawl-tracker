@@ -65,6 +65,11 @@ def _sides(battle: dict):
     teams = battle.get("teams")
     if isinstance(teams, list) and len(teams) == 2 and all(isinstance(t, list) for t in teams):
         return [[normalize_tag(p.get("tag")) for p in side if p.get("tag")] for side in teams]
+    # Duelos (1 vs 1): la API lo da como lista PLANA de 2 jugadores, sin 'teams'.
+    players = battle.get("players")
+    if isinstance(players, list) and len(players) == 2 and all(isinstance(p, dict) for p in players):
+        sides = [[normalize_tag(p.get("tag"))] if p.get("tag") else [] for p in players]
+        return sides if all(sides) else None
     return None
 
 

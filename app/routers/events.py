@@ -890,20 +890,13 @@ def api_close_pending(eid: int, payload: dict = Body(default={}), user: dict = D
     return {"ok": True, "voided": n}
 
 
-@router.post("/api/events/{eid}/matches/detect")
-async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
-    """Fase 5: cruza las partidas pendientes con los battlelogs amistosos de los
-    participantes y propone resultados (el organizador puede editarlos o borrarlos)."""
-    if db.event_owner(eid) != user["id"]:
-        raise HTTPException(status_code=403, detail="No eres el organizador.")
-    if not brawl_api.TOKEN:
-        return JSONResponse({"error": "No hay token de la API de Brawl Stars configurado."}, status_code=400)
-    e = db.get_event(eid)
+async def detect_event_matches(eid: int, e: dict = None, force: bool = False, only_mid=None) -> dict:
+    """Cruza las partidas pendientes de un evento con los battlelogs amistosos de los
+    participantes y propone resultados. Reutilizable por el endpoint manual y por el
+    poller automático (main._event_result_poller). No comprueba permisos ni token."""
+    e = e or db.get_event(eid)
     if not e:
-        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
-    body = payload or {}
-    force = bool(body.get("force"))  # re-detectar también las ya jugadas
-    only_mid = body.get("match_id")
+        return {"ok": False, "error": "No existe ese evento.", "detected": 0}
     teams_mode = e.get("mode") == "teams"
     best_of = {"bo1": 1, "bo3": 3, "bo5": 5}.get(e.get("match_type") or "bo1", 1)
     start = detect.parse_event_date(e.get("date_start"))
@@ -973,6 +966,23 @@ async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dic
 
     return {"ok": True, "detected": detected, "checked": len(pend),
             "not_found": len(pend) - detected, "players": len(tags)}
+
+
+@router.post("/api/events/{eid}/matches/detect")
+async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
+    """Fase 5: cruza las partidas pendientes con los battlelogs amistosos de los
+    participantes y propone resultados (el organizador puede editarlos o borrarlos)."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "No hay token de la API de Brawl Stars configurado."}, status_code=400)
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    force = bool(body.get("force"))  # re-detectar también las ya jugadas
+    only_mid = body.get("match_id")
+    return await detect_event_matches(eid, e, force=force, only_mid=only_mid)
 
 
 @router.delete("/api/events/{eid}/matches/{mid}")

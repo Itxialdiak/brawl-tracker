@@ -1533,5 +1533,20 @@
 "image": null,
 "brawler": "JAE-YONG",
 "skin": "CHOOM JAE-YONG"
+},
+"29001661": {
+"image": "https://static.wikia.nocookie.net/brawlstars/images/a/a9/Shelly_Skin-Cyber.png/revision/latest?cb=20260701120920",
+"brawler": "SHELLY",
+"skin": "CYBER SHELLY"
+},
+"29000669": {
+"image": "https://static.wikia.nocookie.net/brawlstars/images/f/fe/Colt_Skin-Bananas.png/revision/latest/scale-to-width-down/500?cb=20230625093047",
+"brawler": "COLT",
+"skin": "BANANAS COLT"
+},
+"29001320": {
+"image": "https://static.wikia.nocookie.net/brawlstars/images/4/4c/Ziggy_Skin-Warlock.png/revision/latest/scale-to-width-down/500?cb=20250913111529",
+"brawler": "ZIGGY",
+"skin": "WARLOCK ZIGGY"
 }
 }

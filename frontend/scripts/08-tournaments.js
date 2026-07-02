@@ -669,9 +669,11 @@ function renderResultsBlock(d) {
     } else {
       ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button></div><div class="ec-hint" style="margin-bottom:14px">El emparejamiento automático para <b>${esc(EV_FORMAT_LABEL[d.format] || d.format)}</b> llegará en una fase posterior; de momento añade los enfrentamientos a mano.</div>`;
     }
-    // Fase 5: detección automática de resultados cuando hay partidas pendientes
+    // Detección automática: un poller cruza cada hora las partidas pendientes con las
+    // amistosas (battlelog) de los participantes durante las fechas del evento. Ya no hay
+    // botón manual; se muestra un aviso pasivo mientras queden pendientes.
     if (matches.length && matches.some((m) => m.status !== "played")) {
-      const det = `<button class="ghost" onclick="detectResults()" title="Cruza las partidas pendientes con las amistosas (battlelog) de los participantes y propone el resultado.">🔎 Detectar<span class="mbar-extra"> resultados</span></button>`;
+      const det = `<span class="evd-autodetect" title="El sistema cruza automáticamente cada hora las partidas pendientes con las amistosas de los participantes mientras el evento está en curso.">🔄 Detección automática de resultados activa (cada hora)</span>`;
       ownerBar = ownerBar.includes("evd-mbar") ? ownerBar.replace("</div>", det + "</div>") : `<div class="evd-mbar">${det}</div>`;
     }
     // Fase 6: resumen IA para seguidores cuando ya hay resultados

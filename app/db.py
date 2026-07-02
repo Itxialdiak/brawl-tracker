@@ -1358,9 +1358,16 @@ def parse_battle(raw: dict, player_tag: str) -> dict | None:
     my_team_idx = None
     opponents, allies = [], []
 
-    def brawler_of(p):
-        b = p.get("brawler") or {}
-        return b.get("name"), b.get("trophies")
+    def brawlers_of(p):
+        """(nombre, trofeos) de los brawlers del jugador. En DUELOS cada jugador usa VARIOS
+        (campo 'brawlers'); en el resto, uno solo ('brawler')."""
+        b = p.get("brawler")
+        if b:
+            return [(b.get("name"), b.get("trophies"))]
+        bl = p.get("brawlers")
+        if isinstance(bl, list):
+            return [(x.get("name"), x.get("trophies")) for x in bl if isinstance(x, dict)]
+        return []
 
     teams = battle.get("teams")
     players = battle.get("players")
@@ -1370,20 +1377,25 @@ def parse_battle(raw: dict, player_tag: str) -> dict | None:
             for p in team:
                 if normalize_tag(p.get("tag", "")) == norm_me:
                     my_team_idx = ti
-                    my_brawler, my_trophies = brawler_of(p)
         for ti, team in enumerate(teams):
             for p in team:
-                name, tr = brawler_of(p)
+                bl = brawlers_of(p)
                 if normalize_tag(p.get("tag", "")) == norm_me:
-                    continue
-                (allies if my_team_idx is not None and ti == my_team_idx else opponents).append((name, tr))
-    elif players:
+                    if bl:
+                        my_brawler, my_trophies = bl[0]
+                        allies.extend(bl[1:])   # Duelos: mis otros brawlers a "mi equipo"
+                else:
+                    dest = allies if (my_team_idx is not None and ti == my_team_idx) else opponents
+                    dest.extend(bl)
+    elif players:   # Duelos y modos sin bandos explícitos: lista plana de jugadores
         for p in players:
-            name, tr = brawler_of(p)
+            bl = brawlers_of(p)
             if normalize_tag(p.get("tag", "")) == norm_me:
-                my_brawler, my_trophies = name, tr
+                if bl:
+                    my_brawler, my_trophies = bl[0]
+                    allies.extend(bl[1:])
             else:
-                opponents.append((name, tr))
+                opponents.extend(bl)
 
     is_star = 1 if (star_tag and normalize_tag(star_tag) == norm_me) else 0
     is_win = _derive_is_win(result, rank, mode)
@@ -1412,6 +1424,17 @@ def ingest_battles(items: list[dict], player_tag: str) -> int:
             t is not None for _, t in (b["opponents"] + b["allies"]))
 
         if existing is None:
+            if b["my_brawler"] is not None:
+                # Sustituye una versión previa ROTA (sin brawler) de esta misma batalla:
+                # p. ej. un Duelos guardado antes de arreglar el parseo tenía my_brawler
+                # NULL -> otro id. Mismo jugador y momento => la borramos para no duplicar.
+                for s in cur.execute(
+                    "SELECT id FROM battles WHERE player_tag=? AND battle_time=? AND my_brawler IS NULL",
+                    (b["player_tag"], b["battle_time"])).fetchall():
+                    cur.execute("DELETE FROM opponents WHERE battle_id=?", (s["id"],))
+                    cur.execute("DELETE FROM allies WHERE battle_id=?", (s["id"],))
+                    cur.execute("DELETE FROM manual_stats WHERE battle_id=?", (s["id"],))
+                    cur.execute("DELETE FROM battles WHERE id=?", (s["id"],))
             cur.execute(
                 """INSERT INTO battles
                    (id, player_tag, battle_time, mode, map, battle_type, result, rank, is_win,

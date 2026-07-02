@@ -848,6 +848,9 @@
   .stand-name { font-weight: 600; }
   .stand-pts { font-family: var(--display); font-weight: 700; color: var(--gold); }
   .evd-mbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .evd-autodetect { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    color: var(--cyan); background: rgba(0,200,220,.08); border: 1px solid rgba(0,200,220,.25);
+    border-radius: 999px; padding: 5px 12px; align-self: center; }
   .evd-round { margin-bottom: 12px; }
   .evd-round-h { font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 7px; }
   /* Ronda como acordeón: cabecera clicable con chevron */
