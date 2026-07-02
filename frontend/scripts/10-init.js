@@ -5,11 +5,20 @@
 /* ---------- Arranque ---------- */
 async function bootApp() { await loadAssets(); await refreshAll(); }
 
+// Al refrescar, arrancar SIEMPRE arriba del todo (cabecera visible), no donde
+// estuviera el scroll. Desactivamos la restauración automática del navegador y
+// forzamos el tope (también tras el primer render, por si el layout crece).
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+function scrollToTop() { window.scrollTo(0, 0); }
+scrollToTop();
+window.addEventListener("load", scrollToTop);
+
 (async () => {
   await loadAuthConfig();
   const me = await fetchMe();
   if (me && me.username) { hideLogin(); setUser(me); bootApp(); checkImportParam(); checkEventParam(); }
   else { showLogin(); }
+  scrollToTop();
 })();
 
 setInterval(() => loadStatus().catch(() => {}), 30000);

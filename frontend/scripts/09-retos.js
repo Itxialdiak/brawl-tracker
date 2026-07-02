@@ -314,7 +314,13 @@ function retoScopeToggle(chk) {
       : `<div class="ms-empty">Sin opciones (juega alguna partida primero)</div>`;
   }
 }
-function retoMsOpen(e, btn) { e.preventDefault(); btn.parentElement.classList.toggle("open"); }
+function retoMsOpen(e, btn) { e.preventDefault(); e.stopPropagation(); btn.parentElement.classList.toggle("open"); }
+// Cerrar el desplegable de ámbito al hacer clic fuera de él (no se queda abierto).
+document.addEventListener("click", (e) => {
+  document.querySelectorAll(".rc-ms.open").forEach((ms) => {
+    if (!ms.contains(e.target)) ms.classList.remove("open");
+  });
+});
 function retoMsAll(e, btn, all) {
   e.preventDefault();
   const ms = btn.closest(".rc-ms");

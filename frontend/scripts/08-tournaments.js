@@ -62,27 +62,152 @@ function allowedModeSet() {
   const d = currentEvent || {};
   return new Set(bsAllowedModes(d.mode, (d.settings || {}).showdown || "exclude"));
 }
-function fillRoundMM(rn, curMode, curMap) {
-  const ms = $("rmm-mode-" + rn), ps = $("rmm-map-" + rn);
-  if (!ms || !ps) return;
-  const allowed = allowedModeSet();
-  const modes = BS_MODES.filter((m) => allowed.has(m.name));
-  ms.innerHTML = `<option value="">— Modo —</option>` + modes.map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join("");
-  ms.value = curMode || "";
-  refillMaps("rmm-mode-" + rn, "rmm-map-" + rn, curMap);
+// Modos elegibles para una RONDA: 3v3, Duelos (individual) y Supervivencia SOLO/DÚO/TRÍO
+// (equipos de 1/2/3 jugadores respectivamente; los que sobren descansan esa ronda —bye—).
+// En eventos por equipos solo tiene sentido el trío (equipos ya formados de 3).
+function roundAllowedModes() {
+  const teams = (currentEvent || {}).mode === "teams";
+  const core = BS_MODES.filter((m) => m.kind === "core").map((m) => m.name);
+  const duel = teams ? [] : BS_MODES.filter((m) => m.kind === "duel").map((m) => m.name);
+  const sdKinds = teams ? ["sd_trio"] : ["sd_solo", "sd_duo", "sd_trio"];
+  const sd = BS_MODES.filter((m) => sdKinds.includes(m.kind)).map((m) => m.name);
+  return new Set(core.concat(duel).concat(sd));
 }
-function roundModeChanged(rn) { refillMaps("rmm-mode-" + rn, "rmm-map-" + rn, ""); saveRoundMM(rn); }
-function roundMapChanged(rn) { mapChanged("rmm-mode-" + rn, "rmm-map-" + rn); saveRoundMM(rn); }
+/* ----- Selección de modos/mapas por ronda (checkbox) con propuesta + confirmación ----- */
+function msCountLabel(n, one, many) { return !n ? "Cualquiera" : (n === 1 ? "1 " + one : n + " " + many); }
+// Mapas posibles según los modos elegidos (o de todos los modos permitidos si no hay ninguno).
+function roundMapPool(selModes) {
+  const allowed = allowedModeSet();
+  const modes = (selModes && selModes.length) ? selModes : [...allowed];
+  const out = [];
+  modes.forEach((mn) => bsMapsOf(mn).forEach((mp) => { if (!out.includes(mp)) out.push(mp); }));
+  return out.sort();
+}
+function roundModeOptsHTML(rn, selModes) {
+  const sel = new Set(selModes || []);
+  return [...roundAllowedModes()].sort().map((m) => {
+    const ic = bsModeIcon(m);
+    return `<label class="rc-ms-opt"><input type="checkbox" value="${esc(m)}" ${sel.has(m) ? "checked" : ""} onchange="roundModesChanged(${rn})">${ic ? `<img src="${esc(ic)}" alt="" onerror="this.style.display='none'">` : ""}<span>${esc(m)}</span></label>`;
+  }).join("") || `<div class="ms-empty">Sin modos</div>`;
+}
+function roundMapOptsHTML(rn, selModes, selMaps) {
+  const sel = new Set(selMaps || []);
+  const pool = roundMapPool(selModes);
+  return pool.map((mp) => `<label class="rc-ms-opt"><input type="checkbox" value="${esc(mp)}" ${sel.has(mp) ? "checked" : ""} onchange="roundMapsChanged(${rn})"><span>${esc(mapNameEs(mp))}</span></label>`).join("") || `<div class="ms-empty">Elige un modo primero</div>`;
+}
+// Fila de una ronda AÚN NO generada: dos desplegables de checkbox (modos y mapas permitidos).
+function roundPickHTML(rn, rk) {
+  const modes = rk.modes || [], maps = rk.maps || [];
+  return `<span class="evd-rmm-r">Ronda ${rn}</span>
+    <div class="rc-ms on" data-rmm="modes-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Modos: ${esc(msCountLabel(modes.length, "modo", "modos"))}</button>
+      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundModeOptsHTML(rn, modes)}</div></div></div>
+    <div class="rc-ms on" data-rmm="maps-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Mapas: ${esc(msCountLabel(maps.length, "mapa", "mapas"))}</button>
+      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundMapOptsHTML(rn, modes, maps)}</div></div></div>`;
+}
+// Fila de una ronda YA generada: modo/mapa resuelto + estado (propuesta/confirmado) +
+// solicitud de cambio con votación de los participantes.
+function roundResolvedHTML(rn, rk, d) {
+  const s = d.settings || {};
+  const mm = renderModeMap(rk.mode, rk.map, s, false);
+  const cr = rk.change_request;
+  const pending = cr && cr.status === "pending";
+  let badge = "";
+  if (rk.status === "proposed") {
+    badge = `<span class="rmm-badge prop">Propuesta</span><button class="rmm-confirm" onclick="confirmRoundMM(${rn})">✓ Confirmar</button>`;
+  } else if (rk.status === "confirmed") {
+    if (pending) badge = `<span class="rmm-badge prop">Cambio pendiente</span>`;
+    else {
+      badge = `<span class="rmm-badge conf" title="${rk.auto_approved ? "Aprobado automáticamente al pasar 24 h sin oposición" : ""}">🔒 Confirmado${rk.auto_approved ? " · auto" : ""}</span>`;
+      if (d.is_owner) badge += `<button class="rmm-req" onclick="openRoundChange(${rn})" title="Pedir un cambio de modo/mapa (los jugadores votan)">Solicitar cambio</button>`;
+    }
+  }
+  let crBlock = "";
+  if (pending) {
+    const mmNew = [cr.new_mode, cr.new_map].filter(Boolean).join(" · ");
+    const uid = window.currentUser && String(currentUser.id);
+    const voted = cr.votes && uid && cr.votes[uid];
+    let act = "";
+    if (d.is_owner) act = `<span class="evd-muted">Esperando el voto de los participantes…</span>`;
+    else if (d.relation === "participant") {
+      act = voted
+        ? `<span class="evd-muted">Ya has votado: ${voted === "accept" ? "aceptado" : "opuesto"}</span>`
+        : `<button class="mini-ok" onclick="voteRoundChange(${rn},'accept')">Aceptar</button><button class="mini-no" onclick="voteRoundChange(${rn},'object')">Oponerme</button>`;
+    } else {
+      act = `<span class="evd-muted">Solo los participantes pueden votar.</span>`;
+    }
+    crBlock = `<div class="rmm-cr"><b>Cambio propuesto:</b> ${esc(mmNew || "—")} — <i>${esc(cr.reason || "")}</i><div class="rmm-cr-act">${act}</div></div>`;
+  }
+  return `<span class="evd-rmm-r">Ronda ${rn}</span><span class="rmm-mm">${mm}</span>${badge}${crBlock}`;
+}
+function rmmSelectedValues(rn, kind) {
+  const box = document.querySelector(`.rc-ms[data-rmm="${kind}-${rn}"] .rc-ms-opts`);
+  if (!box) return [];
+  return [...box.querySelectorAll("input:checked")].map((c) => c.value);
+}
+function roundModesChanged(rn) {
+  // Al cambiar los modos, reconstruye las opciones de mapa (conservando los aún válidos).
+  const selModes = rmmSelectedValues(rn, "modes");
+  const selMaps = rmmSelectedValues(rn, "maps");
+  const mapsBox = document.querySelector(`.rc-ms[data-rmm="maps-${rn}"] .rc-ms-opts`);
+  if (mapsBox) mapsBox.innerHTML = roundMapOptsHTML(rn, selModes, selMaps);
+  saveRoundMM(rn);
+}
+function roundMapsChanged(rn) { saveRoundMM(rn); }
 async function saveRoundMM(rn) {
   const d = currentEvent;
-  const mode = $("rmm-mode-" + rn).value, mp = $("rmm-map-" + rn).value;
-  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/${rn}/mode-map`, "PUT", { mode, map: mp });
+  const modes = rmmSelectedValues(rn, "modes"), maps = rmmSelectedValues(rn, "maps");
+  // Actualiza las etiquetas de los desplegables sin re-renderizar (para no cerrar el panel abierto).
+  const tM = document.querySelector(`.rc-ms[data-rmm="modes-${rn}"] .rc-ms-trigger`);
+  if (tM) tM.textContent = "Modos: " + msCountLabel(modes.length, "modo", "modos");
+  const tP = document.querySelector(`.rc-ms[data-rmm="maps-${rn}"] .rc-ms-trigger`);
+  if (tP) tP.textContent = "Mapas: " + msCountLabel(maps.length, "mapa", "mapas");
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/${rn}/mode-map`, "PUT", { modes, maps });
   if (!ok) { wikiToast(r.error || r.detail || "No se pudo guardar la ronda", "err"); return; }
-  (d.matches || []).forEach((m) => { if ((m.round || 1) === rn) { m.mode = mode || null; m.map = mp || null; } });
   d.settings = d.settings || {}; d.settings.round_maps = d.settings.round_maps || {};
-  d.settings.round_maps[rn] = { mode: mode || null, map: mp || null };
-  wikiToast(`Ronda ${rn}: modo y mapa guardados`, "ok");
-  renderEventDetail(d);
+  d.settings.round_maps[rn] = Object.assign({}, d.settings.round_maps[rn], { modes, maps });
+}
+async function confirmRoundMM(rn) {
+  const d = currentEvent;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/${rn}/confirm`, "POST", {});
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo confirmar", "err"); return; }
+  wikiToast(`Ronda ${rn}: modo y mapa confirmados`, "ok");
+  await openEvent(d.id);
+}
+// Crea una ronda vacía (solo aumenta el nº de rondas): el organizador elige sus modos/mapas y
+// después la genera desde «Enfrentamientos». No genera cruces ni propone nada.
+async function addEmptyRound() {
+  const d = currentEvent;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/add`, "POST", {});
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo crear la ronda", "err"); return; }
+  wikiToast(`Ronda ${r.round_count} creada — elige su modo y mapa`, "ok");
+  await openEvent(d.id);
+}
+/* ----- Solicitud de cambio de modo/mapa (con votación de participantes) ----- */
+let roundChangeRn = null;
+function openRoundChange(rn) {
+  roundChangeRn = rn;
+  const d = currentEvent;
+  const rk = ((d.settings || {}).round_maps || {})[rn] || ((d.settings || {}).round_maps || {})[String(rn)] || {};
+  fillModeMap("rchg-mode", "rchg-map", rk.mode || "", rk.map || "");
+  $("rchg-reason").value = "";
+  openEvModal("event-roundchange-modal");
+}
+async function submitRoundChange() {
+  const d = currentEvent, mode = $("rchg-mode").value, mp = $("rchg-map").value, reason = $("rchg-reason").value.trim();
+  if (!reason) { wikiToast("Explica el motivo del cambio (los jugadores lo verán)", "err"); return; }
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/${roundChangeRn}/change-request`, "POST", { mode, map: mp, reason });
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo enviar", "err"); return; }
+  closeEvModal("event-roundchange-modal");
+  wikiToast(`Solicitud enviada a ${r.voters} participante(s)`, "ok");
+  await openEvent(d.id);
+}
+async function voteRoundChange(rn, vote) {
+  const d = currentEvent;
+  const { ok, d: r } = await apiSend(`/api/events/${d.id}/rounds/${rn}/change-vote`, "POST", { vote });
+  if (!ok) { wikiToast(r.error || r.detail || "No se pudo votar", "err"); return; }
+  wikiToast(r.status === "applied" ? "Cambio aplicado: se juega el nuevo modo/mapa"
+    : r.status === "blocked" ? "Te has opuesto; se mantiene el modo/mapa" : "Voto registrado", "ok");
+  await openEvent(d.id);
 }
 function mapsRevealed(s, kind) {
   if (s.maps_public !== false) return true;
@@ -130,6 +255,10 @@ function closeEvModal(id) { $(id).classList.remove("open"); }
 
 function loadLeagues() {
   if (!evLeaguesInit) { initLeaguesUI(); evLeaguesInit = true; }
+  // Si no hay una página de detalle abierta, mostrar siempre el listado (evita quedarse
+  // en una ficha vacía al volver a la sección).
+  const page = $("event-page");
+  if (eventView !== "page" || !page || !page.innerHTML.trim()) { eventView = "modal"; showEventPageView(false); }
   loadMyEvents(); loadBoard();
 }
 function initLeaguesUI() {
@@ -275,24 +404,36 @@ function fmtDateRange(a, b) {
 }
 function statBox(k, v) { return `<div class="evd-stat"><div class="evd-stat-k">${esc(k)}</div><div class="evd-stat-v">${esc(v)}</div></div>`; }
 
+// Vista activa del evento: "modal" (ficha rápida) o "page" (página de detalle a pantalla completa).
+// openEvent() refresca la que esté activa, para que las acciones (resultados, equipos, rondas…)
+// recarguen la página cuando estás en ella en lugar de reabrir el modal por encima.
+let eventView = "modal";
 async function openEvent(eid) {
   try {
     const d = await getJSON("/api/events/" + eid);
     if (d.error || d.detail) { wikiToast(d.error || d.detail, "err"); return; }
     await loadBsModes();
-    currentEvent = d; renderEventDetail(d); openEvModal("event-detail-modal");
+    currentEvent = d;
+    if (eventView === "page" && $("event-page") && $("event-page").style.display !== "none") {
+      renderEventPage(d);
+    } else {
+      eventView = "modal"; renderEventDetail(d); openEvModal("event-detail-modal");
+    }
   } catch (e) { /* 401 gestionado por getJSON */ }
 }
-function renderEventDetail(d) {
-  const s = d.settings || {};
-  const badges = [
+function eventBadges(d) {
+  return [
     `<span class="evd-badge">${EV_KIND_LABEL[d.kind] || ""}</span>`,
     `<span class="evd-badge">${EV_MODE_LABEL[d.mode] || ""}</span>`,
     `<span class="evd-badge vis-${d.visibility}">${EV_VIS_LABEL[d.visibility] || ""}</span>`,
     `<span class="evd-badge">${esc(evLangName(d.language))}</span>`,
     (d.status && d.status !== "open") ? `<span class="evd-badge">${EV_STATUS_LABEL[d.status] || ""}</span>` : "",
   ].join("");
-
+}
+// Cuerpo reutilizable de la ficha (estadísticas, descripción, mapas por ronda, solicitudes,
+// participantes, equipos y resultados). Lo usan tanto el modal como la página de detalle.
+function eventBodyHTML(d, skipMeta) {
+  const s = d.settings || {};
   const stats = [];
   stats.push(statBox("Participantes", `${d.participants || 0} / ${d.max_participants || 12}`));
   stats.push(statBox("Seguidores", String(d.followers || 0)));
@@ -304,37 +445,46 @@ function renderEventDetail(d) {
   {
     const ms = d.matches || [];
     const gen = ms.length ? Math.max.apply(null, ms.map((m) => m.round || 1)) : 0;
-    const cfg = s.rounds || 0;
-    const perRoundN = ["swiss", "mcmahon", "random_teams"].includes(d.format) ? Math.max(cfg, gen) : gen;
-    const head = s.map_policy === "random" ? "Modos y mapas por ronda · aleatorios"
-      : (s.map_policy === "fixed" ? "Modos y mapas por ronda · fijos" : "Modos y mapas por ronda");
-    let summary = "";
-    if (s.map_policy === "random") summary = `<p class="evd-muted">Se asigna un modo y un mapa al azar al generar cada ronda${d.is_owner ? ", o fíjalos tú aquí abajo" : ""}.</p>`;
-    else if (s.map_policy === "per_match") summary = `<p class="evd-muted">${d.is_owner ? "Elige el modo y el mapa de cada ronda aquí abajo." : "Los acuerdan los jugadores en cada enfrentamiento."}</p>`;
+    // Nº de rondas del torneo = las creadas con «+» (round_count); en ligas, las vueltas.
+    const roundByRound = ["swiss", "mcmahon", "random_teams"].includes(d.format);
+    const cfg = (s.round_count || s.rounds || 0);
+    const perRoundN = roundByRound ? Math.max(cfg, gen) : gen;
+    const head = "Modos y mapas por ronda";
+    const summary = d.is_owner
+      ? `<p class="evd-muted">Crea rondas con «+» y elige sus modos y mapas (marca varios o ninguno). Luego, en «Enfrentamientos», pulsa «Generar ronda»: si dejaste el modo/mapa sin fijar, se propone uno al azar (aprobado automáticamente a las 24 h si nadie responde).</p>`
+      : "";
     let rows = "";
     for (let rn = 1; rn <= perRoundN; rn++) {
       const rk = (s.round_maps || {})[rn] || (s.round_maps || {})[String(rn)] || {};
       const fm = ms.find((m) => (m.round || 1) === rn && (m.mode || m.map));
-      const curMode = rk.mode || (fm && fm.mode) || "";
-      const curMap = rk.map || (fm && fm.map) || "";
-      if (d.is_owner) {
-        rows += `<div class="evd-rmm evd-rmm-edit"><span class="evd-rmm-r">Ronda ${rn}</span>
-          <select id="rmm-mode-${rn}" onchange="roundModeChanged(${rn})"></select>
-          <select id="rmm-map-${rn}" onchange="roundMapChanged(${rn})"></select></div>`;
-      } else {
+      const generated = ms.some((m) => (m.round || 1) === rn);
+      if (d.is_owner && !generated) {                 // organizador, ronda sin generar: elegir permitidos
+        rows += `<div class="evd-rmm evd-rmm-edit">${roundPickHTML(rn, rk)}</div>`;
+      } else if (generated) {                          // ronda generada: resuelto + confirmar/votar
+        rows += `<div class="evd-rmm">${roundResolvedHTML(rn, rk, d)}</div>`;
+      } else {                                          // no organizador, ronda aún sin generar
+        const curMode = rk.mode || (fm && fm.mode) || "", curMap = rk.map || (fm && fm.map) || "";
         rows += `<div class="evd-rmm"><span class="evd-rmm-r">Ronda ${rn}</span> ${renderModeMap(curMode, curMap, s, false)}</div>`;
       }
     }
     const list = perRoundN ? `<div class="evd-rmm-list">${rows}</div>` : (d.is_owner ? "" : `<p class="evd-muted">Aún no hay rondas.</p>`);
-    mapsBlock = `<div class="evd-section"><h4>${head}</h4>${summary}${list}</div>`;
+    const addRound = (d.is_owner && (roundByRound || !d.format)) ? `<button class="evd-addround" onclick="addEmptyRound()" title="Crear una ronda vacía (elegirás su modo y mapa; luego la generas en «Enfrentamientos»)">+</button>` : "";
+    mapsBlock = `<div class="evd-section"><h4 class="evd-h4-row">${head}${addRound}</h4>${summary}${list}</div>`;
   }
 
   const parts = d.participants_list || [];
-  const partsHTML = parts.length ? parts.map((p) => {
+  const partItems = parts.length ? parts.map((p) => {
     const team = (d.mode === "teams" && p.team_name) ? `<span class="evd-team">${esc(p.team_name)}</span>` : "";
     const rm = d.is_owner ? `<button class="evd-x" onclick="removeParticipant(${p.id})" title="Quitar">✕</button>` : "";
     return `<div class="evd-part"><span class="evd-part-name">${esc(p.player_name || p.player_tag)}${team}</span><span class="evd-part-tag">${esc(p.player_tag)}</span>${rm}</div>`;
   }).join("") : `<p class="evd-muted">Aún no hay participantes.</p>`;
+  const partsLimited = parts.length > 10;
+  const partsSection = `<div class="evd-section"><h4>Participantes (${parts.length}/${d.max_participants || 12})</h4>
+    <div class="evd-parts${partsLimited ? " limited" : ""}">${partItems}</div>
+    ${partsLimited ? `<button class="evp-seeall" data-more="Ver lista completa (${parts.length})" onclick="evToggleList(this)">Ver lista completa (${parts.length})</button>` : ""}</div>`;
+  const standSection = eventStandingsHTML(d);
+  // Participantes y Clasificación en dos columnas (si hay clasificación); si no, participantes solo.
+  const partsAndStand = standSection ? `<div class="evp-cols2">${partsSection}${standSection}</div>` : partsSection;
 
   let reqHTML = "";
   if (d.is_owner && d.requests && d.requests.length) {
@@ -345,9 +495,52 @@ function renderEventDetail(d) {
       </div>`).join("") + `</div>`;
   }
 
+  return `
+    ${d.hidden ? `<p class="evd-muted" style="margin:-8px 0 16px">🔒 Evento oculto del tablón: solo se accede con este enlace.</p>` : ""}
+    ${skipMeta ? "" : `<div class="evd-stats">${stats.join("")}</div>`}
+    ${skipMeta || !d.description ? "" : `<div class="evd-section"><h4>Descripción</h4><p class="evd-desc">${esc(d.description)}</p></div>`}
+    ${mapsBlock}
+    ${reqHTML}
+    ${partsAndStand}
+    ${renderTeamsBlock(d)}
+    ${renderResultsBlock(d)}`;
+}
+// Toggle genérico "Ver lista completa / Ver menos" (participantes y clasificación).
+function evToggleList(btn) {
+  const sec = btn.closest(".evd-section") || btn.parentElement;
+  const el = sec.querySelector(".evd-parts, .stand-table");
+  if (!el) return;
+  const limited = el.classList.toggle("limited");
+  btn.textContent = limited ? btn.dataset.more : "Ver menos";
+}
+// Clasificación como sección propia (para poder ponerla junto a Participantes).
+function eventStandingsHTML(d) {
+  if (d.format === "single_elim") return "";
+  const teamsMode = d.mode === "teams";
+  const standings = d.standings || [];
+  if (!standings.length) return "";
+  const rnd = d.format === "random_teams";
+  const swiss = (d.format === "swiss" || d.format === "mcmahon");
+  const showCups = swiss && !teamsMode;
+  const noDiff = rnd;
+  const limited = standings.length > 10;
+  const rows = standings.map((s, i) => `<tr>
+    <td>${i + 1}</td><td class="stand-name">${esc(s.name)}</td>
+    <td>${s.pj}</td><td>${s.g}</td><td>${s.e}</td><td>${s.p}</td>
+    ${noDiff ? "" : `<td>${s.dif > 0 ? "+" + s.dif : s.dif}</td>`}${showCups ? `<td class="stand-cups">${s.seed_cups != null ? Number(s.seed_cups).toLocaleString("es-ES") : "—"}</td>` : ""}<td class="stand-pts">${s.pts}</td>
+  </tr>`).join("");
+  return `<div class="evd-section"><h4>Clasificación${rnd ? " (individual)" : ""}</h4>
+    <div class="table-scroll"><table class="stand-table${limited ? " limited" : ""}">
+      <thead><tr><th>#</th><th>${teamsMode ? "Equipo" : "Jugador"}</th><th>PJ</th><th>G</th><th>E</th><th>P</th>${noDiff ? "" : "<th>Dif</th>"}${showCups ? "<th>Copas</th>" : ""}<th>Pts</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    ${limited ? `<button class="evp-seeall" data-more="Ver lista completa (${standings.length})" onclick="evToggleList(this)">Ver lista completa (${standings.length})</button>` : ""}
+    ${d.format === "mcmahon" ? `<p class="ec-hint" style="margin-top:8px">McMahon: los puntos incluyen la ventaja inicial por copas (snapshot al emparejar la 1.ª ronda).</p>` : ""}</div>`;
+}
+function renderEventDetail(d) {
   const actions = [];
   if (d.is_owner) {
-    actions.push(`<button class="btn" onclick="openEdit()">✎ Editar evento</button>`);
+    actions.push(`<button class="btn" onclick="openEventPageEditFromModal()">✎ Editar evento</button>`);
+    actions.push(`<button class="ghost" onclick="openEventPageFromModal()">🔎 Ver en detalle</button>`);
     if ((d.participants || 0) < (d.max_participants || 12)) actions.push(`<button class="ghost" onclick="openInvite()">+ Añadir jugador</button>`);
   } else {
     actions.push(d.is_following
@@ -358,36 +551,21 @@ function renderEventDetail(d) {
     else if (!d.status || d.status === "open") {
       actions.push(`<button class="btn" onclick="openJoin()">${d.visibility === "acceptance" ? "Solicitar plaza" : "Apuntarse"}</button>`);
     }
+    actions.push(`<button class="ghost" onclick="openEventPageFromModal()">🔎 Ver en detalle</button>`);
   }
   actions.push(`<button class="ghost" onclick="copyEventLink(${d.id})" title="Copiar enlace para compartir">🔗 Copiar enlace</button>`);
 
   $("event-detail-body").innerHTML = `
     ${d.poster_url ? `<div class="evd-poster" style="background-image:url('${esc(d.poster_url)}')"></div>` : ""}
     <h2 class="evd-title">${esc(d.name)}</h2>
-    <div class="evd-badges">${badges}</div>
+    <div class="evd-badges">${eventBadges(d)}</div>
     <div class="evd-actions">${actions.join("")}</div>
-    ${d.hidden ? `<p class="evd-muted" style="margin:-8px 0 16px">🔒 Evento oculto del tablón: solo se accede con este enlace.</p>` : ""}
-    <div class="evd-stats">${stats.join("")}</div>
-    ${d.description ? `<div class="evd-section"><h4>Descripción</h4><p class="evd-desc">${esc(d.description)}</p></div>` : ""}
-    ${mapsBlock}
-    ${reqHTML}
-    <div class="evd-section"><h4>Participantes (${parts.length}/${d.max_participants || 12})</h4><div class="evd-parts">${partsHTML}</div></div>
-    ${renderTeamsBlock(d)}
-    ${renderResultsBlock(d)}`;
+    ${eventBodyHTML(d)}`;
   if (d.is_owner) populateRoundSelectors(d);
 }
-function populateRoundSelectors(d) {
-  const s = d.settings || {}, ms = d.matches || [];
-  const gen = ms.length ? Math.max.apply(null, ms.map((m) => m.round || 1)) : 0;
-  const cfg = s.rounds || 0;
-  const perRoundN = ["swiss", "mcmahon", "random_teams"].includes(d.format) ? Math.max(cfg, gen) : gen;
-  for (let rn = 1; rn <= perRoundN; rn++) {
-    if (!$("rmm-mode-" + rn)) continue;
-    const rk = (s.round_maps || {})[rn] || (s.round_maps || {})[String(rn)] || {};
-    const fm = ms.find((m) => (m.round || 1) === rn && (m.mode || m.map));
-    fillRoundMM(rn, rk.mode || (fm && fm.mode) || "", rk.map || (fm && fm.map) || "");
-  }
-}
+// Los selectores de ronda ahora se renderizan directamente en el HTML (checkbox por ronda),
+// así que no hace falta rellenarlos después. Se mantiene por compatibilidad de llamadas.
+function populateRoundSelectors(_d) { /* no-op: el HTML ya trae los desplegables */ }
 
 /* ----- Fase 1: clasificación y enfrentamientos ----- */
 function renderTeamsBlock(d) {
@@ -467,26 +645,12 @@ async function assignTeam(pid, teamId) {
 function renderResultsBlock(d) {
   if (d.format === "single_elim") return renderBracket(d);
   const teamsMode = d.mode === "teams";
-  const matches = d.matches || [], standings = d.standings || [];
+  const matches = d.matches || [];
   const rrOk = (!d.format || d.format === "roundrobin" || d.format === "free");
   const swiss = (d.format === "swiss" || d.format === "mcmahon");
   const rnd = (d.format === "random_teams");
   const roundByRound = swiss || rnd;
-  const showCups = swiss && !teamsMode;
-  const noDiff = rnd;  // en equipos aleatorios no hay diferencia de sets individual
   const roundWord = roundByRound ? "Ronda" : "Jornada";
-  let standHTML = "";
-  if (standings.length) {
-    standHTML = `<div class="evd-section"><h4>Clasificación${rnd ? " (individual)" : ""}</h4>
-      <div class="table-scroll"><table class="stand-table">
-        <thead><tr><th>#</th><th>${teamsMode ? "Equipo" : "Jugador"}</th><th>PJ</th><th>G</th><th>E</th><th>P</th>${noDiff ? "" : "<th>Dif</th>"}${showCups ? "<th>Copas</th>" : ""}<th>Pts</th></tr></thead>
-        <tbody>${standings.map((s, i) => `<tr>
-          <td>${i + 1}</td><td class="stand-name">${esc(s.name)}</td>
-          <td>${s.pj}</td><td>${s.g}</td><td>${s.e}</td><td>${s.p}</td>
-          ${noDiff ? "" : `<td>${s.dif > 0 ? "+" + s.dif : s.dif}</td>`}${showCups ? `<td class="stand-cups">${s.seed_cups != null ? Number(s.seed_cups).toLocaleString("es-ES") : "—"}</td>` : ""}<td class="stand-pts">${s.pts}</td>
-        </tr>`).join("")}</tbody></table></div>
-      ${d.format === "mcmahon" ? `<p class="ec-hint" style="margin-top:8px">McMahon: los puntos incluyen la ventaja inicial por copas (snapshot al emparejar la 1.ª ronda).</p>` : ""}</div>`;
-  }
   let ownerBar = "";
   if (d.is_owner) {
     if (roundByRound) {
@@ -499,7 +663,7 @@ function renderResultsBlock(d) {
       const restart = matches.length ? `<button class="ghost" onclick="restartPairings()">↻ Reiniciar<span class="mbar-extra"> rondas</span></button>` : "";
       const closeBtn = (matches.length && !allPlayed) ? `<button class="ghost" onclick="closeRound()">⛌ Cerrar ronda<span class="mbar-extra"> actual</span></button>` : "";
       ownerBar = `<div class="evd-mbar">${gen}${closeBtn}${restart}</div>`;
-      if (rnd) ownerBar += `<p class="ec-hint" style="margin:-2px 0 12px">Cada ronda forma equipos al azar de ${(d.settings && d.settings.team_size) || 3} jugadores; los sobrantes descansan esa ronda.</p>`;
+      if (rnd) ownerBar += `<p class="ec-hint" style="margin:-2px 0 12px">Cada ronda forma equipos al azar del tamaño del modo (3 en 3v3, 2 en dúo, 1 en Duelos); los sobrantes descansan esa ronda.</p>`;
     } else if (rrOk) {
       ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button><button class="ghost" onclick="generateMatches()">⚙ Generar cruces<span class="mbar-extra"> (todos contra todos)</span></button></div>`;
     } else {
@@ -523,10 +687,15 @@ function renderResultsBlock(d) {
   } else {
     const byRound = {};
     matches.forEach((m) => { (byRound[m.round] = byRound[m.round] || []).push(m); });
-    matchesHTML = Object.keys(byRound).sort((a, b) => a - b).map((r) =>
-      `<div class="evd-round"><div class="evd-round-h">${roundWord} ${r}</div>${byRound[r].map((m) => matchRowHTML(m, d)).join("")}</div>`).join("");
+    // Rondas de la MÁS RECIENTE a la más antigua (la ronda 1 queda al final del torneo).
+    // Cada ronda es un acordeón; sus enfrentamientos van en una fila que se desliza
+    // (carrusel) si no caben, sin ocupar todo el ancho cada uno.
+    const nums = Object.keys(byRound).map(Number).sort((a, b) => b - a);
+    matchesHTML = nums.map((r) =>
+      `<details class="evd-round" open><summary class="evd-round-h">${roundWord} ${r}</summary>
+        <div class="evd-round-cards">${byRound[r].map((m) => matchRowHTML(m, d)).join("")}</div></details>`).join("");
   }
-  return `${standHTML}<div class="evd-section"><h4>Enfrentamientos</h4>${ownerBar}${matchesHTML}</div>`;
+  return `<div class="evd-section"><h4>Enfrentamientos</h4>${ownerBar}${matchesHTML}</div>`;
 }
 function bracketRoundLabel(n) {
   return n === 1 ? "Final" : n === 2 ? "Semifinales" : n === 4 ? "Cuartos de final" : n === 8 ? "Octavos" : n === 16 ? "Dieciseisavos" : ("Ronda de " + n * 2);
@@ -541,13 +710,30 @@ function renderBracket(d) {
     return `<div class="evd-section"><h4>Cuadro de eliminación</h4>${ownerBar}
       <div class="evd-empty-table">Aún no hay cuadro.${d.is_owner ? " Genéralo con los participantes actuales." : " El organizador aún no lo ha generado."}</div></div>`;
   }
+  // Árbol de enfrentamientos: cada ronda es una columna; los partidos se agrupan en parejas y
+  // se dibujan las "llaves" (líneas) que llevan de cada pareja a su partido de la ronda siguiente,
+  // hasta la final.
   const byRound = {};
   matches.forEach((m) => { (byRound[m.round] = byRound[m.round] || []).push(m); });
-  const cols = Object.keys(byRound).map(Number).sort((a, b) => a - b).map((r) => {
+  const roundNums = Object.keys(byRound).map(Number).sort((a, b) => a - b);
+  const cols = roundNums.map((r, ri) => {
     const ms = byRound[r].sort((a, b) => (a.bracket_pos || 0) - (b.bracket_pos || 0));
-    return `<div class="brk-col"><div class="brk-round-h">${bracketRoundLabel(ms.length)}</div>${ms.map((m) => matchRowHTML(m, d)).join("")}</div>`;
+    const last = ri === roundNums.length - 1;
+    let cells = "";
+    for (let i = 0; i < ms.length; i += 2) {
+      const pair = ms.slice(i, i + 2);
+      cells += `<div class="brk-pair${pair.length === 1 ? " solo" : ""}">${pair.map((m) => `<div class="brk-cell">${matchRowHTML(m, d)}</div>`).join("")}</div>`;
+    }
+    return `<div class="brk-round${last ? " final" : ""}"><div class="brk-round-h">${bracketRoundLabel(ms.length)}</div><div class="brk-round-body">${cells}</div></div>`;
   }).join("");
   return `<div class="evd-section"><h4>Cuadro de eliminación</h4>${ownerBar}<div class="brk-wrap">${cols}</div></div>`;
+}
+// Clase del lado de un enfrentamiento jugado: verde (ganador) / rojo (perdedor).
+function mSideClass(played, winner, side) {
+  if (!played || winner === "void") return "";
+  if (winner === side) return "win";
+  if (winner === "a" || winner === "b") return "loss";
+  return "";  // empate
 }
 function matchRowHTML(m, d) {
   const teamsMode = d.mode === "teams";
@@ -563,9 +749,9 @@ function matchRowHTML(m, d) {
     const meta0 = (m.mode || m.map) ? renderModeMap(m.mode, m.map, d.settings || {}, false) : "";
     return `<div class="evd-match${played0 ? " played" : ""}">
       <div class="m-line">
-        <span class="m-side ${m.winner === "a" ? "win" : ""}">Equipo A</span>
+        <span class="m-side ${mSideClass(played0, m.winner, "a")}">Equipo A</span>
         <span class="m-mid">${mid0}</span>
-        <span class="m-side b ${m.winner === "b" ? "win" : ""}">Equipo B</span>${edit0}
+        <span class="m-side b ${mSideClass(played0, m.winner, "b")}">Equipo B</span>${edit0}
       </div>
       <div class="m-roster"><b>A:</b>&nbsp;${ra || "—"} &nbsp;·&nbsp; <b>B:</b>&nbsp;${rb || "—"}</div>
       ${(meta0 || eviBadge) ? `<div class="m-meta">${meta0}${eviBadge}</div>` : ""}</div>`;
@@ -588,9 +774,9 @@ function matchRowHTML(m, d) {
   const edit = (d.is_owner && aSet && bSet) ? `<button class="m-edit" onclick="openMatchModal(${m.id})" title="Editar / resultado">✎</button>` : "";
   return `<div class="evd-match${played ? " played" : ""}">
     <div class="m-line">
-      <span class="m-side ${m.winner === "a" ? "win" : ""}">${aName || tbd}</span>
+      <span class="m-side ${mSideClass(played, m.winner, "a")}">${aName || tbd}</span>
       <span class="m-mid">${mid}</span>
-      <span class="m-side b ${m.winner === "b" ? "win" : ""}">${bName || tbd}</span>
+      <span class="m-side b ${mSideClass(played, m.winner, "b")}">${bName || tbd}</span>
       ${edit}
     </div>${(meta || eviBadge) ? `<div class="m-meta">${meta}${eviBadge}</div>` : ""}</div>`;
 }
@@ -886,6 +1072,250 @@ async function deleteEvent() {
   if (ok) { closeEvModal("event-edit-modal"); wikiToast("Evento eliminado", "ok"); loadMyEvents(); }
 }
 
+/* ============================ Página de detalle del evento ============================
+   Vista a pantalla completa (como la ficha de un brawler): toda la info reorganizada y, para
+   el organizador, un MODO EDICIÓN in-situ (botón "Editar" → campos editables + Guardar/Cancelar)
+   en lugar del antiguo formulario en modal. La lista de "Eventos" se oculta mientras está abierta. */
+let eventPageEdit = false;
+
+function showEventPageView(on) {
+  const list = $("events-list-view"), page = $("event-page");
+  if (list) list.style.display = on ? "none" : "";
+  if (page) page.style.display = on ? "" : "none";
+}
+function openEventPageFromModal(edit) {
+  if (!currentEvent) return;
+  closeEvModal("event-detail-modal");
+  $("event-detail-body").innerHTML = "";   // evita IDs duplicados (rmm-*) entre modal y página
+  eventView = "page"; eventPageEdit = !!edit;
+  showEventPageView(true);
+  renderEventPage(currentEvent);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+// "Editar evento" (ficha rápida) → abre la página de detalle directamente en modo edición
+// (ya no hay formulario en modal).
+function openEventPageEditFromModal() { openEventPageFromModal(true); }
+function closeEventPage() {
+  eventView = "modal"; eventPageEdit = false;
+  const page = $("event-page"); if (page) page.innerHTML = "";
+  showEventPageView(false);
+  loadMyEvents(); loadBoard();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function eventPageActions(d) {
+  const a = [];
+  if (d.is_owner) {
+    a.push(`<button class="btn" onclick="toggleEventPageEdit(true)">✎ Editar</button>`);
+    if ((d.participants || 0) < (d.max_participants || 12)) a.push(`<button class="ghost" onclick="openInvite()">+ Añadir jugador</button>`);
+  } else {
+    a.push(d.is_following
+      ? `<button class="ghost" onclick="unfollowEventPage()">★ Siguiendo</button>`
+      : `<button class="ghost" onclick="followEventPage()">☆ Seguir</button>`);
+    if (d.relation === "participant") a.push(`<span class="evd-joined">✓ Ya participas</span>`);
+    else if (d.my_request) a.push(`<span class="evd-joined pending">⏳ Solicitud pendiente</span>`);
+    else if (!d.status || d.status === "open") a.push(`<button class="btn" onclick="openJoin()">${d.visibility === "acceptance" ? "Solicitar plaza" : "Apuntarse"}</button>`);
+  }
+  a.push(`<button class="ghost" onclick="copyEventLink(${d.id})" title="Copiar enlace para compartir">🔗 Copiar enlace</button>`);
+  return a;
+}
+function renderEventPage(d) {
+  const page = $("event-page");
+  if (!page) return;
+  const editing = eventPageEdit && d.is_owner;
+  // En edición: los metadatos (título, etiquetas, fechas, descripción, reglas, puntos) se editan
+  // en la propia página; debajo se mantiene el cuerpo interactivo (rondas con «+», participantes,
+  // clasificación y enfrentamientos) para no perder esos controles.
+  const main = editing ? (eventPageEditHTML(d) + eventBodyHTML(d, true)) : eventBodyHTML(d);
+  const actions = editing ? "" : `<div class="evp-actions">${eventPageActions(d).join("")}</div>`;
+  page.innerHTML = `
+    <div class="evp-topbar">
+      <button class="ghost evp-back" onclick="closeEventPage()">← Volver a Eventos</button>
+      ${actions}
+    </div>
+    ${editing ? "" : `${d.poster_url ? `<div class="evp-poster" style="background-image:url('${esc(d.poster_url)}')"></div>` : ""}
+    <h1 class="evp-title">${esc(d.name)}</h1>
+    <div class="evd-badges">${eventBadges(d)}</div>`}
+    ${main}`;
+  if (editing) { initEventPageEditWidgets(d); populateRoundSelectors(d); }
+  else if (d.is_owner) populateRoundSelectors(d);
+}
+async function followEventPage() {
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}/follow`, "POST");
+  if (ok) { await openEvent(currentEvent.id); loadMyEvents(); }
+}
+async function unfollowEventPage() {
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}/follow`, "DELETE");
+  if (ok) { await openEvent(currentEvent.id); loadMyEvents(); }
+}
+function toggleEventPageEdit(on) {
+  eventPageEdit = !!on;
+  renderEventPage(currentEvent);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ----- Edición in-situ sobre la propia página (organizador) ----- */
+// Modelos de competición según el tipo de evento: los de torneo (suizo, McMahon, eliminación…)
+// solo con "Torneo"; los de liga solo con "Liga".
+const FORMATS_BY_KIND = {
+  tournament: ["swiss", "mcmahon", "single_elim", "double_elim", "roundrobin", "random_teams"],
+  league: ["free", "roundrobin", "random_teams"],
+};
+function eventPageEditHTML(d) {
+  const langOpts = EV_LANGS.map((l) => `<option value="${l.c}">${esc(l.n)}</option>`).join("");
+  return `<div class="evp-edit">
+    <div class="evp-editbar">
+      <span class="evp-edit-note">✎ Estás editando el evento. Cambia los campos directamente y pulsa Guardar.</span>
+      <div class="evp-editbar-btns">
+        <button class="danger-ghost" type="button" onclick="deleteEventFromPage()">Eliminar</button>
+        <button class="ghost" type="button" onclick="toggleEventPageEdit(false)">Cancelar</button>
+        <button class="btn" type="button" onclick="submitEventPageEdit()">✓ Guardar cambios</button>
+      </div>
+    </div>
+    <input type="text" id="pe-name" class="evp-edit-title" placeholder="Nombre del evento" />
+    <div class="evp-edit-tags">
+      <label class="evp-tag-edit"><span>Tipo</span><select id="pe-kind" onchange="peKindChange()"><option value="league">Liga</option><option value="tournament">Torneo</option></select></label>
+      <label class="evp-tag-edit"><span>Modalidad</span><select id="pe-mode"><option value="individual">Individual</option><option value="teams">Por equipos</option></select></label>
+      <label class="evp-tag-edit"><span>Visibilidad</span><select id="pe-vis" onchange="peVisChange()"><option value="public">Público</option><option value="acceptance">Con aceptación</option><option value="private">Privado</option></select></label>
+      <label class="evp-tag-edit"><span>Idioma</span><select id="pe-lang">${langOpts}</select></label>
+      <label class="evp-tag-edit"><span>Estado</span><select id="pe-status"><option value="open">Inscripción abierta</option><option value="ongoing">En curso</option><option value="finished">Finalizado</option></select></label>
+    </div>
+    <div class="ec-hint" id="pe-mode-note" style="display:none;color:var(--gold)">La modalidad no se puede cambiar con jugadores apuntados: quítalos primero (indicando el motivo) y que se vuelvan a apuntar.</div>
+    <div class="evp-edit-grid">
+      <label class="ee-field"><span class="ec-lbl">Nº máximo de participantes</span><input type="number" id="pe-max" min="2" max="512" /></label>
+      <label class="ee-field"><span class="ec-lbl">Tipo de enfrentamiento</span><select id="pe-match"><option value="bo1">A 1 combate</option><option value="bo3">Al mejor de 3</option><option value="bo5">Al mejor de 5</option></select></label>
+      <label class="ee-field"><span class="ec-lbl">Fecha de inicio</span><input type="date" id="pe-dstart" /></label>
+      <label class="ee-field"><span class="ec-lbl">Fecha de fin</span><input type="date" id="pe-dend" /></label>
+    </div>
+    <div class="evd-section"><h4>Descripción</h4>
+      <textarea id="pe-desc" class="ee-textarea" rows="3" placeholder="Presenta tu evento: reglas, premios, requisitos…"></textarea></div>
+    <div class="evd-section"><h4>Reglas del evento</h4>
+      <div class="evp-edit-grid">
+        <label class="ee-field"><span class="ec-lbl">Modelo de competición</span><select id="pe-format" onchange="peFormatChange()"></select></label>
+        <label class="ee-field" id="pe-rounds-wrap"><span class="ec-lbl" id="pe-rounds-lbl">Número de vueltas</span><input type="number" id="pe-rounds" min="1" max="30" placeholder="1" /><span class="ec-mini" id="pe-rounds-hint">Veces que cada pareja de equipos se vuelve a enfrentar antes de acabar la liga.</span></label>
+      </div>
+      <textarea id="pe-rules" class="ee-textarea" rows="4" placeholder="Se rellenan solas con el modelo elegido; edítalas si quieres."></textarea>
+      <div class="ee-grid ee-grid-3" style="margin-top:10px">
+        <div class="ee-field"><label class="ec-lbl">Puntos victoria</label><input type="number" id="pe-pwin" /></div>
+        <div class="ee-field"><label class="ec-lbl">Puntos empate</label><input type="number" id="pe-pdraw" /></div>
+        <div class="ee-field"><label class="ec-lbl">Puntos derrota</label><input type="number" id="pe-ploss" /></div>
+      </div>
+      <div class="ec-hint" style="margin-top:8px">Los modos y mapas de cada ronda se eligen con el botón «+» de «Modos y mapas por ronda», más abajo.</div>
+    </div>
+    <div class="evd-section"><h4>Cartel del evento</h4>
+      <div class="ee-poster-row">
+        <img id="pe-poster-preview" class="ee-poster-preview" style="display:none" />
+        <label class="ghost ee-upload">Subir imagen<input type="file" id="pe-poster-file" accept="image/*" style="display:none" onchange="uploadEventPosterPage(this)"></label>
+        <button type="button" class="ghost" id="pe-poster-clear" style="display:none" onclick="clearPosterPage()">Quitar</button>
+      </div>
+    </div>
+    <div class="evd-section" id="pe-private-box" style="display:none"><h4>Ajustes de evento privado</h4>
+      <div class="ee-field"><label class="ec-lbl">Contraseña <span class="ec-mini">(vacía = no cambiarla)</span></label><input type="text" id="pe-pw" placeholder="Contraseña para apuntarse" /></div>
+      <label class="chk ee-chk"><input type="checkbox" id="pe-confirm"><span>Requiere confirmación del organizador (si lo desactivas, cualquiera con la contraseña entra directo)</span></label>
+      <label class="chk ee-chk"><input type="checkbox" id="pe-hidden"><span>Ocultar del tablón — solo se entra con el enlace que compartas</span></label>
+    </div>
+    <div class="evp-edit-foot">
+      <button class="ghost" type="button" onclick="toggleEventPageEdit(false)">Cancelar</button>
+      <button class="btn" type="button" onclick="submitEventPageEdit()">✓ Guardar cambios</button>
+    </div>
+  </div>`;
+}
+function initEventPageEditWidgets(d) {
+  const s = d.settings || {};
+  $("pe-name").value = d.name || ""; $("pe-status").value = d.status || "open";
+  $("pe-kind").value = d.kind; $("pe-mode").value = d.mode; $("pe-vis").value = d.visibility;
+  $("pe-lang").value = d.language || "es"; $("pe-max").value = d.max_participants || 12;
+  $("pe-match").value = d.match_type || "bo1";
+  $("pe-rounds").value = s.rounds || ""; $("pe-rules").value = s.rules || "";
+  $("pe-pwin").value = (s.points && s.points.win != null) ? s.points.win : 3;
+  $("pe-pdraw").value = (s.points && s.points.draw != null) ? s.points.draw : 1;
+  $("pe-ploss").value = (s.points && s.points.loss != null) ? s.points.loss : 0;
+  $("pe-dstart").value = d.date_start || ""; $("pe-dend").value = d.date_end || "";
+  $("pe-desc").value = d.description || ""; evPosterUrl = d.poster_url || null; updatePosterPreviewPage();
+  $("pe-pw").value = ""; $("pe-confirm").checked = d.require_confirmation !== 0; $("pe-hidden").checked = !!d.hidden;
+  peKindChange(d.format);      // rellena los modelos según Torneo/Liga y fija el actual
+  peVisChange();
+  // La modalidad (individual/equipos) solo es editable si no hay nadie apuntado.
+  const nParts = d.participants != null ? d.participants : (d.participants_list || []).length;
+  const modeSel = $("pe-mode"), modeNote = $("pe-mode-note");
+  if (modeSel) modeSel.disabled = nParts > 0;
+  if (modeNote) modeNote.style.display = nParts > 0 ? "block" : "none";
+}
+// Rellena el desplegable de modelo de competición según el tipo (Torneo/Liga).
+function peKindChange(keepFormat) {
+  const sel = $("pe-format"); if (!sel) return;
+  const cur = keepFormat != null ? keepFormat : sel.value;
+  const kind = $("pe-kind").value;
+  const allowed = FORMATS_BY_KIND[kind] || [];
+  sel.innerHTML = `<option value="">— Elegir —</option>` +
+    allowed.map((f) => `<option value="${f}">${esc(EV_FORMAT_LABEL[f] || f)}</option>`).join("");
+  sel.value = allowed.includes(cur) ? cur : "";
+  // El nº de "vueltas" es solo de LIGAS. En torneos las rondas se crean con «+» (no en el form).
+  const rw = $("pe-rounds-wrap");
+  if (rw) rw.style.display = (kind === "league") ? "" : "none";
+  peFormatChange();
+}
+function peVisChange() { const b = $("pe-private-box"); if (b) b.style.display = $("pe-vis").value === "private" ? "" : "none"; }
+function peFormatChange() {
+  const f = $("pe-format").value;
+  if (f && EV_FORMAT_RULES[f] && !$("pe-rules").value.trim()) $("pe-rules").value = EV_FORMAT_RULES[f];
+}
+function updatePosterPreviewPage() {
+  const img = $("pe-poster-preview"), clr = $("pe-poster-clear");
+  if (!img) return;
+  if (evPosterUrl) { img.src = evPosterUrl; img.style.display = "block"; clr.style.display = "inline-block"; }
+  else { img.style.display = "none"; clr.style.display = "none"; }
+}
+function clearPosterPage() { evPosterUrl = null; updatePosterPreviewPage(); }
+async function uploadEventPosterPage(input) {
+  const file = input.files && input.files[0]; input.value = "";
+  if (!file) return;
+  if (file.size > 6 * 1024 * 1024) { wikiToast("La imagen supera los 6 MB", "err"); return; }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const { ok, d } = await apiSend("/api/events/upload-image", "POST", { data: reader.result, mime: file.type });
+    if (!ok) { wikiToast(d.error || d.detail || "No se pudo subir", "err"); return; }
+    evPosterUrl = d.url; updatePosterPreviewPage(); wikiToast("Cartel subido", "ok");
+  };
+  reader.readAsDataURL(file);
+}
+async function submitEventPageEdit() {
+  const d = currentEvent;
+  const fmt = $("pe-format").value;
+  let rules = $("pe-rules").value.trim();
+  if (!rules && fmt && EV_FORMAT_RULES[fmt]) rules = EV_FORMAT_RULES[fmt];
+  // Se preservan los ajustes de modos/mapas (map_policy, showdown, fixed_*, reveal_*, team_size,
+  // round_count): ya no se editan en este formulario, se gestionan en la sección de rondas.
+  // "rounds" (vueltas) solo aplica a ligas; en torneos las rondas se crean con «+».
+  const isLeague = $("pe-kind").value === "league";
+  const settings = Object.assign({}, d.settings || {}, {
+    rounds: isLeague ? (parseInt($("pe-rounds").value, 10) || null) : ((d.settings || {}).rounds || null),
+    rules: rules,
+    points: { win: num($("pe-pwin").value, 3), draw: num($("pe-pdraw").value, 1), loss: num($("pe-ploss").value, 0) },
+  });
+  const body = {
+    name: $("pe-name").value.trim(), status: $("pe-status").value, kind: $("pe-kind").value, mode: $("pe-mode").value,
+    visibility: $("pe-vis").value, language: $("pe-lang").value, max_participants: num($("pe-max").value, 12),
+    match_type: $("pe-match").value, format: $("pe-format").value, date_start: $("pe-dstart").value || null,
+    date_end: $("pe-dend").value || null, description: $("pe-desc").value.trim(), poster_url: evPosterUrl || null, settings,
+  };
+  if ($("pe-vis").value === "private") {
+    if ($("pe-pw").value.trim()) body.password = $("pe-pw").value.trim();
+    body.require_confirmation = $("pe-confirm").checked;
+    body.hidden = $("pe-hidden").checked;
+  }
+  if (!body.name) { wikiToast("Pon un nombre al evento", "err"); return; }
+  const { ok, d: res } = await apiSend(`/api/events/${d.id}`, "PUT", body);
+  if (!ok) { wikiToast(res.error || res.detail || "No se pudo guardar", "err"); return; }
+  wikiToast("Cambios guardados", "ok");
+  eventPageEdit = false;
+  await openEvent(d.id); loadMyEvents();
+}
+async function deleteEventFromPage() {
+  if (!confirm("¿Eliminar este evento? Esta acción no se puede deshacer.")) return;
+  const { ok } = await apiSend(`/api/events/${currentEvent.id}`, "DELETE");
+  if (ok) { wikiToast("Evento eliminado", "ok"); closeEventPage(); }
+}
+
 /* ----- Invitar / solicitudes / participantes (organizador) ----- */
 function openInvite() {
   $("einv-tags").value = ""; $("einv-team").value = "";
@@ -917,8 +1347,13 @@ async function rejectRequest(rid) {
   if (ok) await openEvent(currentEvent.id);
 }
 async function removeParticipant(pid) {
-  if (!confirm("¿Quitar a este participante?")) return;
-  const { ok } = await apiSend(`/api/events/${currentEvent.id}/participants/${pid}`, "DELETE");
-  if (ok) await openEvent(currentEvent.id);
+  const reason = prompt("¿Por qué quitas a este jugador? Se le enviará una notificación con el motivo.");
+  if (reason === null) return;                 // canceló el diálogo
+  const r = (reason || "").trim();
+  if (!r) { wikiToast("Debes indicar un motivo para quitar al jugador", "err"); return; }
+  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/participants/${pid}?reason=${encodeURIComponent(r)}`, "DELETE");
+  if (!ok) { wikiToast((d && (d.error || d.detail)) || "No se pudo quitar al jugador", "err"); return; }
+  wikiToast("Jugador quitado; se le ha notificado el motivo", "ok");
+  await openEvent(currentEvent.id);
 }
 

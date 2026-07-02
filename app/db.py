@@ -1633,6 +1633,17 @@ def _reliability(wins, losses, k=10.0):
     return round(100.0 * decided / (decided + k)) if decided else 0
 
 
+def _shrunk_winrate(wins, losses, k=10.0):
+    """Win rate ENCOGIDO hacia 50% según el nº de partidas (misma idea que `_adjusted_score`
+    pero SIN el ajuste por dificultad de trofeos, que solo tiene sentido por brawler). Sirve para
+    modos/mapas/roles: un 75% con 3 partidas se acerca al 50% (poco fiable) mientras que con 20
+    partidas apenas se mueve (tendencia real). k = partidas 'a priori' (peso del 50%)."""
+    decided = (wins or 0) + (losses or 0)
+    if decided <= 0:
+        return None
+    return round(100.0 * (wins + k * 0.5) / (decided + k), 1)
+
+
 def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
     col = GROUP_COLUMNS.get(dimension)
     if not col:
@@ -1675,6 +1686,7 @@ def winrate_by(dimension: str, filters: dict | None = None) -> list[dict]:
                     "avg_trophies": round(r["avg_trophies"]) if r["avg_trophies"] else None,
                     "adj_score": _adjusted_score(r["wins"], r["losses"], r["avg_trophies"],
                                                  r["avg_rival"], base),
+                    "shrunk_score": _shrunk_winrate(r["wins"], r["losses"]),
                     "reliability": _reliability(r["wins"], r["losses"])})
     return out
 
@@ -1696,6 +1708,8 @@ def winrate_by_role(filters: dict | None = None) -> list[dict]:
             a["trophy_delta"] += b.get("trophy_delta") or 0
     grand = sum(a["total"] for a in agg.values()) or 1  # cada partida cuenta 1 vez por rol
     out = [{"label": role, **a, "winrate": _winrate(a["wins"], a["losses"]),
+            "shrunk_score": _shrunk_winrate(a["wins"], a["losses"]),
+            "reliability": _reliability(a["wins"], a["losses"]),
             "usage_pct": round(100 * a["total"] / grand, 1)} for role, a in agg.items()]
     out.sort(key=lambda r: r["total"], reverse=True)
     return out
@@ -1998,7 +2012,7 @@ def report_analytics(filters: dict | None = None) -> dict:
     highlights = {
         "most_played": most_played,
         "best_brawler": _pick(by_brawler, "winrate", True),
-        "worst_brawler": _pick(by_brawler, "adj_score", False),
+        "worst_brawler": _pick(by_brawler, "winrate", False),
         "best_mode": _pick(by_mode, "winrate", True, min_total=2),
         "worst_mode": _pick(by_mode, "winrate", False, min_total=2),
         "best_map": _pick(by_map, "winrate", True),

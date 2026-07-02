@@ -95,10 +95,11 @@ function labelCell(item, kind) {
   return `${url ? imgTag(url, "row-portrait") : ""}${prefix}<span>${lbl}</span>`;
 }
 function relColor(r) { return r == null ? "var(--muted)" : r >= 67 ? "var(--win)" : r >= 34 ? "var(--gold)" : "var(--loss)"; }
-function rowHTML(item, kind, perf) {
+function rowHTML(item, kind, mode) {
   const isVs = kind === "vs", showStar = kind === "brawler";
-  const usePerf = perf && item.adj_score != null;     // panel "Rendimiento por brawler"
-  const val = usePerf ? item.adj_score : item.winrate;
+  const usePerf = mode === "perf" && item.adj_score != null;    // panel "Rendimiento por brawler" (ajuste por dificultad)
+  const useShr = mode === "shrink" && item.shrunk_score != null; // modos/mapas/roles (encogido por nº de partidas)
+  const val = usePerf ? item.adj_score : useShr ? item.shrunk_score : item.winrate;
   const pct = val == null ? "—" : (usePerf ? val : val + "%"), color = pctColor(val);
   const barW = val == null ? 0 : Math.max(2, val);
   let extra;
@@ -112,7 +113,7 @@ function rowHTML(item, kind, perf) {
     extra = `${item.total} part.${item.trophy_delta != null ? " · " + (item.trophy_delta >= 0 ? "+" : "") + item.trophy_delta + " 🏆" : ""}`;
     if (showStar && item.star_rate != null) extra += ` · ⭐ ${item.star_rate}%`;
   }
-  const rel = perf && item.reliability != null
+  const rel = (usePerf || useShr) && item.reliability != null
     ? `<div class="rel-note">fiabilidad del dato: <b style="color:${relColor(item.reliability)}">${item.reliability}%</b></div>` : "";
   return `<div class="row"><div class="name">${labelCell(item, kind)}</div>
     <div class="pct" style="color:${color}">${pct}</div>
@@ -138,22 +139,25 @@ function applyCollapse(rowsEl, threshold = 6) {
   else { rowsEl.classList.remove("collapsed"); btn.style.display = "none"; }
 }
 function render(el, data, kind, opts) {
-  const perf = !!(opts && opts.perf);              // ordena/pinta por rendimiento ajustado
+  const perf = !!(opts && opts.perf);              // ordena/pinta por rendimiento ajustado (brawlers)
+  const shrink = !!(opts && opts.shrink);          // ordena/pinta por win rate encogido (modos/mapas/roles)
+  const mode = perf ? "perf" : shrink ? "shrink" : null;
   const min = 1;
   const f = data.filter((d) => d.total >= min);
-  // Orden: rendimiento de mayor a menor; "contra cada brawler" por win rate de menor a mayor; el resto de mayor a menor.
+  // Orden: rendimiento/encogido de mayor a menor; "contra cada brawler" por win rate de menor a mayor; el resto de mayor a menor.
   const asc = kind === "vs";
+  const scoreKey = perf ? "adj_score" : "shrunk_score";
   f.sort((a, b) => {
-    if (perf) {
-      const aa = a.adj_score == null ? -Infinity : a.adj_score;
-      const bb = b.adj_score == null ? -Infinity : b.adj_score;
+    if (mode) {
+      const aa = a[scoreKey] == null ? -Infinity : a[scoreKey];
+      const bb = b[scoreKey] == null ? -Infinity : b[scoreKey];
       return bb - aa;
     }
     const wa = a.winrate == null ? (asc ? Infinity : -Infinity) : a.winrate;
     const wb = b.winrate == null ? (asc ? Infinity : -Infinity) : b.winrate;
     return asc ? wa - wb : wb - wa;
   });
-  el.innerHTML = f.length ? f.map((d) => rowHTML(d, kind, perf)).join("")
+  el.innerHTML = f.length ? f.map((d) => rowHTML(d, kind, mode)).join("")
     : `<div class="empty"><span class="big">∅</span>Aún no hay datos suficientes.<br>Deja el tracker corriendo mientras se juega.</div>`;
   applyCollapse(el);
 }
@@ -175,9 +179,9 @@ async function loadPanels() {
     getJSON("/api/winrate?by=map&" + base), getJSON("/api/vs?" + base),
     getJSON("/api/roles?" + base),
   ]);
-  render($("r-brawler"), b, "brawler", { perf: true }); render($("r-mode"), m, "mode");
-  render($("r-map"), mp, "map"); render($("r-vs"), vs, "vs");
-  render($("r-role"), roles, "role");
+  render($("r-brawler"), b, "brawler", { perf: true }); render($("r-mode"), m, "mode", { shrink: true });
+  render($("r-map"), mp, "map", { shrink: true }); render($("r-vs"), vs, "vs");
+  render($("r-role"), roles, "role", { shrink: true });
   renderRoleRadars(roles);
   renderModeDonuts(m);
 }

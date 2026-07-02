@@ -8,6 +8,7 @@ import random
 import base64
 import uuid
 import asyncio
+from datetime import datetime, timezone
 from fastapi import APIRouter, Body, Query, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from .. import db, brawl_api, coach, bs_maps, detect, auth
@@ -246,6 +247,10 @@ def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, round_mm) -> dict:
         return {"error": "Hacen falta al menos 2 participantes."}
     next_round = (max((m.get("round") or 1) for m in matches) + 1) if matches else 1
     mode, mp = round_mm(next_round)
+    # Evento INDIVIDUAL con un modo de equipo (3v3, dúo, trío): esa ronda no se juega 1 vs 1,
+    # se forman equipos aleatorios del tamaño del modo (como en "equipos aleatorios").
+    if not teams_mode and bs_maps.team_size_for_mode(mode) > 1:
+        return _gen_random_round(eid, parts, None, round_mm)
     standings = _compute_standings(e, matches, parts, teams)
     score = {r["key"]: r["pts"] for r in standings}
     name_of = {r["key"]: str(r["name"]).lower() for r in standings}
@@ -278,19 +283,22 @@ def _gen_swiss_round(eid: int, e: dict, teams_mode: bool, round_mm) -> dict:
     return {"created": created, "round": next_round, "bye": bye_key is not None}
 
 
-def _gen_random_round(eid: int, parts: list, team_size: int, round_mm) -> dict:
+def _gen_random_round(eid: int, parts: list, team_size, round_mm) -> dict:
     """Genera una ronda de EQUIPOS ALEATORIOS (eventos individuales): baraja a los
     participantes, forma equipos de `team_size` y los empareja. Cada partido guarda
-    su roster; la clasificación es individual (cada jugador suma según su equipo)."""
+    su roster; la clasificación es individual (cada jugador suma según su equipo).
+    El tamaño de equipo se toma del MODO de la ronda (3 en 3v3, 2 en dúo, 1 en Duelos);
+    `team_size` explícito solo se usa como respaldo si el modo no lo determina."""
     matches = db.list_matches(eid)
     if matches and any(m.get("status") != "played" for m in matches):
         return {"error": "Termina la ronda actual (todos los resultados) antes de generar la siguiente."}
-    k = max(1, int(team_size or 3))
-    tags = [p["player_tag"] for p in parts]
-    if len(tags) < 2 * k:
-        return {"error": f"Hacen falta al menos {2 * k} jugadores para equipos de {k}."}
     next_round = (max((m.get("round") or 1) for m in matches) + 1) if matches else 1
     mode, mp = round_mm(next_round)
+    k = bs_maps.team_size_for_mode(mode) or int(team_size or 0) or 3  # según el modo de la ronda
+    k = max(1, k)
+    tags = [p["player_tag"] for p in parts]
+    if len(tags) < 2 * k:
+        return {"error": f"Hacen falta al menos {2 * k} jugadores para equipos de {k} (modo {mode or '3v3'})."}
     random.shuffle(tags)
     teams = [tags[i:i + k] for i in range(0, len(tags), k)]
     teams = [t for t in teams if len(t) == k]  # descarta equipo incompleto
@@ -326,12 +334,12 @@ def _compute_standings(e: dict, matches: list, participants: list, teams: list) 
             if tag in rows:
                 rows[tag]["pts"] += ini
                 rows[tag]["mcmahon"] = ini
-    if fmt == "random_teams" and not teams_mode:  # equipos aleatorios → puntuación individual por roster
-        for m in matches:
-            if m.get("status") != "played" or m.get("winner") == "void":
-                continue
-            ros_a, ros_b = (m.get("roster_a") or []), (m.get("roster_b") or [])
-            w = m.get("winner")
+    for m in matches:
+        if m.get("status") != "played" or m.get("winner") == "void":
+            continue
+        w = m.get("winner")
+        ros_a, ros_b = (m.get("roster_a") or []), (m.get("roster_b") or [])
+        if ros_a or ros_b:  # partido de equipos aleatorios → puntuación individual por roster
             for tag in ros_a:
                 if tag in rows:
                     r = rows[tag]; r["pj"] += 1
@@ -344,28 +352,24 @@ def _compute_standings(e: dict, matches: list, participants: list, teams: list) 
                     if w == "b": r["g"] += 1; r["pts"] += pw
                     elif w == "a": r["p"] += 1; r["pts"] += pl
                     else: r["e"] += 1; r["pts"] += pdr
-    else:
-        for m in matches:
-            if m.get("status") != "played" or m.get("winner") == "void":
-                continue
-            ka, kb = (m.get("a_team"), m.get("b_team")) if teams_mode else (m.get("a_tag"), m.get("b_tag"))
-            if (ka in rows) and not kb:  # bye → victoria sin rival
-                r = rows[ka]; r["pj"] += 1; r["g"] += 1; r["pts"] += pw; continue
-            if (kb in rows) and not ka:
-                r = rows[kb]; r["pj"] += 1; r["g"] += 1; r["pts"] += pw; continue
-            if ka not in rows or kb not in rows:
-                continue
-            sa, sb = m.get("score_a") or 0, m.get("score_b") or 0
-            ra, rb = rows[ka], rows[kb]
-            ra["pj"] += 1; rb["pj"] += 1
-            ra["sf"] += sa; ra["sa"] += sb; rb["sf"] += sb; rb["sa"] += sa
-            w = m.get("winner")
-            if w == "a":
-                ra["g"] += 1; rb["p"] += 1; ra["pts"] += pw; rb["pts"] += pl
-            elif w == "b":
-                rb["g"] += 1; ra["p"] += 1; rb["pts"] += pw; ra["pts"] += pl
-            else:
-                ra["e"] += 1; rb["e"] += 1; ra["pts"] += pdr; rb["pts"] += pdr
+            continue
+        ka, kb = (m.get("a_team"), m.get("b_team")) if teams_mode else (m.get("a_tag"), m.get("b_tag"))
+        if (ka in rows) and not kb:  # bye → victoria sin rival
+            r = rows[ka]; r["pj"] += 1; r["g"] += 1; r["pts"] += pw; continue
+        if (kb in rows) and not ka:
+            r = rows[kb]; r["pj"] += 1; r["g"] += 1; r["pts"] += pw; continue
+        if ka not in rows or kb not in rows:
+            continue
+        sa, sb = m.get("score_a") or 0, m.get("score_b") or 0
+        ra, rb = rows[ka], rows[kb]
+        ra["pj"] += 1; rb["pj"] += 1
+        ra["sf"] += sa; ra["sa"] += sb; rb["sf"] += sb; rb["sa"] += sa
+        if w == "a":
+            ra["g"] += 1; rb["p"] += 1; ra["pts"] += pw; rb["pts"] += pl
+        elif w == "b":
+            rb["g"] += 1; ra["p"] += 1; rb["pts"] += pw; ra["pts"] += pl
+        else:
+            ra["e"] += 1; rb["e"] += 1; ra["pts"] += pdr; rb["pts"] += pdr
     out = list(rows.values())
     for r in out:
         r["dif"] = r["sf"] - r["sa"]
@@ -413,6 +417,7 @@ async def api_event_detail(eid: int, user: dict = Depends(auth.require_user)):
         return JSONResponse({"error": "No existe ese evento."}, status_code=404)
     if not _can_view_event(e, user["id"]):
         raise HTTPException(status_code=403, detail="Evento privado.")
+    _apply_auto_approvals(eid, e)   # confirma propuestas de modo/mapa con +24 h sin respuesta
     counts = db.event_counts(eid)
     e["participants"], e["followers"] = counts["participants"], counts["followers"]
     is_owner = e["owner_user_id"] == user["id"]
@@ -468,6 +473,14 @@ def api_event_update(eid: int, payload: dict = Body(...), user: dict = Depends(a
         return JSONResponse({"error": "Visibilidad no válida."}, status_code=400)
     if fields.get("match_type") and fields["match_type"] not in _EV_MATCH:
         return JSONResponse({"error": "Enfrentamiento no válido."}, status_code=400)
+    # La modalidad (individual/equipos) solo se puede cambiar si NO hay nadie apuntado: los
+    # inscritos se apuntaron con unos requisitos; para cambiarla hay que quitarlos antes.
+    if "mode" in fields:
+        e = db.get_event(eid)
+        if e and fields["mode"] != e["mode"] and db.participant_count(eid) > 0:
+            return JSONResponse({"error": "No puedes cambiar la modalidad con jugadores apuntados. "
+                                          "Quítalos primero (indicando el motivo) y que se vuelvan a apuntar."},
+                                status_code=400)
     db.update_event(eid, fields)
     return {"ok": True}
 
@@ -638,10 +651,22 @@ async def api_event_invite_bulk(eid: int, payload: dict = Body(...), user: dict 
 
 
 @router.delete("/api/events/{eid}/participants/{pid}")
-def api_event_remove_participant(eid: int, pid: int, user: dict = Depends(auth.require_user)):
+def api_event_remove_participant(eid: int, pid: int, reason: str = Query(""), user: dict = Depends(auth.require_user)):
+    """Quita a un jugador. El organizador DEBE justificarlo; al jugador le llega una
+    notificación con el motivo."""
     if db.event_owner(eid) != user["id"]:
         raise HTTPException(status_code=403, detail="No eres el organizador.")
+    reason = (reason or "").strip()
+    if not reason:
+        return JSONResponse({"error": "Indica el motivo por el que quitas al jugador (se le notificará)."},
+                            status_code=400)
+    e = db.get_event(eid)
+    part = next((p for p in db.list_participants(eid) if p["id"] == pid), None)
     db.remove_participant(eid, pid)
+    if part and part.get("user_id"):
+        db.notify_many([part["user_id"]], "event_removed",
+                       f"Te han quitado de {e.get('name') if e else 'un evento'}",
+                       f"El organizador te ha quitado del evento. Motivo: {reason}", event_id=eid)
     return {"ok": True}
 
 
@@ -958,6 +983,214 @@ def api_match_delete(eid: int, mid: int, user: dict = Depends(auth.require_user)
     return {"ok": True}
 
 
+def _resolve_round_mm(modes: list, maps: list, ev_mode: str, showdown: str, catalog: list) -> tuple:
+    """Elige un (modo, mapa) al azar entre los PERMITIDOS de la ronda. `modes`/`maps` son las
+    listas marcadas por el organizador (vacías = cualquiera de las del evento). Se usa cuando el
+    modo/mapa no está determinado (0 o varios elegidos) → la selección queda como PROPUESTA.
+    Si solo se eligieron MAPAS (sin modo), el MODO lo determina el mapa elegido."""
+    allowed = bs_maps.allowed_modes(ev_mode, showdown)
+    modes, maps = (modes or []), (maps or [])
+    if modes:                                   # el organizador acotó los modos (se respetan tal cual,
+        mode = random.choice(modes)             # incluidos Supervivencia dúo/trío)
+    elif maps:                                  # solo mapas → el modo lo determina el mapa
+        mp0 = random.choice(maps)
+        mode = bs_maps.mode_for_map(mp0)
+        if mode not in allowed:
+            mode = random.choice(allowed) if allowed else None
+    else:
+        mode = random.choice(allowed) if allowed else None
+    mode_maps = next((c["maps"] for c in (catalog or []) if c["name"] == mode), [])
+    if maps:
+        inter = [x for x in maps if x in mode_maps]
+        mp = random.choice(inter) if inter else (random.choice(mode_maps) if mode_maps else None)
+    else:
+        mp = random.choice(mode_maps) if mode_maps else None
+    return (mode, mp)
+
+
+def _apply_auto_approvals(eid: int, e: dict) -> None:
+    """Aprueba automáticamente las propuestas de modo/mapa con más de 24 h sin respuesta.
+    Muta `e['settings']` y, si hay cambios, los guarda."""
+    settings = e.get("settings") or {}
+    rmaps = settings.get("round_maps") or {}
+    changed = False
+    now = datetime.now(timezone.utc)
+    for rn, rk in rmaps.items():
+        if not isinstance(rk, dict) or rk.get("status") != "proposed":
+            continue
+        ts = rk.get("proposed_at")
+        if not ts:
+            continue
+        try:
+            when = datetime.fromisoformat(ts)
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=timezone.utc)
+        except Exception:  # noqa: BLE001
+            continue
+        if (now - when).total_seconds() >= 24 * 3600:
+            rk["status"] = "confirmed"
+            rk["auto_approved"] = True
+            changed = True
+    if changed:
+        settings["round_maps"] = rmaps
+        e["settings"] = settings
+        db.update_event(eid, {"settings": settings})
+
+
+def _persist_round_proposals(eid: int):
+    """Tras generar, fija en los ajustes el modo/mapa que ha quedado en cada ronda nueva y su
+    estado: 'confirmed' si el organizador lo había determinado (1 modo + 1 mapa, o modo fijo),
+    o 'proposed' si se eligió al azar (queda pendiente de que el organizador lo confirme)."""
+    e = db.get_event(eid)
+    if not e:
+        return
+    settings = e.get("settings") or {}
+    rmaps = settings.get("round_maps") or {}
+    fixed = settings.get("map_policy") == "fixed"
+    by_round: dict = {}
+    for m in db.list_matches(eid):
+        by_round.setdefault(m.get("round") or 1, []).append(m)
+    changed = False
+    for rn, ms in by_round.items():
+        rk = rmaps.get(str(rn)) or {}
+        if rk.get("status"):          # ya resuelto (propuesto o confirmado)
+            continue
+        mode = next((m.get("mode") for m in ms if m.get("mode")), None)
+        mp = next((m.get("map") for m in ms if m.get("map")), None)
+        if not mode and not mp:
+            continue
+        determined = fixed or (len(rk.get("modes") or []) == 1 and len(rk.get("maps") or []) == 1)
+        rk["mode"], rk["map"] = mode, mp
+        rk["status"] = "confirmed" if determined else "proposed"
+        if not determined:  # marca cuándo se propuso, para la auto-aprobación a las 24 h
+            rk["proposed_at"] = datetime.now(timezone.utc).isoformat()
+        rmaps[str(rn)] = rk
+        changed = True
+    if changed:
+        settings["round_maps"] = rmaps
+        db.update_event(eid, {"settings": settings})
+
+
+@router.post("/api/events/{eid}/rounds/{rn}/confirm")
+def api_round_confirm(eid: int, rn: int, user: dict = Depends(auth.require_user)):
+    """El organizador confirma la propuesta de modo/mapa de una ronda → queda cerrada."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    settings = e.get("settings") or {}
+    rmaps = settings.get("round_maps") or {}
+    rk = rmaps.get(str(rn)) or {}
+    if rk.get("status") != "proposed":
+        return JSONResponse({"error": "Esa ronda no tiene una propuesta por confirmar."}, status_code=400)
+    rk["status"] = "confirmed"
+    rmaps[str(rn)] = rk
+    settings["round_maps"] = rmaps
+    db.update_event(eid, {"settings": settings})
+    return {"ok": True, "round": rn}
+
+
+@router.post("/api/events/{eid}/rounds/add")
+def api_round_add(eid: int, user: dict = Depends(auth.require_user)):
+    """Crea una ronda VACÍA (solo aumenta el nº de rondas del torneo) para que el organizador
+    elija sus modos/mapas antes de generar los emparejamientos. No genera cruces ni propone nada."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    settings = e.get("settings") or {}
+    matches = db.list_matches(eid)
+    gen = max((m.get("round") or 1) for m in matches) if matches else 0
+    count = int(settings.get("round_count") or 0)
+    settings["round_count"] = max(count, gen) + 1
+    db.update_event(eid, {"settings": settings})
+    return {"ok": True, "round_count": settings["round_count"]}
+
+
+@router.post("/api/events/{eid}/rounds/{rn}/change-request")
+def api_round_change_request(eid: int, rn: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    """El organizador pide cambiar el modo/mapa de una ronda YA CONFIRMADA. Debe justificarlo;
+    se notifica a los participantes, que pueden aceptar u oponerse (una sola oposición lo bloquea)."""
+    if db.event_owner(eid) != user["id"]:
+        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    body = payload or {}
+    new_mode = (body.get("mode") or "").strip() or None
+    new_map = (body.get("map") or "").strip() or None
+    reason = (body.get("reason") or "").strip()
+    if not new_mode and not new_map:
+        return JSONResponse({"error": "Indica el nuevo modo o mapa."}, status_code=400)
+    if not reason:
+        return JSONResponse({"error": "Justifica el cambio: los jugadores verán el motivo."}, status_code=400)
+    settings = e.get("settings") or {}
+    rmaps = settings.get("round_maps") or {}
+    rk = rmaps.get(str(rn)) or {}
+    if rk.get("status") != "confirmed":
+        return JSONResponse({"error": "Solo se puede pedir un cambio de una ronda ya confirmada."}, status_code=400)
+    rk["change_request"] = {"new_mode": new_mode, "new_map": new_map, "reason": reason,
+                            "votes": {}, "status": "pending"}
+    rmaps[str(rn)] = rk
+    settings["round_maps"] = rmaps
+    db.update_event(eid, {"settings": settings})
+    voters = [uid for uid in db.event_participant_user_ids(eid) if uid != user["id"]]
+    mm = " · ".join([x for x in (new_mode, new_map) if x])
+    db.notify_many(voters, "event_map_change", f"Cambio de mapa propuesto · {e.get('name')}",
+                   f"Ronda {rn}: se propone {mm}. Motivo: {reason}. Acéptalo u oponte en la ficha del evento.",
+                   event_id=eid)
+    return {"ok": True, "round": rn, "voters": len(voters)}
+
+
+@router.post("/api/events/{eid}/rounds/{rn}/change-vote")
+def api_round_change_vote(eid: int, rn: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    """Un participante acepta u se opone al cambio propuesto. Una sola oposición lo bloquea;
+    si todos aceptan, se aplica el nuevo modo/mapa a la ronda y sus partidas."""
+    e = db.get_event(eid)
+    if not e:
+        return JSONResponse({"error": "No existe ese evento."}, status_code=404)
+    vote = (payload or {}).get("vote")
+    if vote not in ("accept", "object"):
+        return JSONResponse({"error": "Voto no válido."}, status_code=400)
+    part_users = set(db.event_participant_user_ids(eid))
+    if user["id"] not in part_users:
+        return JSONResponse({"error": "Solo los participantes pueden votar."}, status_code=403)
+    settings = e.get("settings") or {}
+    rmaps = settings.get("round_maps") or {}
+    rk = rmaps.get(str(rn)) or {}
+    cr = rk.get("change_request")
+    if not cr or cr.get("status") != "pending":
+        return JSONResponse({"error": "No hay un cambio pendiente en esa ronda."}, status_code=400)
+    owner = db.event_owner(eid)
+    cr.setdefault("votes", {})[str(user["id"])] = vote
+    if vote == "object":
+        cr["status"] = "blocked"
+        rk["change_request"] = cr; rmaps[str(rn)] = rk; settings["round_maps"] = rmaps
+        db.update_event(eid, {"settings": settings})
+        db.notify_many([owner], "event_map_change", f"Cambio rechazado · {e.get('name')}",
+                       f"Ronda {rn}: un participante se opuso; el modo y el mapa se mantienen.", event_id=eid)
+        return {"ok": True, "status": "blocked"}
+    voters = [uid for uid in part_users if uid != owner]
+    accepted = {int(k) for k, v in cr["votes"].items() if v == "accept"}
+    if all(uid in accepted for uid in voters):     # todos han aceptado → aplicar
+        rk["mode"] = cr.get("new_mode") or rk.get("mode")
+        rk["map"] = cr.get("new_map") or rk.get("map")
+        cr["status"] = "applied"
+        rk["change_request"] = cr; rmaps[str(rn)] = rk; settings["round_maps"] = rmaps
+        db.update_event(eid, {"settings": settings})
+        for m in db.list_matches(eid):
+            if (m.get("round") or 1) == rn:
+                db.update_match(m["id"], {"mode": rk.get("mode"), "map": rk.get("map")})
+        db.notify_many(list(part_users), "event_map_change", f"Modo/mapa actualizado · {e.get('name')}",
+                       f"Ronda {rn}: ahora se juega {rk.get('mode') or '—'} · {rk.get('map') or '—'}.", event_id=eid)
+        return {"ok": True, "status": "applied"}
+    rk["change_request"] = cr; rmaps[str(rn)] = rk; settings["round_maps"] = rmaps
+    db.update_event(eid, {"settings": settings})
+    return {"ok": True, "status": "pending", "accepted": len(accepted), "needed": len(voters)}
+
+
 @router.post("/api/events/{eid}/matches/generate")
 async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     if db.event_owner(eid) != user["id"]:
@@ -983,29 +1216,35 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
     _live_cat = bs_maps.catalog_with_live((await assets.get_assets()).get("maps_by_mode"))
 
     def round_mm(rn):  # modo/mapa de la ronda rn
-        manual = round_maps.get(str(rn)) or round_maps.get(rn)  # selección manual por ronda
-        if manual and (manual.get("mode") or manual.get("map")):
-            return (manual.get("mode") or None, manual.get("map") or None)
-        if policy == "fixed":
+        rk = round_maps.get(str(rn)) or round_maps.get(rn) or {}
+        if rk.get("mode") or rk.get("map"):        # ya determinado/propuesto/confirmado
+            return (rk.get("mode") or None, rk.get("map") or None)
+        if policy == "fixed" and (fm or fmap):
             return (fm, fmap)
-        if policy == "random":
-            if rn not in _mm:
-                _mm[rn] = bs_maps.random_mode_map(ev_mode, showdown, _live_cat)
-            return _mm[rn]
-        return (None, None)
+        # No determinado (0 o varios modos/mapas elegidos) → se elige al azar entre los permitidos.
+        if rn not in _mm:
+            _mm[rn] = _resolve_round_mm(rk.get("modes") or [], rk.get("maps") or [], ev_mode, showdown, _live_cat)
+        return _mm[rn]
     teams_mode = e["mode"] == "teams"
     ids = [t["id"] for t in db.list_teams(eid)] if teams_mode else \
           [p["player_tag"] for p in db.list_participants(eid)]
     if len(ids) < 2:
         return JSONResponse({"error": "Hacen falta al menos 2 participantes."}, status_code=400)
-    max_rounds = settings.get("rounds")  # límite de rondas (suizo/McMahon/aleatorios)
+    # límite de rondas: en torneos lo marca el nº de rondas creadas con «+» (round_count);
+    # en ligas, las vueltas (rounds).
+    max_rounds = settings.get("round_count") or settings.get("rounds")
     if fmt in ("swiss", "mcmahon", "random_teams") and max_rounds:
         existing = db.list_matches(eid)
         nextr = (max((m.get("round") or 1) for m in existing) + 1) if existing else 1
         if nextr > int(max_rounds):
-            return JSONResponse({"error": f"El torneo está configurado a {int(max_rounds)} rondas; ya están todas generadas."}, status_code=400)
+            msg = (f"Ya has generado las {int(max_rounds)} rondas creadas. Crea una ronda nueva con «+» "
+                   f"(en «Modos y mapas por ronda») para poder generar la siguiente."
+                   if settings.get("round_count") else
+                   f"El torneo está configurado a {int(max_rounds)} rondas; ya están todas generadas.")
+            return JSONResponse({"error": msg}, status_code=400)
     if fmt == "single_elim":
         created = _gen_single_elim(eid, ids, teams_mode, round_mm)
+        _persist_round_proposals(eid)
         return {"ok": True, "created": created, "format": "single_elim"}
     if fmt in ("swiss", "mcmahon"):
         if not db.list_matches(eid) and not teams_mode:  # ronda 1: snapshot de copas
@@ -1013,12 +1252,14 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
         res = _gen_swiss_round(eid, e, teams_mode, round_mm)
         if "error" in res:
             return JSONResponse({"error": res["error"]}, status_code=400)
+        _persist_round_proposals(eid)
         return {"ok": True, "format": fmt, **res}
     if fmt == "random_teams":
         ts = body.get("team_size") or settings.get("team_size") or 3
         res = _gen_random_round(eid, db.list_participants(eid), ts, round_mm)
         if "error" in res:
             return JSONResponse({"error": res["error"]}, status_code=400)
+        _persist_round_proposals(eid)
         return {"ok": True, "format": "random_teams", **res}
     try:
         legs = max(1, min(20, int(body.get("legs") or settings.get("rounds") or 1)))
@@ -1038,6 +1279,7 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
                 else:
                     db.create_match(eid, round_no, a_tag=a, b_tag=b, mode=rm, map=rmap)
                 created += 1
+    _persist_round_proposals(eid)
     return {"ok": True, "created": created}
 
 
@@ -1068,16 +1310,30 @@ def api_round_mode_map(eid: int, rn: int, payload: dict = Body(...), user: dict 
     if not e:
         return JSONResponse({"error": "No existe ese evento."}, status_code=404)
     body = payload or {}
-    mode = (body.get("mode") or "").strip() or None
-    mp = (body.get("map") or "").strip() or None
     settings = e.get("settings") or {}
     rmaps = settings.get("round_maps") or {}
-    rmaps[str(rn)] = {"mode": mode, "map": mp}
+    rk = rmaps.get(str(rn)) or {}
+    round_matches = [m for m in db.list_matches(eid) if (m.get("round") or 1) == rn]
+    # Una ronda ya generada tiene la selección CERRADA (solo se cambia con confirmación/petición).
+    if round_matches and rk.get("status") in ("proposed", "confirmed"):
+        return JSONResponse({"error": "La ronda ya está generada; su modo y mapa están cerrados."},
+                            status_code=400)
+    # Listas de PERMITIDOS (checkbox) para cuando se genere la ronda.
+    modes = [str(x).strip() for x in (body.get("modes") or []) if str(x).strip()]
+    maps = [str(x).strip() for x in (body.get("maps") or []) if str(x).strip()]
+    rk["modes"], rk["maps"] = modes, maps
+    # Si el organizador determina EXACTAMENTE un modo y un mapa, queda fijado (confirmado).
+    mode = (body.get("mode") or (modes[0] if len(modes) == 1 else "") or "").strip() or None
+    mp = (body.get("map") or (maps[0] if len(maps) == 1 else "") or "").strip() or None
+    if len(modes) == 1 and len(maps) == 1:
+        rk["mode"], rk["map"], rk["status"] = mode, mp, "confirmed"
+    else:
+        rk.pop("mode", None); rk.pop("map", None); rk.pop("status", None)
+    rmaps[str(rn)] = rk
     settings["round_maps"] = rmaps
     db.update_event(eid, {"settings": settings})
     updated = 0
-    for m in db.list_matches(eid):  # aplicar a las partidas ya generadas de esa ronda
-        if (m.get("round") or 1) == rn:
-            db.update_match(m["id"], {"mode": mode, "map": mp})
-            updated += 1
+    for m in round_matches:  # aplicar a las partidas ya generadas de esa ronda (si las hay)
+        db.update_match(m["id"], {"mode": rk.get("mode"), "map": rk.get("map")})
+        updated += 1
     return {"ok": True, "round": rn, "updated": updated}

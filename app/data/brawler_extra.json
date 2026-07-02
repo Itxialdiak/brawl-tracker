@@ -2239,7 +2239,7 @@
       "speed": 720,
       "range": "6.33 (Normal) 9 (en los arbustos; Largo/con Maestra de los Elementos; Largo)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Poder Elemental",
       "description": "Juju lanza proyectiles imbuidos con la fuerza del elemento en el que se encuentre. Cada elemento ls confiere propiedades diferentes. Tierra: daño aumentado. Hierba: alcance aumentado. Agua: relentización.|Juju lanza un juguete vudú que explota en un radio de 2 casillas."
@@ -3127,7 +3127,7 @@
       "speed": 770,
       "range": "7.33 (Largo) 6.67 (con Orden:Cambio)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Dispensador de tiques",
       "description": "Dispara una salva de tiques por encima de los obstáculos que explotan dos veces tras impactar e infligen daño a los enemigos cercanos. Larry lanza tiques por encima de los muros que explota en un pequeño radio de 1,5 casillas la primera vez al impactar, y luego tras 0,6 segundos, explota una segunda vez con un mayor rango de explosión de 2,67 casillas. Al igual que con Barley, el daño puede golpear dos veces si el enemigo se encuentra en el radio de ambas explosiones."
@@ -5338,7 +5338,7 @@
       "speed": 720,
       "range": "7.67 (Largo) 11 (Perdigones de Walkie-Talkie)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Cataplum",
       "description": "¡Grom lanza su walkie-talkie explosivo! La explosión se expande en forma de cruz e inflige daño a los enemigos que se encuentren en su camino. Grom lanza su walkie-talkie que puede lanzarse sobre obstáculos y se divide en cuatro proyectiles que atravesan a los Brawlers en un patrón cruzado. Los enemigos solo pueden ser dañados por uno de los proyectiles."
@@ -6285,7 +6285,7 @@
       "speed": 720,
       "range": "5 (Lanzamiento; Normal) 8.33 (Después de aterrizar; Largo)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Bomba de semillas",
       "description": "Sprout lanza una bola de semillas que explota al contacto. Si no alcanza a ningún objetivo, explota tras haber rebotado varias veces. Lanza una bola de semillas que explota al contacto. Si no impacta inmediatamente a un enemigo, se desplazará 3,33 casillas antes de explotar en un área con un radio de 2 casillas. La bomba de semillas también rebotará en las paredes, aumentando su alcance en 1,67 casillas, similar al ataque de Rico y Ruffs."
@@ -7368,7 +7368,7 @@
       "speed": 720,
       "range": "8.67 (Largo)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Miniminas",
       "description": "Tick lanza un racimo de minas que se dividen antes de aterrizar. Las minas explotan directamente al alcanzar al enemigo o tras unos segundos. El ataque de Tick lanza tres minas que explotan en un radio de 1.56 casillas después de dos segundos o si un enemigo se encuentra cerca de la mina."
@@ -8391,7 +8391,7 @@
       "speed": 770,
       "range": "7.33 (Largo)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Mecha corta",
       "description": "Mike tira dos cartuchos de dinamita que sobrevuelan obstáculos. ¡Sus cartuchos son casi tan explosivos como su temperamento! Dynamike lanza dos cartuchos de dinamita que explotan después de un breve retraso y causan grandes daños a los enemigos en su radio de explosión. Los dos cartuchos se extienden a corta distancia uno del otro, de forma perpendicular a la dirección del lanzamiento a medida que viajan, y detonan simultáneamente."
@@ -8575,7 +8575,7 @@
       "speed": 720,
       "range": "7.33 (Largo)"
     },
-    "role": "Artillería",
+    "role": "Lanzador",
     "attack": {
       "name": "Desparrame",
       "description": "Barley lanza una botella que daña a los enemigos cuando cae al suelo, se rompe y los salpica. ¡Y reciben más daño aún si se quedan en el área afectada! Barley lanza una botella de líquido que se rompe y deja un charco en un radio de 2 casillas que inflige daño a los enemigos que son golpeados o permanecen sobre el charco. El daño puede afectar dos veces si el enemigo permanece de pie sobre el charco de líquido. Después de 2 segundos, el líquido desaparece."

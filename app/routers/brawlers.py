@@ -103,7 +103,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         ex = brawler_extra.get(bid)
         sps = _clean_abilities(cat.get("star_powers"), ex.get("star_powers_es"))
         gds = _clean_abilities(cat.get("gadgets"), ex.get("gadgets_es"))
-        role = ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role")
+        role = brawler_extra.norm_role(ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role"))
         item = {
             "id": bid, "name": name, "role": role,
             "role_secondary": brawler_extra.role_secondary(name),
@@ -329,7 +329,7 @@ async def api_brawler_detail(brawler_id: int, player: str = Query(None),
     return {
         "id": brawler_id, "name": name,
         "description": extra.get("description_es") or cat.get("description"),
-        "role": extra.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role"),
+        "role": brawler_extra.norm_role(extra.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role")),
         "role_secondary": brawler_extra.role_secondary(name),
         "rarity": cat.get("rarity"),
         "image_full": image_full, "portrait": cat.get("portrait"),

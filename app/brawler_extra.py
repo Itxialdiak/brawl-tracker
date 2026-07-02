@@ -82,6 +82,29 @@ def is_temporary(brawler_id=None, name=None) -> bool:
     return bool(name) and str(name).upper() in TEMPORARY_NAMES
 
 
+# --- Normalización de nombres de rol ----------------------------------------
+# "Artillería" se unificó con "Lanzador" (son el mismo rol): cualquier fuente que
+# aún use el nombre antiguo (o su equivalente inglés) se mapea a "Lanzador".
+_ROLE_ALIASES = {"Artillería": "Lanzador", "Artilleria": "Lanzador", "Artillery": "Lanzador"}
+
+
+def norm_role(role):
+    """Devuelve el nombre canónico del rol (aplica los alias de unificación)."""
+    if not role:
+        return role
+    return _ROLE_ALIASES.get(role, role)
+
+
+def _norm_role_list(roles):
+    """Normaliza y deduplica (conservando el orden) una lista de roles."""
+    out = []
+    for r in roles or []:
+        nr = norm_role(r)
+        if nr and nr not in out:
+            out.append(nr)
+    return out
+
+
 # --- Roles secundarios curados (data/roles_secondary.json) -------------------
 
 _ROLES_PATH = os.path.join(os.path.dirname(__file__), "data", "roles_secondary.json")
@@ -104,12 +127,12 @@ def _load_roles() -> dict:
 
 
 def role_secondary(name: str) -> str | None:
-    return (_load_roles().get("secondary") or {}).get(name)
+    return norm_role((_load_roles().get("secondary") or {}).get(name))
 
 
 def role_primary_fallback(name: str) -> str | None:
     """Rol primario para brawlers que la wiki aún no clasifica (Clase=None)."""
-    return (_load_roles().get("primary_fallback") or {}).get(name)
+    return norm_role((_load_roles().get("primary_fallback") or {}).get(name))
 
 
 # --- Índice de roles por brawler (data/roles_index.json) ---------------------
@@ -127,7 +150,10 @@ def _load_roles_index() -> dict:
     if _rindex_cache["data"] is None or mtime != _rindex_cache["mtime"]:
         try:
             with open(_RINDEX_PATH, encoding="utf-8") as f:
-                _rindex_cache["data"] = json.load(f)
+                raw = json.load(f)
+            # Normaliza alias de rol y deduplica por brawler (p. ej. si tenía
+            # "Lanzador" y "Artillería" quedan como un único "Lanzador").
+            _rindex_cache["data"] = {name: _norm_role_list(rs) for name, rs in raw.items()}
             _rindex_cache["mtime"] = mtime
         except Exception:  # noqa: BLE001
             return _rindex_cache["data"] or {}

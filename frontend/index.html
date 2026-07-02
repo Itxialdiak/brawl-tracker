@@ -443,11 +443,11 @@
         <div class="panel p-brawler" id="panel-brawler"><h2><span class="dot"></span>Rendimiento por brawler</h2>
           <div class="hint">Rendimiento ajustado a la dificultad con cada brawler (V/D · estelar).</div><div class="rows" id="r-brawler"></div></div>
         <div class="panel p-mode" id="panel-mode"><h2><span class="dot"></span>Por modo de juego</h2>
-          <div class="hint">Dónde rinde mejor según el modo.</div><div class="rows" id="r-mode"></div></div>
+          <div class="hint">Dónde rinde mejor según el modo (win rate ajustado por nº de partidas).</div><div class="rows" id="r-mode"></div></div>
         <div class="panel p-map" id="panel-map"><h2><span class="dot"></span>Por mapa</h2>
-          <div class="hint">Haz clic en un mapa para ver su imagen.</div><div class="rows" id="r-map"></div></div>
+          <div class="hint">Win rate ajustado por nº de partidas. Haz clic en un mapa para ver su imagen.</div><div class="rows" id="r-map"></div></div>
         <div class="panel p-role" id="panel-role"><h2><span class="dot"></span>Por rol</h2>
-          <div class="hint">Win rate por rol (primario y secundario).</div><div class="rows" id="r-role"></div></div>
+          <div class="hint">Win rate por rol (primario y secundario), ajustado por nº de partidas.</div><div class="rows" id="r-role"></div></div>
         <div class="panel p-vs"><h2><span class="dot"></span>Contra cada brawler</h2>
           <div class="hint">Win rate y copas medias del rival.</div><div class="rows" id="r-vs"></div></div>
       </div></details>
@@ -738,6 +738,7 @@
 
   <!-- ===================== SECCIÓN: TORNEOS Y LIGAS (futura) ===================== -->
   <section class="app-section" id="section-leagues">
+   <div id="events-list-view">
     <h2 class="section-title">Eventos</h2>
     <p class="hint" style="margin-bottom:12px">La sección de Eventos es tu espacio para crear y autogestionar competiciones de Brawl Stars: torneos y ligas que puedes abrir a toda la comunidad de la plataforma o mantener privados para disfrutarlos solo con tu club, tu grupo o tus amigos. La idea es que BrawlSensei no se quede en la analítica individual, sino que sirva también como un punto de encuentro para organizar actividad alrededor del juego y dar vida a la comunidad que hay detrás.</p>
     <p class="hint" style="margin-bottom:20px">Montar uno lleva un momento: eliges si es liga o torneo, individual o por equipos, su formato (suizo, eliminación directa, todos contra todos…) y las normas (rondas, puntos, modos y mapas). Apuntas a los jugadores por su ID (o dejas que se inscriban ellos desde el tablón público), generas cada ronda y vas registrando los resultados; el sistema incluso puede detectarlos solo a partir de vuestras partidas amistosas. La clasificación se actualiza sola y los seguidores reciben avisos de lo que les interesa, así que a ti solo te queda disfrutar de la competición.</p>
@@ -810,6 +811,9 @@
       <div class="event-grid" id="board-events-grid"></div>
       <div class="lg-empty" id="board-events-empty" style="display:none">No hay eventos públicos que coincidan con los filtros.</div>
     </div>
+   </div><!-- /events-list-view -->
+   <!-- Página de detalle del evento (a pantalla completa, como la ficha de un brawler) -->
+   <div id="event-page" style="display:none"><!-- render por JS --></div>
   </section>
 
   <!-- Modal: crear evento -->
@@ -1055,6 +1059,25 @@
         <div style="flex:1"></div>
         <button class="ghost" type="button" onclick="closeEvModal('event-team-modal')">Cancelar</button>
         <button class="btn" type="button" onclick="submitTeam()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: solicitar cambio de modo/mapa de una ronda (organizador) -->
+  <div class="modal-overlay" id="event-roundchange-modal">
+    <div class="modal-card">
+      <button class="modal-x" type="button" onclick="closeEvModal('event-roundchange-modal')">✕</button>
+      <h3 class="modal-title">Solicitar cambio de modo/mapa</h3>
+      <p class="modal-sub">Los participantes recibirán una notificación con el motivo y podrán aceptar u oponerse. Si una sola persona se opone, no se cambia.</p>
+      <label class="ec-lbl">Modo</label>
+      <select id="rchg-mode" onchange="modeChanged('rchg-mode','rchg-map')"></select>
+      <label class="ec-lbl">Mapa</label>
+      <select id="rchg-map" onchange="mapChanged('rchg-mode','rchg-map')"></select>
+      <label class="ec-lbl">Motivo del cambio</label>
+      <textarea id="rchg-reason" rows="3" placeholder="Explica por qué cambias el modo/mapa…"></textarea>
+      <div class="modal-actions">
+        <button class="ghost" type="button" onclick="closeEvModal('event-roundchange-modal')">Cancelar</button>
+        <button class="btn" type="button" onclick="submitRoundChange()">Enviar solicitud</button>
       </div>
     </div>
   </div>
