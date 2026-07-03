@@ -159,6 +159,128 @@ def match_individual(pool, a_tag, b_tag, code, start, end, best_of=1, map_name=N
     return _finalize(found, best_of)
 
 
+# ===========================================================================
+# Cruce por REGISTROS (nuestra BD primero, API si falta): dos jugadores que tienen
+# una amistosa a la MISMA hora (battle_time, precisión de segundo => es la MISMA
+# partida) con resultados OPUESTOS son ese enfrentamiento, aunque el modo del battlelog
+# no coincida con el de la ronda. Es el método fiable cuando el registro de un jugador
+# no incluye el tag del rival (p. ej. Duelos).
+# ===========================================================================
+
+def to_bs_time(dt):
+    """datetime UTC -> formato battle_time ('YYYYMMDDTHHMMSS.000Z')."""
+    return dt.strftime("%Y%m%dT%H%M%S.000Z") if dt else None
+
+
+def _result_win(r):
+    """'victory' -> True, 'defeat' -> False, resto (empate/desconocido) -> None."""
+    r = (r or "").lower()
+    return True if r == "victory" else (False if r == "defeat" else None)
+
+
+def friendly_records_from_battlelog(items, since=None, until=None) -> list:
+    """Registros {time, mode, map, result} de las AMISTOSAS de un battlelog crudo (para los
+    jugadores que aún no están en nuestra BD). `since`/`until` en formato battle_time."""
+    out = []
+    for it in items or []:
+        b = it.get("battle") or {}
+        if _norm_mode(b.get("type")) != "friendly":
+            continue
+        t = it.get("battleTime")
+        if not t or (since and t < since) or (until and t > until):
+            continue
+        ev = it.get("event") or {}
+        out.append({"time": t, "mode": _norm_mode(b.get("mode") or ev.get("mode")),
+                    "map": (ev.get("map") or "").strip(), "result": (b.get("result") or "").lower()})
+    return out
+
+
+def _finalize_records(found, best_of):
+    if not found:
+        return None
+    found.sort(key=lambda x: x[0])
+    if best_of <= 1:
+        t, w, mp = found[-1]
+        return {"winner": w, "score_a": 1 if w == "a" else 0, "score_b": 1 if w == "b" else 0,
+                "evidence": t, "map": mp, "n": 1}
+    wa = sum(1 for _, w, _ in found if w == "a")
+    wb = sum(1 for _, w, _ in found if w == "b")
+    winner = "a" if wa > wb else ("b" if wb > wa else "draw")
+    return {"winner": winner, "score_a": wa, "score_b": wb,
+            "evidence": found[-1][0], "map": found[-1][2], "n": len(found)}
+
+
+def match_records(a_rec, b_rec, best_of=1, code=None, map_name=None) -> dict | None:
+    """1v1: A y B con una amistosa a la MISMA hora (=> la MISMA partida) sirve para ENCONTRARLA,
+    pero solo se valida si además coincide el MODO y el MAPA de la ronda y están en bandos
+    opuestos. La ventana de fechas ya se aplicó al leer los registros. Modo o mapa distintos NO
+    cuentan (evita falsos positivos). Devuelve el mapa REAL de la partida (para anotarlo)."""
+    wm = _norm_map(map_name) if map_name else None
+    b_by_time = {}
+    for x in b_rec:
+        b_by_time.setdefault(x["time"], x)   # una por hora basta (los segundos son únicos por partida)
+    found = []
+    for a in a_rec:
+        b = b_by_time.get(a["time"])
+        if not b:
+            continue
+        amap = _norm_map(a.get("map"))
+        if amap != _norm_map(b.get("map")):
+            continue                          # misma hora pero distinto mapa: no es la misma partida
+        if wm and amap != wm:
+            continue                          # debe ser en el MAPA de la ronda
+        if code and _norm_mode(a.get("mode")) != code:
+            continue                          # debe ser en el MODO de la ronda
+        wa, wb = _result_win(a["result"]), _result_win(b["result"])
+        if wa is True and wb is False:
+            w = "a"
+        elif wa is False and wb is True:
+            w = "b"
+        elif wa is None or wb is None:
+            w = "draw"
+        else:
+            continue                          # ambos ganan o ambos pierden: incoherente
+        found.append((a["time"], w, a.get("map") or b.get("map")))
+    return _finalize_records(found, best_of)
+
+
+def match_records_teams(rec_by_tag, roster_a, roster_b, best_of=1, code=None, map_name=None) -> dict | None:
+    """Por equipos: en una misma hora, TODOS los del róster A ganan y TODOS los del róster B
+    pierden (o al revés), con el modo y el mapa de la ronda. Si falta un jugador o hay cambio de
+    equipo (alguien no está en su bando con el resultado esperado) NO cuenta."""
+    ra = [normalize_tag(t) for t in (roster_a or []) if t]
+    rb = [normalize_tag(t) for t in (roster_b or []) if t]
+    if not ra or not rb:
+        return None
+    wm = _norm_map(map_name) if map_name else None
+    times = {}
+    for tag in set(ra) | set(rb):
+        for x in rec_by_tag.get(tag, []):
+            slot = times.setdefault(x["time"], {"w": {}, "maps": set(), "modes": set()})
+            slot["w"][tag] = _result_win(x["result"])
+            if x.get("map"):
+                slot["maps"].add(_norm_map(x["map"]))
+            if x.get("mode"):
+                slot["modes"].add(_norm_mode(x["mode"]))
+    found = []
+    for t, slot in times.items():
+        if len(slot["maps"]) > 1:             # distintos mapas a la misma hora: no es una partida
+            continue
+        mp = next(iter(slot["maps"]), None)
+        if wm and mp != wm:
+            continue                          # debe ser en el MAPA de la ronda
+        if code and code not in slot["modes"]:
+            continue                          # debe ser en el MODO de la ronda
+
+        def side_all(roster, want_win):       # TODOS los del róster presentes y con ese resultado
+            return roster and all(slot["w"].get(tg) is want_win for tg in roster)
+        if side_all(ra, True) and side_all(rb, False):
+            found.append((t, "a", mp))
+        elif side_all(rb, True) and side_all(ra, False):
+            found.append((t, "b", mp))
+    return _finalize_records(found, best_of)
+
+
 def match_teams(pool, roster_a, roster_b, code, start, end, best_of=1, map_name=None):
     ra = set(normalize_tag(t) for t in (roster_a or []) if t)
     rb = set(normalize_tag(t) for t in (roster_b or []) if t)

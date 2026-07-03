@@ -926,31 +926,52 @@ async def detect_event_matches(eid: int, e: dict = None, force: bool = False, on
         tid = m.get("a_team" if side == "a" else "b_team")
         return team_players.get(tid, [])
 
-    # tags a consultar (una vez cada uno)
+    # tags a consultar (una vez cada uno), normalizados
     tags = set()
     for m in pend:
         if teams_mode:
             tags.update(roster_of(m, "a")); tags.update(roster_of(m, "b"))
         else:
             tags.add(m["a_tag"]); tags.add(m["b_tag"])
-    tags = [t for t in tags if t]
+    tags = [db.normalize_tag(t) for t in tags if t]
 
-    async def fetch(tag):
-        try:
-            return (tag, await _get_battlelog_cached(tag))
-        except Exception:  # noqa: BLE001
-            return (tag, [])
-    logs = await asyncio.gather(*[fetch(t) for t in tags]) if tags else []
-    pool = detect.build_pool(logs)
+    since_bs = detect.to_bs_time(start)
+    until_bs = detect.to_bs_time(end)
+
+    # Registros de amistosas de cada participante: primero desde NUESTRA base de datos; solo
+    # pedimos a la API de Brawl Stars los tags que no tengan datos guardados en la ventana del
+    # evento (así el poller no llama a la API sin necesidad). Luego se cruzan por HORA: dos
+    # jugadores con una amistosa a la misma hora, mismo mapa y resultados opuestos = su partida
+    # (aunque el registro no incluya el tag del rival, p. ej. en Duelos).
+    records = {}
+    need_api = []
+    for t in tags:
+        rec = await asyncio.to_thread(db.player_friendly_battles, t, since_bs, until_bs)
+        if rec:
+            records[t] = rec
+        else:
+            need_api.append(t)
+    if need_api and brawl_api.TOKEN:
+        async def fetch(tag):
+            try:
+                return (tag, await _get_battlelog_cached(tag))
+            except Exception:  # noqa: BLE001
+                return (tag, [])
+        logs = await asyncio.gather(*[fetch(t) for t in need_api])
+        for tag, items in logs:
+            records[tag] = detect.friendly_records_from_battlelog(items, since_bs, until_bs)
 
     detected = 0
     for m in pend:
-        code = detect.mode_code(m.get("mode"))
-        mp = m.get("map")  # mapa concreto del torneo: si está fijado, la partida debe ser en ÉL
+        code = detect.mode_code(m.get("mode"))   # modo de la ronda (código del battlelog)
+        mp = m.get("map")                        # mapa de la ronda
         if teams_mode:
-            res = detect.match_teams(pool, roster_of(m, "a"), roster_of(m, "b"), code, start, end, best_of, mp)
+            ra = [db.normalize_tag(t) for t in roster_of(m, "a") if t]
+            rb = [db.normalize_tag(t) for t in roster_of(m, "b") if t]
+            res = detect.match_records_teams(records, ra, rb, best_of, code, mp)
         else:
-            res = detect.match_individual(pool, m["a_tag"], m["b_tag"], code, start, end, best_of, mp)
+            a, b = db.normalize_tag(m["a_tag"]), db.normalize_tag(m["b_tag"])
+            res = detect.match_records(records.get(a, []), records.get(b, []), best_of, code, mp)
         if not res:
             continue
         sa, sb, w = res["score_a"], res["score_b"], res["winner"]
@@ -1000,22 +1021,26 @@ def _resolve_round_mm(modes: list, maps: list, ev_mode: str, showdown: str, cata
     Si solo se eligieron MAPAS (sin modo), el MODO lo determina el mapa elegido."""
     allowed = bs_maps.allowed_modes(ev_mode, showdown)
     modes, maps = (modes or []), (maps or [])
-    if modes:                                   # el organizador acotó los modos (se respetan tal cual,
-        mode = random.choice(modes)             # incluidos Supervivencia dúo/trío)
-    elif maps:                                  # solo mapas → el modo lo determina el mapa
-        mp0 = random.choice(maps)
-        mode = bs_maps.mode_for_map(mp0)
-        if mode not in allowed:
-            mode = random.choice(allowed) if allowed else None
-    else:
-        mode = random.choice(allowed) if allowed else None
-    mode_maps = next((c["maps"] for c in (catalog or []) if c["name"] == mode), [])
-    if maps:
-        inter = [x for x in maps if x in mode_maps]
-        mp = random.choice(inter) if inter else (random.choice(mode_maps) if mode_maps else None)
-    else:
-        mp = random.choice(mode_maps) if mode_maps else None
-    return (mode, mp)
+    cat = catalog or []
+
+    def maps_of(mode):
+        return next((c["maps"] for c in cat if c["name"] == mode), [])
+
+    if modes:                                   # el organizador acotó los modos (se respetan tal
+        mode = random.choice(modes)             # cual, incluidos Supervivencia dúo/trío)
+        pool = [x for x in maps if x in maps_of(mode)] or maps_of(mode)
+        return (mode, random.choice(pool) if pool else None)
+    if maps:                                     # solo mapas → el MAPA determina el modo, elegido al
+        mp = random.choice(maps)                 # azar entre los modos que comparten ESE mapa (p. ej.
+        cands = [c["name"] for c in cat          # Fénix Ardiente puede ser Duelos o Noqueo)
+                 if c["name"] in allowed and mp in (c.get("maps") or [])]
+        if not cands:                            # respaldo hardcodeado si el catálogo no lo tiene
+            m2 = bs_maps.mode_for_map(mp)
+            cands = [m2] if m2 in allowed else list(allowed)
+        return (random.choice(cands) if cands else None, mp)
+    mode = random.choice(allowed) if allowed else None   # ni modo ni mapa → todo al azar
+    pool = maps_of(mode)
+    return (mode, random.choice(pool) if pool else None)
 
 
 def _apply_auto_approvals(eid: int, e: dict) -> None:

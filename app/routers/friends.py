@@ -87,3 +87,43 @@ def api_friend_reject(req_id: int, user: dict = Depends(auth.require_user)):
 def api_friend_remove(friend_id: int, user: dict = Depends(auth.require_user)):
     db.remove_friend(user["id"], friend_id)
     return {"ok": True}
+
+
+# --------------------------- perfil público (fase C) ---------------------------
+
+def _relation(me_id: int, other_id: int) -> str:
+    if me_id == other_id:
+        return "self"
+    if db.are_friends(me_id, other_id):
+        return "friend"
+    if db.friend_request_status(me_id, other_id) == "pending":
+        return "outgoing"
+    if db.friend_request_status(other_id, me_id) == "pending":
+        return "incoming"
+    return "none"
+
+
+@router.get("/api/users/{uid}/profile")
+def api_user_profile(uid: int, user: dict = Depends(auth.require_user)):
+    """Perfil PÚBLICO (solo lectura) de un usuario: sus jugadores y la relación contigo.
+    Solo expone datos agregados, nunca privados (mensajes, etc.)."""
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    players = [{"tag": p["tag"], "name": p["name"], "icon_id": p.get("icon_id"),
+                "club_name": p.get("club_name"), "battles": p.get("battles") or 0}
+               for p in db.list_players_for_user(uid)]
+    return {"id": target["id"], "username": target["username"], "country": target.get("country"),
+            "relation": _relation(user["id"], uid), "players": players}
+
+
+@router.get("/api/users/{uid}/players/{tag}/summary")
+def api_user_player_summary(uid: int, tag: str, user: dict = Depends(auth.require_user)):
+    """Resumen de analíticas de un jugador del perfil público (3 líneas + gráficas). El tag
+    DEBE pertenecer a ese usuario (no se permiten consultas de tags arbitrarios)."""
+    owned = {db.normalize_tag(p["tag"]) for p in db.list_players_for_user(uid)}
+    ntag = db.normalize_tag(tag)
+    if ntag not in owned:
+        return JSONResponse({"error": "Ese jugador no pertenece a este usuario."}, status_code=404)
+    f = {"player": ntag}
+    return {"report": db.report_analytics(f), "rating": db.account_rating(ntag)}

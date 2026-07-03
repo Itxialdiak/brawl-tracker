@@ -1482,6 +1482,31 @@ def battle_player_tag(battle_id: str) -> str | None:
     return row[0] if row else None
 
 
+def player_friendly_battles(tag: str, since: str = None, until: str = None) -> list[dict]:
+    """Amistosas ALMACENADAS de un jugador en la ventana [since, until] (formato battle_time).
+    Para la detección automática de resultados de eventos: se cruzan por hora los registros de
+    los participantes. Deduplica por hora (una fila por partida)."""
+    conn = get_conn()
+    clauses = ["player_tag = ?", "battle_type = 'friendly'"]
+    params = [normalize_tag(tag)]
+    if since:
+        clauses.append("battle_time >= ?"); params.append(since)
+    if until:
+        clauses.append("battle_time <= ?"); params.append(until)
+    rows = conn.execute(
+        f"SELECT battle_time, mode, map, result FROM battles WHERE {' AND '.join(clauses)} "
+        f"ORDER BY battle_time", params).fetchall()
+    conn.close()
+    seen, out = set(), []
+    for r in rows:
+        if r["battle_time"] in seen:
+            continue
+        seen.add(r["battle_time"])
+        out.append({"time": r["battle_time"], "mode": r["mode"], "map": r["map"],
+                    "result": (r["result"] or "").lower()})
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Parseo
 # ---------------------------------------------------------------------------

@@ -95,20 +95,31 @@ function roundMapOptsHTML(rn, selModes, selMaps) {
   const pool = roundMapPool(selModes);
   return pool.map((mp) => `<label class="rc-ms-opt"><input type="checkbox" value="${esc(mp)}" ${sel.has(mp) ? "checked" : ""} onchange="roundMapsChanged(${rn})"><span>${esc(mapNameEs(mp))}</span></label>`).join("") || `<div class="ms-empty">Elige un modo primero</div>`;
 }
-// Fila de una ronda AÚN NO generada: dos desplegables de checkbox (modos y mapas permitidos).
+// Tarjeta de una ronda AÚN NO generada (organizador): fila 1 «Ronda X» centrada; fila 2 el
+// desplegable de modos; fila 3 el de mapas (alineados a la izquierda).
 function roundPickHTML(rn, rk) {
   const modes = rk.modes || [], maps = rk.maps || [];
-  return `<span class="evd-rmm-r">Ronda ${rn}</span>
-    <div class="rc-ms on" data-rmm="modes-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Modos: ${esc(msCountLabel(modes.length, "modo", "modos"))}</button>
-      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundModeOptsHTML(rn, modes)}</div></div></div>
-    <div class="rc-ms on" data-rmm="maps-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Mapas: ${esc(msCountLabel(maps.length, "mapa", "mapas"))}</button>
-      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundMapOptsHTML(rn, modes, maps)}</div></div></div>`;
+  return `<div class="rmm-r">Ronda ${rn}</div>
+    <div class="rmm-row"><div class="rc-ms on" data-rmm="modes-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Modos: ${esc(msCountLabel(modes.length, "modo", "modos"))}</button>
+      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundModeOptsHTML(rn, modes)}</div></div></div></div>
+    <div class="rmm-row"><div class="rc-ms on" data-rmm="maps-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Mapas: ${esc(msCountLabel(maps.length, "mapa", "mapas"))}</button>
+      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundMapOptsHTML(rn, modes, maps)}</div></div></div></div>`;
 }
-// Fila de una ronda YA generada: modo/mapa resuelto + estado (propuesta/confirmado) +
-// solicitud de cambio con votación de los participantes.
+// Filas comunes (modo en la 2ª, mapa en la 3ª) de una ronda con modo/mapa ya elegido.
+function roundStaticRows(rn, mode, mp, s) {
+  const showMode = mapsRevealed(s, "mode"), showMap = mapsRevealed(s, "map");
+  let modeRow;
+  if (!showMode && !showMap) modeRow = `<span class="evd-reveal">Por revelar</span>`;
+  else modeRow = (showMode && mode) ? modeChip(mode) : `<span class="evd-muted">Sin asignar</span>`;
+  const mapRow = (showMap && mp) ? mapChip(mp) : "";
+  return `<div class="rmm-r">Ronda ${rn}</div><div class="rmm-row">${modeRow}</div>` +
+    (mapRow ? `<div class="rmm-row">${mapRow}</div>` : "");
+}
+// Tarjeta de una ronda YA generada: fila 1 «Ronda X»; fila 2 modo; fila 3 mapa; fila 4 las
+// etiquetas de estado (propuesta/confirmado + solicitar cambio) y, aparte, la votación.
 function roundResolvedHTML(rn, rk, d) {
   const s = d.settings || {};
-  const mm = renderModeMap(rk.mode, rk.map, s, false);
+  const rows = roundStaticRows(rn, rk.mode, rk.map, s);
   const cr = rk.change_request;
   const pending = cr && cr.status === "pending";
   let badge = "";
@@ -137,7 +148,7 @@ function roundResolvedHTML(rn, rk, d) {
     }
     crBlock = `<div class="rmm-cr"><b>Cambio propuesto:</b> ${esc(mmNew || "—")} — <i>${esc(cr.reason || "")}</i><div class="rmm-cr-act">${act}</div></div>`;
   }
-  return `<span class="evd-rmm-r">Ronda ${rn}</span><span class="rmm-mm">${mm}</span>${badge}${crBlock}`;
+  return `${rows}${badge ? `<div class="rmm-row badges">${badge}</div>` : ""}${crBlock}`;
 }
 function rmmSelectedValues(rn, kind) {
   const box = document.querySelector(`.rc-ms[data-rmm="${kind}-${rn}"] .rc-ms-opts`);
@@ -440,7 +451,7 @@ function eventBadges(d) {
     `<span class="evd-badge vis-${d.visibility}">${EV_VIS_LABEL[d.visibility] || ""}</span>`,
     `<span class="evd-badge">${esc(evLangName(d.language))}</span>`,
     (d.status && d.status !== "open") ? `<span class="evd-badge">${EV_STATUS_LABEL[d.status] || ""}</span>` : "",
-    `<span class="evd-badge detbadge ${act ? "on" : "off"}" title="Cada hora el sistema cruza las partidas pendientes con las amistosas de los participantes mientras el evento está en curso.">🔄 Detección automática de resultados: ${act ? "activa" : "inactiva"}</span>`,
+    `<span class="evd-badge detbadge ${act ? "on" : "off"}" title="Cada pocos minutos el sistema cruza las partidas pendientes con las amistosas de los participantes mientras el evento está en curso.">🔄 Detección automática de resultados: ${act ? "activa" : "inactiva"}</span>`,
   ].join("");
 }
 // Cuerpo reutilizable de la ficha (estadísticas, descripción, mapas por ronda, solicitudes,
@@ -458,10 +469,13 @@ function eventBodyHTML(d, skipMeta) {
   {
     const ms = d.matches || [];
     const gen = ms.length ? Math.max.apply(null, ms.map((m) => m.round || 1)) : 0;
-    // Nº de rondas del torneo = las creadas con «+» (round_count); en ligas, las vueltas.
+    // Nº de rondas = las creadas con «+» (round_count); en ligas, las vueltas.
     const roundByRound = ["swiss", "mcmahon", "random_teams"].includes(d.format);
+    // El flujo de «+» (crear rondas vacías) está disponible en formatos por ronda y en ligas/
+    // eventos sin formato; en esos casos las rondas creadas (round_count) SÍ deben mostrarse.
+    const canAddRounds = roundByRound || !d.format;
     const cfg = (s.round_count || s.rounds || 0);
-    const perRoundN = roundByRound ? Math.max(cfg, gen) : gen;
+    const perRoundN = canAddRounds ? Math.max(cfg, gen) : gen;
     const head = "Modos y mapas por ronda";
     const summary = d.is_owner
       ? `<p class="evd-muted">Crea rondas con «+» y elige sus modos y mapas (marca varios o ninguno). Luego, en «Enfrentamientos», pulsa «Generar ronda»: si dejaste el modo/mapa sin fijar, se propone uno al azar (aprobado automáticamente a las 24 h si nadie responde).</p>`
@@ -477,11 +491,11 @@ function eventBodyHTML(d, skipMeta) {
         rows += `<div class="evd-rmm">${roundResolvedHTML(rn, rk, d)}</div>`;
       } else {                                          // no organizador, ronda aún sin generar
         const curMode = rk.mode || (fm && fm.mode) || "", curMap = rk.map || (fm && fm.map) || "";
-        rows += `<div class="evd-rmm"><span class="evd-rmm-r">Ronda ${rn}</span> ${renderModeMap(curMode, curMap, s, false)}</div>`;
+        rows += `<div class="evd-rmm">${roundStaticRows(rn, curMode, curMap, s)}</div>`;
       }
     }
     const list = perRoundN ? `<div class="evd-rmm-list">${rows}</div>` : (d.is_owner ? "" : `<p class="evd-muted">Aún no hay rondas.</p>`);
-    const addRound = (d.is_owner && (roundByRound || !d.format)) ? `<button class="evd-addround" onclick="addEmptyRound()" title="Crear una ronda vacía (elegirás su modo y mapa; luego la generas en «Enfrentamientos»)">+</button>` : "";
+    const addRound = (d.is_owner && canAddRounds) ? `<button class="evd-addround" onclick="addEmptyRound()" title="Crear una ronda vacía (elegirás su modo y mapa; luego la generas en «Enfrentamientos»)">+</button>` : "";
     mapsBlock = `<div class="evd-section"><h4 class="evd-h4-row">${head}${addRound}</h4>${summary}${list}</div>`;
   }
 
@@ -686,7 +700,7 @@ function renderResultsBlock(d) {
     // además el organizador puede lanzarlo YA con este botón (el estado activo/inactivo se ve
     // arriba, en las etiquetas del evento).
     if (matches.length && matches.some((m) => m.status !== "played")) {
-      const det = `<button class="ghost" onclick="detectResults()" title="Fuerza ahora el cruce de las partidas pendientes con las amistosas de los participantes (además del automático cada hora).">🔎 Detectar resultados<span class="mbar-extra"> ahora</span></button>`;
+      const det = `<button class="ghost" onclick="detectResults()" title="Fuerza ahora el cruce de las partidas pendientes con las amistosas de los participantes (además del automático cada pocos minutos).">🔎 Detectar resultados<span class="mbar-extra"> ahora</span></button>`;
       ownerBar = ownerBar.includes("evd-mbar") ? ownerBar.replace("</div>", det + "</div>") : `<div class="evd-mbar">${det}</div>`;
     }
     // Fase 6: resumen IA para seguidores cuando ya hay resultados

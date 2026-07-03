@@ -379,7 +379,7 @@
         "star_power_id": 23001069,
         "gadget_id": 23001071,
         "gear": "Shield",
-        "win_rate": 69.6
+        "win_rate": 69.7
       }
     ]
   },
@@ -469,10 +469,10 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/charlie",
-        "star_power_id": 23000624,
+        "star_power_id": 23000623,
         "gadget_id": 23000625,
         "gear": "Shield",
-        "win_rate": 67.0
+        "win_rate": 67.1
       }
     ]
   },
@@ -564,7 +564,7 @@
         "star_power_id": 23000140,
         "gadget_id": 23000292,
         "gear": "Health",
-        "win_rate": 64.2
+        "win_rate": 64.3
       }
     ]
   },
@@ -643,7 +643,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/nita",
-        "star_power_id": 23000084,
+        "star_power_id": 23000136,
         "gadget_id": 23000249,
         "gear": "Gadget Cooldown",
         "win_rate": 66.3
@@ -728,7 +728,7 @@
         "star_power_id": 23000151,
         "gadget_id": 23000406,
         "gear": "Shield",
-        "win_rate": 61.0
+        "win_rate": 61.1
       }
     ]
   },
@@ -801,7 +801,7 @@
         "star_power_id": 23001280,
         "gadget_id": 23001281,
         "gear": "Health",
-        "win_rate": 78.1
+        "win_rate": 77.9
       }
     ]
   },
@@ -1242,7 +1242,7 @@
         "star_power_id": 23001182,
         "gadget_id": 23001184,
         "gear": "Damage",
-        "win_rate": 68.9
+        "win_rate": 69.0
       }
     ]
   },
@@ -1334,7 +1334,7 @@
         "star_power_id": 23001061,
         "gadget_id": 23001062,
         "gear": "Speed",
-        "win_rate": 65.5
+        "win_rate": 65.4
       }
     ]
   },
@@ -1426,7 +1426,7 @@
         "star_power_id": 23001047,
         "gadget_id": 23001049,
         "gear": "Speed",
-        "win_rate": 66.6
+        "win_rate": 66.7
       }
     ]
   },
@@ -1518,7 +1518,7 @@
         "star_power_id": 23001040,
         "gadget_id": 23001041,
         "gear": "Health",
-        "win_rate": 66.3
+        "win_rate": 66.2
       }
     ]
   },
@@ -1615,7 +1615,7 @@
     ]
   },
   "16000095": {
-    "description_es": "Alli es una Brawler Mítica que tiene una salud y un daño moderadamente altos, y una velocidad de movimiento rápida y una velocidad de recarga y alcance de ataque variables. Fue la 93.ª Brawler añadida al juego. Los atributos de Alli le permiten moverse sobre el agua y enfurecerse, obteniendo un aumento temporal de velocidad de movimiento y una mejora de alcance de ataque cuando se acerca a enemigos con menos del 50% de salud. Su ataque es una carrera corta en el suelo; en arbustos y sobre el agua, ataca saltando obstáculos, infligiendo daño a cualquier enemigo en un radio pequeño cuando aterriza. Con su súper, se vuelve inconsistentemente invisible, y su primer ataque inflige un daño adicional proporcional a la salud de su enemigo o una cantidad fija contra ciertos objetivos..",
+    "description_es": "Alli es la tímida mecánica del pantano del amor. Le encanta ensuciarse las manos arreglando máquinas estropeadas o... siguiendo a otros brawlers sin vergüenza alguna. Si oyes un sonido raro de noche, lo más probable es que sea Alli intentando saludarte. Alli es una Brawler Mítica que tiene una salud y un daño moderadamente altos, y una velocidad de movimiento rápida y una velocidad de recarga y alcance de ataque variables. Fue la 93.ª Brawler añadida al juego. Los atributos de Alli le permiten moverse sobre el agua y enfurecerse, obteniendo un aumento temporal de velocidad de movimiento y una mejora de alcance de ataque cuando se acerca a enemigos con menos del 50% de salud. Su ataque es una carrera corta en el suelo; en arbustos y sobre el agua, ataca saltando obstáculos, infligiendo daño a cualquier enemigo en un radio pequeño cuando aterriza.",
     "stats_by_level": {
       "health": [
         3900,
@@ -1662,7 +1662,7 @@
     "role": "Asesino",
     "attack": {
       "name": "Emboscada Pantanosa",
-      "description": "Alli embiste hacia adelante y golpea todo lo que encuentra a su paso. Sin embargo, si está en un arbusto o en el agua, salta hacia delante. El alcance de Emboscada pantanosa aumenta en función de la velocidad de movimiento de Alli. Este ataque desplaza a Alli rápidamente en una distancia corta e inflige daño. Si Alli se encuentra en tierra, este ataque será un dash, pero si se encuentra en un arbusto o en el agua, el ataque se volverá un salto, similar al de Mico."
+      "description": "Alli embiste hacia adelante y golpea todo lo que encuentra a su paso. Sin embargo, si está en un arbusto o en el agua, salta hacia delante. Este ataque desplaza a Alli rápidamente en una distancia corta e inflige daño. Si Alli se encuentra en tierra, este ataque será un dash, pero si se encuentra en un arbusto o en el agua, el ataque se volverá un salto, similar al de Mico. Tiene un alcance de 0.67 casillas (dash) o 1 casilla (salto). El salto de Alli se recarga más lento que su dash."
     },
     "super": {
       "name": "Amenaza Oculta",
@@ -2106,7 +2106,7 @@
         "star_power_id": 23000883,
         "gadget_id": 23000886,
         "gear": "Health",
-        "win_rate": 69.4
+        "win_rate": 69.5
       }
     ]
   },
@@ -2239,7 +2239,7 @@
       "speed": 720,
       "range": "6.33 (Normal) 9 (en los arbustos; Largo/con Maestra de los Elementos; Largo)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Poder Elemental",
       "description": "Juju lanza proyectiles imbuidos con la fuerza del elemento en el que se encuentre. Cada elemento ls confiere propiedades diferentes. Tierra: daño aumentado. Hierba: alcance aumentado. Agua: relentización.|Juju lanza un juguete vudú que explota en un radio de 2 casillas."
@@ -2279,10 +2279,10 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/juju",
-        "star_power_id": 23000849,
+        "star_power_id": 23000848,
         "gadget_id": 23000850,
         "gear": "Vision",
-        "win_rate": 65.9
+        "win_rate": 66.1
       }
     ]
   },
@@ -2723,7 +2723,7 @@
         "star_power_id": 23000765,
         "gadget_id": 23000767,
         "gear": "Shield",
-        "win_rate": 64.2
+        "win_rate": 64.3
       }
     ]
   },
@@ -2815,7 +2815,7 @@
         "star_power_id": 23000753,
         "gadget_id": 23000755,
         "gear": "Shield",
-        "win_rate": 65.6
+        "win_rate": 65.7
       }
     ]
   },
@@ -3127,7 +3127,7 @@
       "speed": 770,
       "range": "7.33 (Largo) 6.67 (con Orden:Cambio)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Dispensador de tiques",
       "description": "Dispara una salva de tiques por encima de los obstáculos que explotan dos veces tras impactar e infligen daño a los enemigos cercanos. Larry lanza tiques por encima de los muros que explota en un pequeño radio de 1,5 casillas la primera vez al impactar, y luego tras 0,6 segundos, explota una segunda vez con un mayor rango de explosión de 2,67 casillas. Al igual que con Barley, el daño puede golpear dos veces si el enemigo se encuentra en el radio de ambas explosiones."
@@ -3248,7 +3248,7 @@
         "star_power_id": 23000647,
         "gadget_id": 23000649,
         "gear": "Shield",
-        "win_rate": 63.3
+        "win_rate": 63.4
       }
     ]
   },
@@ -3412,7 +3412,7 @@
         "star_power_id": 23000610,
         "gadget_id": 23000611,
         "gear": "Damage",
-        "win_rate": 65.9
+        "win_rate": 66.0
       }
     ]
   },
@@ -3876,7 +3876,7 @@
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/willow",
         "star_power_id": 23000561,
-        "gadget_id": 23000563,
+        "gadget_id": 23000564,
         "gear": "Shield",
         "win_rate": 65.6
       }
@@ -3966,7 +3966,7 @@
         "star_power_id": 23000554,
         "gadget_id": 23000556,
         "gear": "Health",
-        "win_rate": 66.1
+        "win_rate": 66.2
       }
     ]
   },
@@ -4212,7 +4212,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/chester",
-        "star_power_id": 23000528,
+        "star_power_id": 23000527,
         "gadget_id": 23000530,
         "gear": "Shield",
         "win_rate": 64.8
@@ -4687,7 +4687,7 @@
         "star_power_id": 23000471,
         "gadget_id": 23000472,
         "gear": "Health",
-        "win_rate": 65.9
+        "win_rate": 66.0
       }
     ]
   },
@@ -4766,7 +4766,7 @@
       {
         "name": "Mayor win rate (comunidad)",
         "source": "https://brawltime.ninja/tier-list/brawler/eve",
-        "star_power_id": 23000452,
+        "star_power_id": 23000453,
         "gadget_id": 23000454,
         "gear": "Quadruplets",
         "win_rate": 66.5
@@ -5016,7 +5016,7 @@
     "gadgets_es": [
       {
         "name": "Descarga Eléctrica",
-        "description": "El meca recupera 518 puntos de salud por segundo durante 5 segundos. Solo puede usarse si Meg está subida en el meca. Este Gadget cura al meca 518 de salud durante 5 segundos, para un total de 2590 puntos de salud sin contar curación de otras fuentes. Este Gadget no se puede activar si el Meca no está activo."
+        "description": "El meca recupera un 11% de su salud por segundo durante 5 segundos. Solo puede usarse si Meg está subida en el meca. Al activar este Gadget, Meg emitirá ondas a su alrededor que curan al meca y a los aliados cercanos por un 11% de su salud durante 5 segundos, para un total del 55% de su salud sin contar curación de otras fuentes."
       },
       {
         "name": "Caja de Herramientas",
@@ -5036,7 +5036,7 @@
         "star_power_id": 23000422,
         "gadget_id": 23000423,
         "gear": "Shield",
-        "win_rate": 70.2
+        "win_rate": 70.3
       }
     ]
   },
@@ -5128,7 +5128,7 @@
         "star_power_id": 23000414,
         "gadget_id": 23000465,
         "gear": "Health",
-        "win_rate": 67.9
+        "win_rate": 68.0
       }
     ]
   },
@@ -5338,7 +5338,7 @@
       "speed": 720,
       "range": "7.67 (Largo) 11 (Perdigones de Walkie-Talkie)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Cataplum",
       "description": "¡Grom lanza su walkie-talkie explosivo! La explosión se expande en forma de cruz e inflige daño a los enemigos que se encuentren en su camino. Grom lanza su walkie-talkie que puede lanzarse sobre obstáculos y se divide en cuatro proyectiles que atravesan a los Brawlers en un patrón cruzado. Los enemigos solo pueden ser dañados por uno de los proyectiles."
@@ -5380,7 +5380,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/grom",
         "star_power_id": 23000384,
         "gadget_id": 23000385,
-        "gear": "Shield",
+        "gear": "Vision",
         "win_rate": 63.7
       }
     ]
@@ -5730,7 +5730,7 @@
         "star_power_id": 23000346,
         "gadget_id": 23000347,
         "gear": "Shield",
-        "win_rate": 64.0
+        "win_rate": 64.1
       }
     ]
   },
@@ -6219,11 +6219,11 @@
     "role": "Destructor",
     "attack": {
       "name": "Refresco de la justicia",
-      "description": "Surge dispara una refrescante bebida que se divide en dos al entrar en contacto con los enemigos. Surge dispara una refrescante bebida que se divide en dos (hacia los costados) al entrar en contacto con los enemigos, eso le hace mejorar el rango de alcance. Cada uno de los proyectiles divididos causará la mitad del daño y tendrá la mitad de la carga de Súper del proyectil inicial. Cuando se mejora a la Fase 2 con su Súper, el alcance de ataque de Surge aumenta."
+      "description": "Surge dispara una refrescante bebida que se divide en dos al entrar en contacto con los enemigos. Surge dispara una refrescante bebida que se divide en dos proyectiles hacia los costados al entrar en contacto con los enemigos, lo cuál mejora su alcance. Cada uno de los proyectiles divididos causará la mitad del daño y tendrá la mitad de la carga de Súper del proyectil inicial. Cuando se mejora a la Fase 3 con su Súper, el alcance de ataque de Surge aumenta."
     },
     "super": {
       "name": "Trucos de fiesta",
-      "description": "Surge evoluciona con cada uso de su súpper hasta tres veces. Las mejoras se pierden si lo derrotan. Surge da un salto, recorre una pequeña distancia, y regresa al suelo haciendo 2000 de daño (Al nivel máximo), empujando a los enemigos hacia atrás; además, mejora con cada uso de este hasta 3 veces. Mientras está en el aire, Surge es completamente inmune a todo daño, excepto por los efectos de estado y al daño aplicado con el tiempo."
+      "description": "Surge evoluciona con cada uso de su súpper hasta tres veces. Las mejoras se pierden si lo derrotan. Surge da un salto, recorre una pequeña distancia, y regresa al suelo haciendo 2000 de daño (Al nivel máximo), empujando a los enemigos en un pequeño radio a su alrededor; además, mejora algunas de sus mecánicas con cada uso de este hasta 3 veces. Mientras está en el aire, Surge es completamente inmune a todo daño, excepto por los efectos de estado y al daño aplicado con el tiempo."
     },
     "gadgets_es": [
       {
@@ -6249,7 +6249,7 @@
         "star_power_id": 23000284,
         "gadget_id": 23000285,
         "gear": "Shield",
-        "win_rate": 62.3
+        "win_rate": 62.6
       }
     ]
   },
@@ -6285,7 +6285,7 @@
       "speed": 720,
       "range": "5 (Lanzamiento; Normal) 8.33 (Después de aterrizar; Largo)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Bomba de semillas",
       "description": "Sprout lanza una bola de semillas que explota al contacto. Si no alcanza a ningún objetivo, explota tras haber rebotado varias veces. Lanza una bola de semillas que explota al contacto. Si no impacta inmediatamente a un enemigo, se desplazará 3,33 casillas antes de explotar en un área con un radio de 2 casillas. La bomba de semillas también rebotará en las paredes, aumentando su alcance en 1,67 casillas, similar al ataque de Rico y Ruffs."
@@ -6420,7 +6420,7 @@
         "star_power_id": 23000235,
         "gadget_id": 23000353,
         "gear": "Shield",
-        "win_rate": 61.7
+        "win_rate": 61.6
       }
     ]
   },
@@ -6512,7 +6512,7 @@
         "star_power_id": 23000228,
         "gadget_id": 23000277,
         "gear": "Shield",
-        "win_rate": 66.0
+        "win_rate": 66.1
       }
     ]
   },
@@ -6581,7 +6581,7 @@
         "star_power_id": 23000223,
         "gadget_id": 23000256,
         "gear": "Speed",
-        "win_rate": 68.2
+        "win_rate": 68.1
       }
     ]
   },
@@ -6651,7 +6651,7 @@
         "star_power_id": 23000211,
         "gadget_id": 23000311,
         "gear": "Shield",
-        "win_rate": 63.2
+        "win_rate": 63.3
       }
     ]
   },
@@ -6959,7 +6959,7 @@
       },
       {
         "name": "Enchufado",
-        "description": "Cuando 8-BIT esta cerca de su amplificadaño , se enchufará a él e incrementa su velocidad de movimiento. Esta habilidad estelar aumenta la velocidad de movimiento de 8-BIT dentro del rango de su torreta, además, creará un rango adicional de 3.67 casillas extra alrededor donde 8-Bit recibirá el aumento de velocidad, pero no el de daño."
+        "description": "Si 8-BIT está cerca del Amplificadaño, su velocidad de movimiento aumenta un 25%. Cuando 8-Bit está a 7 casillas de su amplificadaño, se moverá un 25% más rapido, lo que aumenta su velocidad de movimiento (580 a 725 puntos)."
       }
     ],
     "gadgets_es": [
@@ -6969,7 +6969,7 @@
       },
       {
         "name": "Puntos extra",
-        "description": "El siguiente ataque de 8-BIT lanza un total de 18 proyectiles. Al activar este Gadget, el siguiente ataque de 8-BIT dispara el triple de láseres, para un total de 18 proyectiles, que potencialmente pueden hacer hasta el triple de daño de un ataque normal. La descarga del ataque también durará el triple que un ataque normal."
+        "description": "8-BIT dispara 18 proyectiles. Usa munición. Al apuntar o pulsar el botón del Gadget, 8-Bit disparará un ataque adicional con 18 láseres en lugar de 6, infligiendo el triple de daño que su ataque normal en un solo golpe si todos los láseres impactan."
       }
     ],
     "hypercharge": {
@@ -6986,7 +6986,7 @@
         "star_power_id": 23000168,
         "gadget_id": 23000318,
         "gear": "Damage",
-        "win_rate": 64.7
+        "win_rate": 65.4
       }
     ]
   },
@@ -7068,7 +7068,7 @@
         "star_power_id": 23000146,
         "gadget_id": 23000458,
         "gear": "Damage",
-        "win_rate": 63.8
+        "win_rate": 63.9
       }
     ]
   },
@@ -7239,8 +7239,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/rosa",
         "star_power_id": 23000147,
         "gadget_id": 23000348,
-        "gear": "Health",
-        "win_rate": 67.7
+        "gear": "Vision",
+        "win_rate": 67.8
       }
     ]
   },
@@ -7324,7 +7324,7 @@
     ]
   },
   "16000022": {
-    "description_es": "Tick sigue a Penny allá donde va cual perrito faldero mientras ella planea su próximo gran golpe. Aparte de hacer saltar todo por los aires, no hay muchas cosas que se le den bien, ¡pero con eso basta y sobra! Tick es un Brawler Superespecial que tiene la salud más baja de todos los brawlers, pero tiene un alto potencial de daño. Fue el Brawler N°27 agregado al juego. Ataca lanzando una bomba que se divide en tres minas en el suelo y explota con el tiempo. Su súper lanza su cabeza, que perseguirá y explotará causando graves daños al objetivo más cercano. Su primer Gadget, \"Derroche de Minas\", duplica la cantidad de minas que dispara su próximo ataque. Su segundo Gadget, \"Últimas Palabras\", le otorga un escudo temporal antes de que explote, infligiendo daño y empujando a los enemigos cercanos. Su refuerzo mítico aumenta la salud de su súper.",
+    "description_es": "Tick sigue a Penny allá donde va cual perrito faldero mientras ella planea su próximo gran golpe. Aparte de hacer saltar todo por los aires, no hay muchas cosas que se le den bien, ¡pero con eso basta y sobra! Tick es un Brawler Superespecial con una salud extremadamente baja, pero un alto potencial de daño. Fue el Brawler N°27 agregado al juego. Ataca lanzando una bomba que se divide en tres minas en el suelo y explota con el tiempo. Su súper lanza su cabeza, que perseguirá y explotará causando graves daños al objetivo más cercano. Su primer Gadget, \"Derroche de Minas\", duplica la cantidad de minas que dispara su próximo ataque. Su segundo Gadget, \"Últimas Palabras\", le otorga un escudo temporal antes de que explote, infligiendo daño y empujando a los enemigos cercanos. Su refuerzo mítico aumenta la salud de su súper.",
     "stats_by_level": {
       "health": [
         2400,
@@ -7368,7 +7368,7 @@
       "speed": 720,
       "range": "8.67 (Largo)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Miniminas",
       "description": "Tick lanza un racimo de minas que se dividen antes de aterrizar. Las minas explotan directamente al alcanzar al enemigo o tras unos segundos. El ataque de Tick lanza tres minas que explotan en un radio de 1.56 casillas después de dos segundos o si un enemigo se encuentra cerca de la mina."
@@ -7411,7 +7411,7 @@
         "star_power_id": 23000114,
         "gadget_id": 23000355,
         "gear": "Thicc Head",
-        "win_rate": 63.2
+        "win_rate": 63.3
       }
     ]
   },
@@ -7489,8 +7489,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/gene",
         "star_power_id": 23000159,
         "gadget_id": 23000352,
-        "gear": "Speed",
-        "win_rate": 63.5
+        "gear": "Shield",
+        "win_rate": 63.4
       }
     ]
   },
@@ -7572,7 +7572,7 @@
         "star_power_id": 23000153,
         "gadget_id": 23000261,
         "gear": "Damage",
-        "win_rate": 65.3
+        "win_rate": 65.2
       }
     ]
   },
@@ -7830,7 +7830,7 @@
         "star_power_id": 23000160,
         "gadget_id": 23000356,
         "gear": "Shield",
-        "win_rate": 64.1
+        "win_rate": 64.2
       }
     ]
   },
@@ -8086,7 +8086,7 @@
         "star_power_id": 23000148,
         "gadget_id": 23000263,
         "gear": "Shield",
-        "win_rate": 64.7
+        "win_rate": 64.6
       }
     ]
   },
@@ -8178,7 +8178,7 @@
         "star_power_id": 23000144,
         "gadget_id": 23000350,
         "gear": "Damage",
-        "win_rate": 64.9
+        "win_rate": 65.0
       }
     ]
   },
@@ -8391,7 +8391,7 @@
       "speed": 770,
       "range": "7.33 (Largo)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Mecha corta",
       "description": "Mike tira dos cartuchos de dinamita que sobrevuelan obstáculos. ¡Sus cartuchos son casi tan explosivos como su temperamento! Dynamike lanza dos cartuchos de dinamita que explotan después de un breve retraso y causan grandes daños a los enemigos en su radio de explosión. Los dos cartuchos se extienden a corta distancia uno del otro, de forma perpendicular a la dirección del lanzamiento a medida que viajan, y detonan simultáneamente."
@@ -8575,7 +8575,7 @@
       "speed": 720,
       "range": "7.33 (Largo)"
     },
-    "role": "Lanzador",
+    "role": "Artillería",
     "attack": {
       "name": "Desparrame",
       "description": "Barley lanza una botella que daña a los enemigos cuando cae al suelo, se rompe y los salpica. ¡Y reciben más daño aún si se quedan en el área afectada! Barley lanza una botella de líquido que se rompe y deja un charco en un radio de 2 casillas que inflige daño a los enemigos que son golpeados o permanecen sobre el charco. El daño puede afectar dos veces si el enemigo permanece de pie sobre el charco de líquido. Después de 2 segundos, el líquido desaparece."
@@ -8608,12 +8608,12 @@
         "star_power_id": 23000082,
         "gadget_id": 23000293,
         "gear": "Shield",
-        "win_rate": 63.2
+        "win_rate": 63.3
       }
     ]
   },
   "16000004": {
-    "description_es": "Rico es un cazarrecompensas espacial que persigue a los criminales más peligrosos de la galaxia. ¿Cómo? No, no es una máquina de chicles con aire de grandeza... Rico es un Brawler Superespecial que posee un largo alcance, un potencial de daño alto y vida baja. Fue uno de los 15 Brawlers que se lanzaron en el lanzamiento de la primera Beta. Tanto su ataque como su súper disparan bolas de largo alcance que pueden rebotar en las paredes y continuar su viaje. Sin embargo, su súper llega más lejos y perfora, infligiendo daño a varios enemigos a la vez, aunque las balas solo pueden impactar al objetivo una vez. Si se usa correctamente, Rico puede derrotar a enemigos cerca de las paredes sin ser atacado. Su primer Gadget, \"Parque de Bolas\", dispara dos ráfagas rápidas de balas hacia 8 direcciones. Su segundo Gadget, \"Castillo inflable\", hace que su siguiente ataque lo cure cada vez que rebote.",
+    "description_es": "Rico es un cazarrecompensas espacial que persigue a los criminales más peligrosos de la galaxia. ¿Cómo? No, no es una máquina de chicles con aire de grandeza... Rico es un Brawler Superespecial que posee un largo alcance, un potencial de daño alto y vida baja. Fue uno de los 15 Brawlers que se lanzaron en el lanzamiento de la primera Beta. Tanto su ataque como su súper disparan bolas de largo alcance que pueden rebotar en las paredes y continuar su viaje. Sin embargo, su súper llega más lejos y perfora, infligiendo daño a varios enemigos a la vez, aunque las balas solo pueden impactar al objetivo una vez. Si se usa correctamente, Rico puede derrotar a enemigos cerca de las paredes sin ser atacado.",
     "stats_by_level": {
       "health": [
         3000,
@@ -8669,26 +8669,26 @@
     "star_powers_es": [
       {
         "name": "Superrebote",
-        "description": "Las balas del ataque y del súper de Rico se sobrecargan tras rebotar por primera vez e infligen 240 puntos más de daño. Cuando las balas de Rico rebotan en un muro ganan una decente mejora de daño, un ligero aumento de velocidad, y un poco más de alcance. Cuando las balas tienen esta mejora se verán brillantes."
+        "description": "Las balas del ataque y del súper de Rico se potencian tras rebotar por primera vez e infligen 240 puntos más de daño. Cuando las balas de Rico rebotan en un muro ganan una decente mejora de daño, un ligero aumento de velocidad, y un poco más de alcance. Cuando las balas tienen esta mejora se verán brillantes."
       },
       {
         "name": "Retirada Robótica",
-        "description": "Cuando la salud de Rico está por debajo del 40%, corre un 34% más rápido.Cuando Rico cae a niveles críticos de vida (menos del 40% de su vida máxima) aumenta su velocidad de movimiento en un 34%."
+        "description": "Rico corre un 35% más deprisa cuando su salud cae por debajo del 40%. Cuando Rico cae a niveles críticos de vida (menos del 40% de su vida máxima) aumenta su velocidad de movimiento en 250 puntos."
       }
     ],
     "gadgets_es": [
       {
         "name": "Parque de Bolas",
-        "description": "Rico dispara ráfagas de balas rebotadoras en todas direcciones. Rico dispara dos rápidas ráfagas de ocho bolas en todas direcciones. Estas bolas tienen exactamente las mismas propiedades que las balas de su Súper, pero duran menos tiempo activas y hacen menos daño."
+        "description": "Rico despliega una máquina expendedora que tiene 2000 puntos de salud y, cuando la destruyen, despide proyectiles, que rebotan, en todas direcciones. Rico despliega una máquina expendedora que tiene el 66,67% de su salud. Bloquea los disparos enemigos estrechos que no perforan o rebotan/dividen, y Rico puede rebotar su ataque y su Súper en ella."
       },
       {
         "name": "Castillo inflable",
-        "description": "El siguiente ataque de Rico le curará 240 puntos de salud por cada rebote de proyectil. Cuando Rico activa este Gadget, su siguiente ataque lo cura 240 (nivel 11) de salud cada vez que una bala de ese ataque rebota. Esto cuenta para múltiples rebotes de una bala, y como máximo, Rico puede curar 3840 de salud con este gadget."
+        "description": "Rico dispara una bala enorme que se divide en 3 proyectiles más pequeños cuando impacta en un muro o en los brawlers enemigos. Rico dispara una bala grande que se divide en 3 balas más pequeñas al impactar contra una pared o un Brawler enemigo. Aunque las balas pueden impactar a varios enemigos, solo pueden dañar a cada uno una vez."
       }
     ],
     "hypercharge": {
       "name": "Rey del rebote",
-      "description": "Los proyectiles del súper de Rico rebotan aún más lejos. Cuando se activa, los proyectiles del Súper rebotan mucho más lejos de lo habitual, obteniendo 6 casillas de alcance adicional por cada rebote. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
+      "description": "Los proyectiles del súper de Rico rebotan aún más lejos. Cuando se activa, los proyectiles del Súper rebotan mucho más lejos de lo habitual, obteniendo 6 casillas de alcance adicional por los primeros 8 rebotes en lugar de 6. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "35%",
       "icon": "https://static.wikia.nocookie.net/brawlstars/images/e/ef/Rico-Hypercharge.png/revision/latest?cb=20240626173306"
     },
@@ -8699,7 +8699,7 @@
         "source": "https://brawltime.ninja/tier-list/brawler/rico",
         "star_power_id": 23000156,
         "gadget_id": 23000409,
-        "gear": "Shield",
+        "gear": "Vision",
         "win_rate": 60.1
       }
     ]
@@ -8747,16 +8747,16 @@
         2080
       ],
       "speed": 720,
-      "range": "9 (Largo)"
+      "range": "9 (Largo) 11.33 (con Cuarto Cohete con Buffie)"
     },
     "role": "Tiro de Élite",
     "attack": {
       "name": "Cohete",
-      "description": "Brock dispara un único cohete de gran alcance. El ataque de Brock es un cohete de largo alcance que inflige daño de área alta en un radio de 1 cuadro en el momento del impacto. Sin embargo, sus ataques se recargan con bastante lentitud y también viajan lentamente. Después de explotar, prende fuego al suelo dentro de un radio de 1 cuadro que inflige daño durante 2 segundos."
+      "description": "Brock dispara un único cohete de gran alcance. El ataque de Brock es un cohete de largo alcance que inflige daño de área alta en un radio de 1.5 casillas en el momento del impacto. Sin embargo, sus ataques se recargan con bastante lentitud y también viajan lentamente. Después de explotar, prende fuego al suelo dentro de un radio de 1 casilla que inflige daño durante 2,9 segundos, que inflige el 30% del daño por segundo equivalente al cohete."
     },
     "super": {
       "name": "Lluvia explosiva",
-      "description": "Brock lanza una lluvia de cohetes que acaba con enemigos y obstáculos. ¡No habrá dónde refugiarse de la lluvia! Cuando se usa el súper de Brock, lanza 9 cohetes esparcidos sobre un área grande, causando un gran daño a cualquier objetivo golpeado. Estos cohetes pueden destruir obstáculos en un radio de 1 cuadro y pueden dispararse sobre ellos. El súper tarda 2,05 segundos en completarse."
+      "description": "Brock lanza una lluvia de cohetes que acaba con enemigos y obstáculos. ¡No habrá dónde refugiarse de la lluvia! Cuando se usa el súper de Brock, lanza 9 cohetes en intervalos de 0,2 segundos sobre un área grande, causando un gran daño a cualquier objetivo golpeado. Estos cohetes pueden destruir obstáculos en un radio de 1,5 casillas y pueden dispararse sobre ellos. El súper tarda 2,05 segundos en completarse."
     },
     "star_powers_es": [
       {
@@ -8771,16 +8771,16 @@
     "gadgets_es": [
       {
         "name": "Zapatillas explosivas",
-        "description": "Brock da un salto y despega del suelo como un cohete, incendiando el suelo a sus pies. La explosion inflige 580 puntos de daño a los rivales que se encuentren cerca. Cuando se usa, Brock crea una explosión con un rango de 2.67 cuadros debajo de sus pies para saltar en la dirección en la que mira, lo que le permite saltar paredes o agua."
+        "description": "Brock salta hacia la zona objetivo, empuja a los enemigos cercanos tanto al despegar como al aterrizar e inflige daño reducido. Cuando se usa, Brock salta 4 casillas en la dirección en la que mira, lo que le permite saltar paredes o agua. Cualquier enemigo en la explosión es derribado."
       },
       {
         "name": "Megacohete",
-        "description": "El siguiente ataque de Brock le permite lanzar un megacohete más grande y más rápido. Este explota con un alcance más amplio, destruye muros. Cuando Brock activa este gadget, su próximo ataque viaja un 15% más rápido, es un 50% más grande y destruye los muros y arbustos al impactar con el doble del radio de explosión."
+        "description": "Brock dispara un gran cohete que destruye el entorno e inflige daño. Al apuntar usando el botón del Gadget, Brock dispara un cohete que destruye obstáculos e inflige el 86,21% del daño de uno de sus cohetes de ataque principales. Este ataque no inflige daño adicional ni tiene efecto de fuego."
       }
     ],
     "hypercharge": {
       "name": "Bombardeo de cohetes",
-      "description": "Brock bombardea la zona objetivo con cohetes de forma simultánea en 4 oleadas. Cuando se activa, el siguiente súper de Brock dispara 4 oleadas de 7 cohetes, cada uno de los cuales inflige 1000 de daño. Si Brock tiene equipada la habilidad estelar Más Cohetes, el siguiente súper dispara 5 oleadas de 7 cohetes. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
+      "description": "El súper dispara bombas de racimo en lugar de cohetes. Cuando se activa, el siguiente súper de Brock dispara 4 oleadas de 7 cohetes, cada uno de los cuales inflige 800 puntos de daño (u 840 con el aumento de daño de Hipercarga). Si Brock tiene equipada la habilidad estelar Más Cohetes, el siguiente súper dispara 5 oleadas de 7 cohetes. También obtiene un aumento de velocidad del 20%, así como un aumento de daño y de escudo del 5%.",
       "multiplier": "45%",
       "icon": "https://static.wikia.nocookie.net/brawlstars/images/3/30/Brock-Hypercharge.png/revision/latest?cb=20240425234823"
     },
@@ -8792,7 +8792,7 @@
         "star_power_id": 23000150,
         "gadget_id": 23000245,
         "gear": "Shield",
-        "win_rate": 61.9
+        "win_rate": 62.1
       }
     ]
   },
@@ -8875,8 +8875,8 @@
         "source": "https://brawltime.ninja/tier-list/brawler/mr__p",
         "star_power_id": 23000205,
         "gadget_id": 23000349,
-        "gear": "Speed",
-        "win_rate": 65.9
+        "gear": "Gadget Cooldown",
+        "win_rate": 66.0
       }
     ]
   },

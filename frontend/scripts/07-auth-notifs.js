@@ -144,16 +144,16 @@ async function loadFriends() {
   let html = "";
   if (inc.length) {
     html += `<div class="fr-sec-h">Solicitudes recibidas <span class="reto-count">${inc.length}</span></div>`;
-    html += inc.map((u) => `<div class="fr-row"><span class="fr-name">@${esc(u.username)}</span><span class="fr-acts"><button class="mini-ok" onclick="acceptFriend(${u.req_id})">Aceptar</button><button class="mini-no" onclick="rejectFriend(${u.req_id})">Rechazar</button></span></div>`).join("");
+    html += inc.map((u) => `<div class="fr-row"><button class="fr-name fr-link" onclick="openPublicProfile(${u.id})" title="Ver perfil público">@${esc(u.username)}</button><span class="fr-acts"><button class="mini-ok" onclick="acceptFriend(${u.req_id})">Aceptar</button><button class="mini-no" onclick="rejectFriend(${u.req_id})">Rechazar</button></span></div>`).join("");
   }
   if (out.length) {
     html += `<div class="fr-sec-h">Enviadas</div>`;
-    html += out.map((u) => `<div class="fr-row"><span class="fr-name">@${esc(u.username)}</span><span class="fr-acts"><span class="evd-muted">pendiente</span><button class="link-btn sm danger" onclick="rejectFriend(${u.req_id})">Cancelar</button></span></div>`).join("");
+    html += out.map((u) => `<div class="fr-row"><button class="fr-name fr-link" onclick="openPublicProfile(${u.id})" title="Ver perfil público">@${esc(u.username)}</button><span class="fr-acts"><span class="evd-muted">pendiente</span><button class="link-btn sm danger" onclick="rejectFriend(${u.req_id})">Cancelar</button></span></div>`).join("");
   }
   _friendsCache = fr;
   html += `<div class="fr-sec-h">Tus amigos <span class="reto-count">${fr.length}</span></div>`;
   html += fr.length
-    ? fr.map((u) => `<div class="fr-row"><span class="fr-name">@${esc(u.username)}</span><span class="fr-acts"><button class="link-btn sm danger" onclick="removeFriend(${u.id})">Quitar</button></span></div>`).join("")
+    ? fr.map((u) => `<div class="fr-row"><button class="fr-name fr-link" onclick="openPublicProfile(${u.id})" title="Ver perfil público">@${esc(u.username)}</button><span class="fr-acts"><button class="link-btn sm danger" onclick="removeFriend(${u.id})">Quitar</button></span></div>`).join("")
     : `<p class="evd-muted" style="padding:8px 2px">Aún no tienes amigos. Búscalos arriba por su nombre.</p>`;
   box.innerHTML = html;
   refreshFriendsBadge();
@@ -176,7 +176,7 @@ async function doFriendsSearch() {
     // "incoming": ya te envió solicitud; enviar la tuya la acepta mutuamente (auto-accept en backend).
     else if (u.relation === "incoming") act = `<button class="mini-ok" onclick="reqFriendId(${u.id})">Aceptar</button>`;
     else act = `<button class="mini-ok" onclick="reqFriendId(${u.id})">+ Añadir</button>`;
-    return `<div class="fr-res-row"><span class="fr-name">@${esc(u.username)}</span>${act}</div>`;
+    return `<div class="fr-res-row"><button class="fr-name fr-link" onclick="openPublicProfile(${u.id})" title="Ver perfil público">@${esc(u.username)}</button>${act}</div>`;
   }).join("");
 }
 async function reqFriendId(uid) {
@@ -200,6 +200,80 @@ async function removeFriend(uid) {
 /* ---------- Mensajes (placeholder; fase posterior) ---------- */
 function openMessages() { $("messages-modal").classList.add("open"); }
 function closeMessages() { $("messages-modal").classList.remove("open"); }
+
+/* ---------- Perfil público (fase C): vista de solo lectura de un usuario ---------- */
+let _pubProfile = null, _pubTag = null;
+async function openPublicProfile(uid) {
+  $("pubprofile-modal").classList.add("open");
+  $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">Cargando…</p>`;
+  let d;
+  try { d = await getJSON(`/api/users/${uid}/profile`); } catch (e) { $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">No se pudo cargar el perfil.</p>`; return; }
+  if (d.error) { $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">${esc(d.error)}</p>`; return; }
+  _pubProfile = d;
+  _pubTag = (d.players && d.players[0]) ? d.players[0].tag : null;
+  renderPublicProfile();
+  if (_pubTag) loadPubSummary(_pubTag);
+}
+function closePublicProfile() { $("pubprofile-modal").classList.remove("open"); }
+function renderPublicProfile() {
+  const d = _pubProfile;
+  const rel = d.relation;
+  let acts = "";
+  if (rel === "none") acts = `<button class="btn mini-btn" onclick="pubAddFriend(${d.id})">＋ Enviar solicitud</button>`;
+  else if (rel === "outgoing") acts = `<span class="evd-muted">Solicitud enviada</span>`;
+  else if (rel === "incoming") acts = `<button class="btn mini-btn" onclick="pubAddFriend(${d.id})">Aceptar solicitud</button>`;
+  else if (rel === "friend") acts = `<span class="reto-tag done">✓ Amigos</span>`;
+  if (rel !== "self") acts += `<button class="ghost mini-btn" onclick="pubMessage(${d.id})">✉️ Enviar mensaje</button>`;
+  const players = d.players || [];
+  const picker = players.length > 1
+    ? `<div class="pub-players">${players.map((p) => `<button class="pub-player-chip ${p.tag === _pubTag ? "active" : ""}" onclick="pubSelectPlayer('${esc(p.tag)}')">${esc(p.name || p.tag)}</button>`).join("")}</div>`
+    : "";
+  $("pub-body").innerHTML = `
+    <div class="pub-head"><div class="pub-name">@${esc(d.username)}</div><div class="pub-acts">${acts}</div></div>
+    ${players.length ? picker + `<div id="pub-summary"></div>` : `<p class="evd-muted" style="padding:14px 2px">Este usuario no tiene jugadores registrados.</p>`}`;
+}
+function pubSelectPlayer(tag) { _pubTag = tag; renderPublicProfile(); loadPubSummary(tag); }
+async function pubAddFriend(uid) {
+  const { ok, d } = await apiSend("/api/friends/request", "POST", { user_id: uid });
+  if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
+  wikiToast(d.status === "friends" ? "¡Ya sois amigos!" : "Solicitud enviada", "ok");
+  openPublicProfile(uid);   // recarga la relación
+}
+function pubMessage(uid) { openMessages(); }   // fase E: aquí abrirá el compositor al usuario
+async function loadPubSummary(tag) {
+  const box = $("pub-summary");
+  if (!box) return;
+  box.innerHTML = `<p class="evd-muted" style="padding:14px">Cargando analíticas…</p>`;
+  let s;
+  try { s = await getJSON(`/api/users/${_pubProfile.id}/players/${encodeURIComponent(tag)}/summary`); }
+  catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:14px">Sin datos de este jugador.</p>`; return; }
+  if (s.error) { box.innerHTML = `<p class="evd-muted" style="padding:14px">${esc(s.error)}</p>`; return; }
+  const r = s.report || {}, ov = r.overview || {}, hl = r.highlights || {}, rt = s.rating || {};
+  const stat = (k, v, sub) => `<div class="pub-stat"><div class="k">${esc(k)}</div><div class="v">${v}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>`;
+  const line1 = `<div class="pub-line pub-overview">
+    ${stat("Win rate", (ov.winrate != null ? ov.winrate + "%" : "—"), `${ov.wins || 0}V · ${ov.losses || 0}D`)}
+    ${stat("Partidas", ov.total || 0, "registradas")}
+    ${stat("Jugador estelar", (ov.star_rate != null ? ov.star_rate + "%" : "—"), `${ov.star_players || 0} MVP`)}
+    ${stat("Balance trofeos", (ov.trophy_delta >= 0 ? "+" : "") + (ov.trophy_delta || 0), "acumulado")}</div>`;
+  const hlName = (it, kind) => {
+    const v = it.label || it.name || it.brawler || "—";
+    if (kind === "mode" && typeof modeName === "function") return modeName(v);
+    if (kind === "map" && typeof mapNameEs === "function") return mapNameEs(v);
+    return v;
+  };
+  const hlItem = (lab, it, kind, val) => it ? `<div class="pub-hl"><div class="lab">${esc(lab)}</div><div class="nm">${esc(hlName(it, kind))}</div><div class="val">${esc(val)}</div></div>` : "";
+  const line2 = `<div class="pub-line pub-hls">
+    ${hlItem("Más jugado", hl.most_played, "brawler", hl.most_played ? hl.most_played.total + "p" : "")}
+    ${hlItem("Mejor brawler", hl.best_brawler, "brawler", hl.best_brawler ? hl.best_brawler.winrate + "%" : "")}
+    ${hlItem("Mejor modo", hl.best_mode, "mode", hl.best_mode ? hl.best_mode.winrate + "%" : "")}
+    ${hlItem("Mejor mapa", hl.best_map, "map", hl.best_map ? hl.best_map.winrate + "%" : "")}</div>`;
+  const subBar = (lab, v) => `<div class="pub-sub"><div class="l">${esc(lab)} <b>${Math.round(v || 0)}</b></div><div class="pub-subbar"><span style="width:${Math.max(0, Math.min(100, v || 0))}%"></span></div></div>`;
+  const line3 = rt.overall != null ? `<div class="pub-line pub-rating">
+    <div class="pub-score"><span class="num">${Math.round(rt.overall)}</span><span class="max">/100</span><span class="tier">${esc(rt.tier || "")}</span></div>
+    <div class="pub-subs">${subBar("Colección", rt.collection)}${subBar("Maestría", rt.mastery)}${subBar("Eficiencia", rt.efficiency)}${subBar("Pushing", rt.pushing)}</div></div>` : "";
+  const chart = `<div class="pub-chart"><h4>Evolución de trofeos</h4>${trophyChart(r.trophy_series || [])}</div>`;
+  box.innerHTML = line1 + line2 + line3 + chart;
+}
 
 /* ----- Notificaciones (Fase 6) ----- */
 let _notifTimer = null;

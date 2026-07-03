@@ -174,7 +174,7 @@ async def _event_notifier():
         await asyncio.sleep(EVENT_NOTIFY_INTERVAL)
 
 
-EVENT_DETECT_INTERVAL = 3600  # cada hora
+EVENT_DETECT_INTERVAL = 180  # cada 3 minutos (solo mientras hay un evento en curso)
 
 
 def _active_event_ids():
