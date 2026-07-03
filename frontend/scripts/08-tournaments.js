@@ -421,13 +421,26 @@ async function openEvent(eid) {
     }
   } catch (e) { /* 401 gestionado por getJSON */ }
 }
+// ¿Está activo AHORA el detector automático para este evento? (no finalizado y dentro de la
+// ventana de fechas; sin fechas = siempre activo). Espeja app.main._active_event_ids.
+function detectorActive(d) {
+  if (!d || d.status === "finished") return false;
+  const now = Date.now();
+  const s = d.date_start ? Date.parse(d.date_start) : NaN;
+  const e = d.date_end ? Date.parse(d.date_end) : NaN;
+  if (!isNaN(s) && now < s) return false;
+  if (!isNaN(e) && now > e) return false;
+  return true;
+}
 function eventBadges(d) {
+  const act = detectorActive(d);
   return [
     `<span class="evd-badge">${EV_KIND_LABEL[d.kind] || ""}</span>`,
     `<span class="evd-badge">${EV_MODE_LABEL[d.mode] || ""}</span>`,
     `<span class="evd-badge vis-${d.visibility}">${EV_VIS_LABEL[d.visibility] || ""}</span>`,
     `<span class="evd-badge">${esc(evLangName(d.language))}</span>`,
     (d.status && d.status !== "open") ? `<span class="evd-badge">${EV_STATUS_LABEL[d.status] || ""}</span>` : "",
+    `<span class="evd-badge detbadge ${act ? "on" : "off"}" title="Cada hora el sistema cruza las partidas pendientes con las amistosas de los participantes mientras el evento está en curso.">🔄 Detección automática de resultados: ${act ? "activa" : "inactiva"}</span>`,
   ].join("");
 }
 // Cuerpo reutilizable de la ficha (estadísticas, descripción, mapas por ronda, solicitudes,
@@ -669,11 +682,11 @@ function renderResultsBlock(d) {
     } else {
       ownerBar = `<div class="evd-mbar"><button class="btn" onclick="openMatchModal()">+ Añadir<span class="mbar-extra"> enfrentamiento</span></button></div><div class="ec-hint" style="margin-bottom:14px">El emparejamiento automático para <b>${esc(EV_FORMAT_LABEL[d.format] || d.format)}</b> llegará en una fase posterior; de momento añade los enfrentamientos a mano.</div>`;
     }
-    // Detección automática: un poller cruza cada hora las partidas pendientes con las
-    // amistosas (battlelog) de los participantes durante las fechas del evento. Ya no hay
-    // botón manual; se muestra un aviso pasivo mientras queden pendientes.
+    // El poller cruza cada hora las partidas pendientes con las amistosas de los participantes;
+    // además el organizador puede lanzarlo YA con este botón (el estado activo/inactivo se ve
+    // arriba, en las etiquetas del evento).
     if (matches.length && matches.some((m) => m.status !== "played")) {
-      const det = `<span class="evd-autodetect" title="El sistema cruza automáticamente cada hora las partidas pendientes con las amistosas de los participantes mientras el evento está en curso.">🔄 Detección automática de resultados activa (cada hora)</span>`;
+      const det = `<button class="ghost" onclick="detectResults()" title="Fuerza ahora el cruce de las partidas pendientes con las amistosas de los participantes (además del automático cada hora).">🔎 Detectar resultados<span class="mbar-extra"> ahora</span></button>`;
       ownerBar = ownerBar.includes("evd-mbar") ? ownerBar.replace("</div>", det + "</div>") : `<div class="evd-mbar">${det}</div>`;
     }
     // Fase 6: resumen IA para seguidores cuando ya hay resultados
@@ -1322,7 +1335,27 @@ async function deleteEventFromPage() {
 function openInvite() {
   $("einv-tags").value = ""; $("einv-team").value = "";
   $("einv-team-wrap").style.display = currentEvent.mode === "teams" ? "block" : "none";
+  renderInvitePicklist();
   openEvModal("event-invite-modal");
+}
+// Lista de los jugadores que el organizador tiene registrados en su cuenta: al pinchar uno,
+// su ID se añade a la caja de IDs (más cómodo que copiar/pegar).
+function renderInvitePicklist() {
+  const box = $("einv-picklist");
+  if (!box) return;
+  const mine = Object.values(playersById || {});
+  if (!mine.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="einv-pick-h">Tus jugadores <span>(pincha para añadir su ID)</span></div>
+    <div class="einv-pick-chips">${mine.slice().sort((a, b) => (a.name || a.tag).localeCompare(b.name || b.tag))
+      .map((p) => `<button type="button" class="einv-chip" data-tag="${esc(p.tag)}" onclick="pickInvitePlayer(this)">${esc(p.name || p.tag)}</button>`).join("")}</div>`;
+}
+function pickInvitePlayer(btn) {
+  const tag = btn.dataset.tag;
+  const ta = $("einv-tags");
+  const norm = (t) => t.replace(/^#/, "").toUpperCase();
+  const have = ta.value.split(/[\s,]+/).filter(Boolean).map(norm);
+  if (!have.includes(norm(tag))) ta.value = ta.value.trim() ? ta.value.trim() + ", " + tag : tag;
+  btn.classList.add("used"); btn.disabled = true;
 }
 async function submitInvite() {
   const raw = $("einv-tags").value.trim();

@@ -158,6 +158,32 @@
     </div>
   </div>
 
+  <!-- Ventana de amigos -->
+  <div id="friends-modal" class="modal-overlay" onclick="if(event.target===this)closeFriends()">
+    <div class="modal-card has-close friends-card">
+      <button class="modal-close" onclick="closeFriends()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Amigos</div>
+      <div class="modal-sub">Añade a otros usuarios para organizar eventos, retos y compartir logros.</div>
+      <div class="fr-search-wrap">
+        <input type="text" id="fr-search" placeholder="Buscar usuario por su nombre…" oninput="friendsSearch()" autocomplete="off" />
+        <div id="fr-results" class="fr-results"></div>
+      </div>
+      <div id="fr-body"></div>
+    </div>
+  </div>
+
+  <!-- Ventana de mensajes (placeholder; la mensajería completa llega en una fase posterior) -->
+  <div id="messages-modal" class="modal-overlay" onclick="if(event.target===this)closeMessages()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeMessages()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Mensajes</div>
+      <div id="msg-body" class="msg-placeholder">
+        <p>📬 El buzón de mensajes entre usuarios llegará muy pronto.</p>
+        <p class="hint-inline">Podrás escribir a tus amigos, leer, archivar en carpetas y marcar como leído/no leído.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Ventana de cambio de contraseña -->
   <div id="password-modal" class="modal-overlay" onclick="if(event.target===this&&!pwBusy)closePassword()">
     <div class="modal-card has-close">
@@ -357,8 +383,7 @@
     <div class="toolbar">
       <div id="lang-switch" data-i18n-skip></div>
       <button class="notif-bell" id="notif-bell" onclick="openNotifications()" title="Notificaciones" aria-label="Notificaciones">🔔<span class="notif-dot" id="notif-dot" style="display:none">0</span></button>
-      <button class="user-pill" id="user-pill" onclick="openAccount()"></button>
-      <button class="ghost" id="logout-btn" title="Cerrar sesión">Salir</button>
+      <div id="user-switch" data-i18n-skip></div>
     </div>
   </header>
 
@@ -988,6 +1013,7 @@
       <label class="ec-lbl">IDs de jugador</label>
       <textarea id="einv-tags" class="ee-textarea" rows="3" placeholder="#TAG1, #TAG2, #TAG3…"></textarea>
       <div class="ec-hint">Pega uno o varios IDs separados por comas, espacios o saltos de línea. Se obtiene el nombre de cada jugador automáticamente.</div>
+      <div id="einv-picklist" class="einv-picklist"></div>
       <div id="einv-team-wrap" style="display:none">
         <label class="ec-lbl">Equipo (opcional)</label>
         <input type="text" id="einv-team" placeholder="Asignar todos a este equipo" />

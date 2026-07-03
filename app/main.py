@@ -348,7 +348,8 @@ from .routers.battles import router as _r_battles
 from .routers.coach import router as _r_coach
 from .routers.events import router as _r_events
 from .routers.retos import router as _r_retos
-for _r in (_r_players, _r_analytics, _r_modes, _r_rankings, _r_brawlers, _r_battles, _r_coach, _r_events, _r_retos):
+from .routers.friends import router as _r_friends
+for _r in (_r_players, _r_analytics, _r_modes, _r_rankings, _r_brawlers, _r_battles, _r_coach, _r_events, _r_retos, _r_friends):
     app.include_router(_r)
 
 

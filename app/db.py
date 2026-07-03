@@ -176,6 +176,18 @@ def init_db():
             status TEXT DEFAULT 'active', joined_at TEXT, completed_at TEXT,
             PRIMARY KEY (reto_id, user_id)
         );
+        -- Amistades entre usuarios de la plataforma (base social: co-organizadores, mensajes,
+        -- perfiles públicos compartidos). Un par se guarda una sola vez con user_a < user_b.
+        CREATE TABLE IF NOT EXISTS friendships (
+            user_a INTEGER NOT NULL, user_b INTEGER NOT NULL, created_at TEXT,
+            PRIMARY KEY (user_a, user_b)
+        );
+        CREATE TABLE IF NOT EXISTS friend_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            from_user INTEGER NOT NULL, to_user INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending', created_at TEXT,
+            UNIQUE(from_user, to_user)
+        );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
@@ -552,6 +564,162 @@ def set_user_password(user_id: int, password_hash: str) -> None:
     conn = get_conn()
     conn.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, user_id))
     conn.commit(); conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Amigos (base social): solicitudes + amistades. Un par se guarda una sola vez
+# ordenado (a < b). Todas las consultas son por usuario (aislamiento de cuenta).
+# ---------------------------------------------------------------------------
+
+def _pair(a: int, b: int) -> tuple:
+    a, b = int(a), int(b)
+    return (a, b) if a < b else (b, a)
+
+
+def _pub_user(row) -> dict:
+    return {"id": row["id"], "username": row["username"], "country": row["country"]}
+
+
+def search_users(query: str, exclude_id: int, limit: int = 12) -> list[dict]:
+    """Busca usuarios por prefijo/substring de nombre (para añadir amigos). Excluye a uno mismo."""
+    q = (query or "").strip()
+    if not q:
+        return []
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, username, country FROM users WHERE username LIKE ? AND id != ? "
+        "ORDER BY (username = ?) DESC, username LIMIT ?",
+        (f"%{q}%", exclude_id, q, limit)).fetchall()
+    conn.close()
+    return [_pub_user(r) for r in rows]
+
+
+def are_friends(a: int, b: int) -> bool:
+    ua, ub = _pair(a, b)
+    conn = get_conn()
+    row = conn.execute("SELECT 1 FROM friendships WHERE user_a=? AND user_b=?", (ua, ub)).fetchone()
+    conn.close()
+    return row is not None
+
+
+def _add_friendship(cur, a: int, b: int) -> None:
+    ua, ub = _pair(a, b)
+    cur.execute("INSERT OR IGNORE INTO friendships (user_a, user_b, created_at) VALUES (?,?,?)",
+                (ua, ub, datetime.now(timezone.utc).isoformat()))
+
+
+def friend_request_status(from_id: int, to_id: int) -> str | None:
+    """Estado de la solicitud from->to si existe ('pending'…), o None."""
+    conn = get_conn()
+    row = conn.execute("SELECT status FROM friend_requests WHERE from_user=? AND to_user=?",
+                       (from_id, to_id)).fetchone()
+    conn.close()
+    return row["status"] if row else None
+
+
+def send_friend_request(from_id: int, to_id: int) -> dict:
+    """Envía una solicitud. Si ya existe la inversa pendiente, se aceptan mutuamente.
+    Devuelve {status: 'friends'|'pending'|'exists'|'self'}."""
+    if int(from_id) == int(to_id):
+        return {"status": "self"}
+    if are_friends(from_id, to_id):
+        return {"status": "friends"}
+    conn = get_conn(); cur = conn.cursor()
+    now = datetime.now(timezone.utc).isoformat()
+    # ¿Hay una solicitud inversa pendiente? -> aceptar y hacerse amigos.
+    rev = cur.execute("SELECT id FROM friend_requests WHERE from_user=? AND to_user=? AND status='pending'",
+                      (to_id, from_id)).fetchone()
+    if rev:
+        cur.execute("UPDATE friend_requests SET status='accepted' WHERE id=?", (rev["id"],))
+        _add_friendship(cur, from_id, to_id)
+        conn.commit(); conn.close()
+        return {"status": "friends"}
+    existing = cur.execute("SELECT status FROM friend_requests WHERE from_user=? AND to_user=?",
+                           (from_id, to_id)).fetchone()
+    if existing and existing["status"] == "pending":
+        conn.close(); return {"status": "exists"}
+    # crea o reactiva la solicitud (si estaba rechazada, vuelve a pendiente)
+    cur.execute("INSERT INTO friend_requests (from_user, to_user, status, created_at) VALUES (?,?,'pending',?) "
+                "ON CONFLICT(from_user, to_user) DO UPDATE SET status='pending', created_at=excluded.created_at",
+                (from_id, to_id, now))
+    conn.commit(); conn.close()
+    return {"status": "pending"}
+
+
+def accept_friend_request(req_id: int, user_id: int) -> bool:
+    """Acepta una solicitud dirigida a user_id. Crea la amistad."""
+    conn = get_conn(); cur = conn.cursor()
+    row = cur.execute("SELECT from_user, to_user, status FROM friend_requests WHERE id=?", (req_id,)).fetchone()
+    if not row or row["to_user"] != user_id or row["status"] != "pending":
+        conn.close(); return False
+    cur.execute("UPDATE friend_requests SET status='accepted' WHERE id=?", (req_id,))
+    _add_friendship(cur, row["from_user"], row["to_user"])
+    conn.commit(); conn.close()
+    return True
+
+
+def reject_friend_request(req_id: int, user_id: int) -> bool:
+    """Rechaza (si eres el destinatario) o cancela (si eres el emisor) una solicitud pendiente."""
+    conn = get_conn(); cur = conn.cursor()
+    row = cur.execute("SELECT from_user, to_user, status FROM friend_requests WHERE id=?", (req_id,)).fetchone()
+    if not row or user_id not in (row["from_user"], row["to_user"]) or row["status"] != "pending":
+        conn.close(); return False
+    # el emisor cancela (borra), el destinatario rechaza (marca)
+    if user_id == row["from_user"]:
+        cur.execute("DELETE FROM friend_requests WHERE id=?", (req_id,))
+    else:
+        cur.execute("UPDATE friend_requests SET status='rejected' WHERE id=?", (req_id,))
+    conn.commit(); conn.close()
+    return True
+
+
+def remove_friend(a: int, b: int) -> None:
+    ua, ub = _pair(a, b)
+    conn = get_conn()
+    conn.execute("DELETE FROM friendships WHERE user_a=? AND user_b=?", (ua, ub))
+    # limpia cualquier solicitud entre ambos para poder re-solicitar en el futuro
+    conn.execute("DELETE FROM friend_requests WHERE (from_user=? AND to_user=?) OR (from_user=? AND to_user=?)",
+                 (a, b, b, a))
+    conn.commit(); conn.close()
+
+
+def list_friends(user_id: int) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT u.id, u.username, u.country FROM friendships f "
+        "JOIN users u ON u.id = CASE WHEN f.user_a=? THEN f.user_b ELSE f.user_a END "
+        "WHERE f.user_a=? OR f.user_b=? ORDER BY u.username",
+        (user_id, user_id, user_id)).fetchall()
+    conn.close()
+    return [_pub_user(r) for r in rows]
+
+
+def list_incoming_requests(user_id: int) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT r.id AS req_id, u.id, u.username, u.country, r.created_at FROM friend_requests r "
+        "JOIN users u ON u.id = r.from_user WHERE r.to_user=? AND r.status='pending' ORDER BY r.created_at DESC",
+        (user_id,)).fetchall()
+    conn.close()
+    return [{**_pub_user(r), "req_id": r["req_id"], "created_at": r["created_at"]} for r in rows]
+
+
+def list_outgoing_requests(user_id: int) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT r.id AS req_id, u.id, u.username, u.country, r.created_at FROM friend_requests r "
+        "JOIN users u ON u.id = r.to_user WHERE r.from_user=? AND r.status='pending' ORDER BY r.created_at DESC",
+        (user_id,)).fetchall()
+    conn.close()
+    return [{**_pub_user(r), "req_id": r["req_id"], "created_at": r["created_at"]} for r in rows]
+
+
+def count_incoming_requests(user_id: int) -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM friend_requests WHERE to_user=? AND status='pending'",
+                     (user_id,)).fetchone()[0]
+    conn.close()
+    return n
 
 
 # --------------------------- Rankings personalizados (liguillas) ---------------------------

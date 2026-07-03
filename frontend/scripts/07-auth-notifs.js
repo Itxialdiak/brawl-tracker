@@ -7,7 +7,7 @@ function showLogin() { $("auth-overlay").style.display = "flex"; }
 function hideLogin() { $("auth-overlay").style.display = "none"; }
 function setUser(user) {
   currentUser = user || null;
-  $("user-pill").textContent = user && user.username ? "@" + user.username : "";
+  renderUserSwitch();
   const cs = $("um-country"); if (cs) cs.value = (user && user.country) || "";
   const navAdmin = $("nav-admin");
   // Administración: visible para admins y para traductores/colaboradores (estos solo verán
@@ -76,7 +76,130 @@ async function doLogout() {
   try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {}
   window.location.reload();   // limpia por completo el estado del cliente (vista y datos en memoria)
 }
-$("logout-btn").addEventListener("click", doLogout);
+
+/* ---------- Menú de usuario (desplegable estilo idioma: Cuenta/Amigos/Mensajes/Salir) ---------- */
+function renderUserSwitch() {
+  const box = $("user-switch");
+  if (!box) return;
+  if (!currentUser) { box.innerHTML = ""; return; }
+  box.innerHTML = `
+    <button class="user-toggle" id="user-toggle" onclick="toggleUserMenu(event)" title="Tu cuenta">
+      <span class="user-ava">@${esc(currentUser.username || "")}</span>
+      <span class="user-fr-dot" id="user-fr-dot" style="display:none"></span>
+      <span class="lang-caret">▾</span>
+    </button>
+    <div class="user-menu" id="user-menu">
+      <button class="user-menu-opt" onclick="userMenu('cuenta')">⚙️ Cuenta</button>
+      <button class="user-menu-opt" onclick="userMenu('amigos')">👥 Amigos <span class="user-menu-badge" id="user-fr-badge" style="display:none"></span></button>
+      <button class="user-menu-opt" onclick="userMenu('mensajes')">✉️ Mensajes</button>
+      <button class="user-menu-opt danger" onclick="userMenu('salir')">🚪 Cerrar sesión</button>
+    </div>`;
+  refreshFriendsBadge();
+}
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  const m = $("user-menu"), t = $("user-toggle");
+  const open = m && m.classList.toggle("open");
+  if (t) t.classList.toggle("open", !!open);
+}
+function closeUserMenu() {
+  const m = $("user-menu"), t = $("user-toggle");
+  if (m) m.classList.remove("open"); if (t) t.classList.remove("open");
+}
+document.addEventListener("click", (e) => {
+  const sw = document.getElementById("user-switch");
+  if (sw && !sw.contains(e.target)) closeUserMenu();
+});
+function userMenu(which) {
+  closeUserMenu();
+  if (which === "cuenta") openAccount();
+  else if (which === "amigos") openFriends();
+  else if (which === "mensajes") openMessages();
+  else if (which === "salir") doLogout();
+}
+async function refreshFriendsBadge() {
+  if (!currentUser) return;
+  try {
+    const r = await getJSON("/api/friends/count");
+    const n = (r && r.incoming) || 0;
+    const b = $("user-fr-badge"), dot = $("user-fr-dot");
+    if (b) { if (n > 0) { b.textContent = n; b.style.display = "inline-flex"; } else b.style.display = "none"; }
+    if (dot) dot.style.display = n > 0 ? "inline-block" : "none";
+  } catch (e) { /* 401 */ }
+}
+
+/* ---------- Amigos ---------- */
+function openFriends() {
+  $("friends-modal").classList.add("open");
+  $("fr-search").value = ""; $("fr-results").innerHTML = "";
+  loadFriends();
+}
+function closeFriends() { $("friends-modal").classList.remove("open"); }
+async function loadFriends() {
+  const box = $("fr-body");
+  box.innerHTML = `<p class="evd-muted" style="padding:10px">Cargando…</p>`;
+  let r;
+  try { r = await getJSON("/api/friends"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:10px">No se pudo cargar.</p>`; return; }
+  const inc = r.incoming || [], out = r.outgoing || [], fr = r.friends || [];
+  let html = "";
+  if (inc.length) {
+    html += `<div class="fr-sec-h">Solicitudes recibidas <span class="reto-count">${inc.length}</span></div>`;
+    html += inc.map((u) => `<div class="fr-row"><span class="fr-name">@${esc(u.username)}</span><span class="fr-acts"><button class="mini-ok" onclick="acceptFriend(${u.req_id})">Aceptar</button><button class="mini-no" onclick="rejectFriend(${u.req_id})">Rechazar</button></span></div>`).join("");
+  }
+  if (out.length) {
+    html += `<div class="fr-sec-h">Enviadas</div>`;
+    html += out.map((u) => `<div class="fr-row"><span class="fr-name">@${esc(u.username)}</span><span class="fr-acts"><span class="evd-muted">pendiente</span><button class="link-btn sm danger" onclick="rejectFriend(${u.req_id})">Cancelar</button></span></div>`).join("");
+  }
+  _friendsCache = fr;
+  html += `<div class="fr-sec-h">Tus amigos <span class="reto-count">${fr.length}</span></div>`;
+  html += fr.length
+    ? fr.map((u) => `<div class="fr-row"><span class="fr-name">@${esc(u.username)}</span><span class="fr-acts"><button class="link-btn sm danger" onclick="removeFriend(${u.id})">Quitar</button></span></div>`).join("")
+    : `<p class="evd-muted" style="padding:8px 2px">Aún no tienes amigos. Búscalos arriba por su nombre.</p>`;
+  box.innerHTML = html;
+  refreshFriendsBadge();
+}
+let _friendsCache = [];
+let _frSearchT = null;
+function friendsSearch() { clearTimeout(_frSearchT); _frSearchT = setTimeout(doFriendsSearch, 250); }
+async function doFriendsSearch() {
+  const q = $("fr-search").value.trim();
+  const box = $("fr-results");
+  if (!q) { box.innerHTML = ""; return; }
+  let r;
+  try { r = await getJSON("/api/friends/search?q=" + encodeURIComponent(q)); } catch (e) { return; }
+  const us = r.users || [];
+  if (!us.length) { box.innerHTML = `<div class="fr-res-empty">Sin resultados</div>`; return; }
+  box.innerHTML = us.map((u) => {
+    let act;
+    if (u.relation === "friend") act = `<span class="evd-muted">ya sois amigos</span>`;
+    else if (u.relation === "outgoing") act = `<span class="evd-muted">solicitud enviada</span>`;
+    // "incoming": ya te envió solicitud; enviar la tuya la acepta mutuamente (auto-accept en backend).
+    else if (u.relation === "incoming") act = `<button class="mini-ok" onclick="reqFriendId(${u.id})">Aceptar</button>`;
+    else act = `<button class="mini-ok" onclick="reqFriendId(${u.id})">+ Añadir</button>`;
+    return `<div class="fr-res-row"><span class="fr-name">@${esc(u.username)}</span>${act}</div>`;
+  }).join("");
+}
+async function reqFriendId(uid) {
+  const { ok, d } = await apiSend("/api/friends/request", "POST", { user_id: uid });
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo enviar la solicitud", "err"); return; }
+  wikiToast(d.status === "friends" ? "¡Ya sois amigos!" : d.status === "exists" ? "Ya habías enviado la solicitud" : "Solicitud enviada", "ok");
+  doFriendsSearch(); loadFriends();
+}
+async function acceptFriend(rid) {
+  const { ok, d } = await apiSend(`/api/friends/requests/${rid}/accept`, "POST");
+  if (!ok) { wikiToast(d.error || "No se pudo aceptar", "err"); return; }
+  wikiToast("Solicitud aceptada", "ok"); loadFriends();
+}
+async function rejectFriend(rid) { const { ok } = await apiSend(`/api/friends/requests/${rid}/reject`, "POST"); if (ok) loadFriends(); }
+async function removeFriend(uid) {
+  const u = _friendsCache.find((x) => x.id === uid);
+  if (!confirm(`¿Quitar a @${u ? u.username : "este usuario"} de tus amigos?`)) return;
+  await apiSend(`/api/friends/${uid}`, "DELETE"); loadFriends();
+}
+
+/* ---------- Mensajes (placeholder; fase posterior) ---------- */
+function openMessages() { $("messages-modal").classList.add("open"); }
+function closeMessages() { $("messages-modal").classList.remove("open"); }
 
 /* ----- Notificaciones (Fase 6) ----- */
 let _notifTimer = null;
@@ -96,7 +219,11 @@ async function refreshUnread() {
     else dot.style.display = "none";
   } catch (e) {}
 }
-function startNotifPolling() { refreshUnread(); clearInterval(_notifTimer); _notifTimer = setInterval(refreshUnread, 60000); }
+function startNotifPolling() {
+  refreshUnread(); refreshFriendsBadge();
+  clearInterval(_notifTimer);
+  _notifTimer = setInterval(() => { refreshUnread(); refreshFriendsBadge(); }, 60000);
+}
 async function openNotifications() {
   $("notif-modal").classList.add("open");
   await loadNotifications();
