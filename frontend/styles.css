@@ -2123,3 +2123,40 @@ body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
 .evp-edit-grid .ee-field span.ec-lbl, .evp-edit-grid .ee-field { display: flex; flex-direction: column; }
 .evp-edit-grid .ee-field > span.ec-lbl { display: block; }
 @media (max-width: 640px) { .evp-actions { margin-left: 0; width: 100%; } .evp-poster { height: 140px; } .evp-title { font-size: 24px; } }
+
+
+/* === retos: condiciones en dos columnas + compactas + modificador "por cada" === */
+.rc-cond-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.rc-cond-grid > .rc-cond { margin-bottom: 0; }
+/* tarjeta compacta: la cabecera (checkbox + nombre) alineada a la izquierda, no centrada */
+.rc-cond-on { justify-content: flex-start; text-align: left; padding-right: 30px; }
+.rc-cond-on b { text-align: left; }
+/* al activarse, los campos se apilan (objetivo/mín. en una línea, ámbitos y "por cada" debajo) */
+.rc-cond.on .rc-cond-fields { display: flex; flex-direction: column; gap: 10px; }
+.rc-cond-line { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.rc-scopes { gap: 8px 12px; }
+/* modificador "por cada" (combinable: brawler × modo × mapa) */
+.rc-pereach { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; color: var(--muted);
+  background: rgba(63,225,255,.06); border: 1px dashed rgba(63,225,255,.3); border-radius: 9px; padding: 7px 11px; align-self: flex-start; }
+.rc-pereach-lbl { font-family: var(--display); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--cyan); }
+.rc-per-opt { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.rc-per-opt input[type=checkbox] { accent-color: var(--cyan); cursor: pointer; }
+@media (max-width: 640px) { .rc-cond-grid { grid-template-columns: 1fr; } }
+
+
+/* === retos: desglose por sub-objetivo de una condición "por cada" === */
+.rcd-breakdown { margin-top: 9px; }
+.rcd-breakdown > summary { cursor: pointer; list-style: none; font-family: var(--display); font-weight: 700;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--cyan); }
+.rcd-breakdown > summary::-webkit-details-marker { display: none; }
+.rcd-breakdown > summary::before { content: "\25B8"; display: inline-block; margin-right: 5px; transition: transform .15s; }
+.rcd-breakdown[open] > summary::before { transform: rotate(90deg); }
+.rcd-sub-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 3px 12px;
+  margin-top: 8px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+.rcd-sub-list::-webkit-scrollbar { width: 5px; }
+.rcd-sub-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 3px; }
+.rcd-sub { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 7px;
+  border-radius: 6px; background: var(--bg); }
+.rcd-sub-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.rcd-sub-v { font-family: var(--display); font-weight: 700; flex: 0 0 auto; color: var(--muted); }
+.rcd-sub.done .rcd-sub-l, .rcd-sub.done .rcd-sub-v { color: var(--win); }

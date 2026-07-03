@@ -32,29 +32,76 @@ function retoProgressBar(pct, done) {
   return `<div class="reto-bar ${done ? "done" : ""}"><span style="width:${pct}%"></span></div>`;
 }
 
+// Desglose por sub-objetivo de una condición «por cada»: lista de cada combinación
+// (brawler / modo / mapa) con su avance individual (p.ej. «· Shelly 3/20»).
+function retoBreakdownHTML(c, p) {
+  if (!p || !p.breakdown || !p.breakdown.length) return "";
+  const dims = retoPerDims(c);
+  const unit = c.metric === "winrate" ? "%" : "";
+  const items = p.breakdown.map((bd) => {
+    const label = (bd.combo || []).map((v, i) => {
+      const d = dims[i];
+      return d === "mode" ? t(modeName(v)) : d === "map" ? mapNameEs(v) : v;
+    }).join(" · ");
+    const cur = Math.round((bd.current || 0) * 10) / 10;
+    const tgt = parseInt(bd.target, 10);
+    return `<div class="rcd-sub ${bd.done ? "done" : ""}"><span class="rcd-sub-l">· ${esc(label)}</span><span class="rcd-sub-v">${bd.done ? "✓ " : ""}${cur}${unit}/${tgt}${unit}</span></div>`;
+  }).join("");
+  const open = p.breakdown.length <= 12 ? " open" : "";
+  return `<details class="rcd-breakdown"${open}><summary>Desglose por objetivo (${p.current}/${p.per_total})</summary><div class="rcd-sub-list">${items}</div></details>`;
+}
+
 function condSummary(conds) {
   if (!conds || !conds.length) return "";
   return conds.map((c) => `<span class="reto-cond-chip">${esc(retoCondText(c))}</span>`).join("");
 }
 
+function retoPerDims(c) {
+  return Array.isArray(c.per) ? c.per : (c.per ? [c.per] : []);
+}
+
+// Sufijo "por cada …" (espejo de retos._per_text). Excluye esas dimensiones del ámbito normal.
+function retoPerText(c) {
+  const dims = retoPerDims(c);
+  if (!dims.length) return "";
+  const sc = c.scope || {};
+  const parts = [];
+  dims.forEach((d) => {
+    let items = sc[d];
+    items = Array.isArray(items) ? items : (items ? [items] : []);
+    if (!items.length) return;
+    const lab = d === "brawler" ? "brawler" : d === "mode" ? "modo" : "mapa";
+    const names = d === "mode" ? items.map((m) => t(modeName(m)))
+      : d === "map" ? items.map(mapNameEs) : items;
+    const shown = names.slice(0, 5).join(", ") + (names.length > 5 ? `… (+${names.length - 5})` : "");
+    parts.push(`cada ${lab} (${shown})`);
+  });
+  return parts.length ? ", por " + parts.join(" y ") : "";
+}
+
 // Texto legible de una condición en cliente (espejo de retos.describe_condition).
 function retoCondText(c) {
   const sc = c.scope || {};
+  const perDims = retoPerDims(c);
   const bits = [];
-  if (sc.brawler) bits.push(t("con") + " " + (Array.isArray(sc.brawler) ? sc.brawler.join(", ") : sc.brawler));
-  if (sc.mode) bits.push(t("en") + " " + (Array.isArray(sc.mode) ? sc.mode.map((m) => t(modeName(m))).join(", ") : t(modeName(sc.mode))));
-  if (sc.map) bits.push(t("en") + " " + (Array.isArray(sc.map) ? sc.map.map(mapNameEs).join(", ") : mapNameEs(sc.map)));
+  if (sc.brawler && !perDims.includes("brawler")) bits.push(t("con") + " " + (Array.isArray(sc.brawler) ? sc.brawler.join(", ") : sc.brawler));
+  if (sc.mode && !perDims.includes("mode")) bits.push(t("en") + " " + (Array.isArray(sc.mode) ? sc.mode.map((m) => t(modeName(m))).join(", ") : t(modeName(sc.mode))));
+  if (sc.map && !perDims.includes("map")) bits.push(t("en") + " " + (Array.isArray(sc.map) ? sc.map.map(mapNameEs).join(", ") : mapNameEs(sc.map)));
   const s = bits.length ? " " + bits.join(" ") : "";
+  const ps = retoPerText(c);
   const tgt = parseInt(c.target, 10) || 0;   // OJO: no llamar 't' (colisiona con la función i18n t())
   switch (c.metric) {
-    case "wins": return `Gana ${tgt} partidas${s}`;
-    case "games": return `Juega ${tgt} partidas${s}`;
-    case "winrate": return `Mantén ${tgt}% de victorias${s}${c.min_games ? ` (mín. ${c.min_games})` : ""}`;
-    case "win_streak": return `Encadena ${tgt} victorias${s}`;
+    case "wins": return `Gana ${tgt} partidas${s}${ps}`;
+    case "games": return `Juega ${tgt} partidas${s}${ps}`;
+    case "winrate": return `Mantén ${tgt}% de victorias${s}${ps}${c.min_games ? ` (mín. ${c.min_games})` : ""}`;
+    case "performance": return `Alcanza ${tgt} de rendimiento${s}${ps}${c.min_games ? ` (mín. ${c.min_games})` : ""}`;
+    case "win_streak": return `Encadena ${tgt} victorias${s}${ps}`;
     case "distinct_brawlers": return `Gana con ${tgt} brawlers distintos${s}`;
     case "distinct_played": return `Juega con ${tgt} brawlers distintos${s}`;
-    case "trophies": return `Suma ${tgt} copas${s}`;
-    case "star_player": return `Sé jugador estelar ${tgt} veces${s}`;
+    case "trophies": return `Suma ${tgt} copas${s}${ps}`;
+    case "star_player": return `Sé jugador estelar ${tgt} veces${s}${ps}`;
+    case "active_days": return `Juega en ${tgt} días distintos${s}`;
+    case "max_losses": return `No pases de ${tgt} derrotas${s}${ps}${c.min_games ? ` en ${c.min_games} partidas` : ""}`;
     default: return c.metric;
   }
 }
@@ -168,8 +215,17 @@ function renderRetoDetail(d) {
   const condsHTML = (d.conditions || []).map((c, i) => {
     const p = isParticipant && d.my_progress ? d.my_progress.conditions[i] : null;
     const bar = p ? retoProgressBar(p.pct, p.done) : "";
-    const val = p ? `<span class="rcd-val ${p.done ? "done" : ""}">${p.current}${c.metric === "winrate" ? "%" : ""} / ${parseInt(c.target, 10)}${p.note ? ` · ${esc(p.note)}` : ""}</span>` : "";
-    return `<div class="rcd-cond ${p && p.done ? "done" : ""}"><div class="rcd-cond-top"><span>${p && p.done ? "✅" : "○"} ${esc(retoCondText(c))}</span>${val}</div>${bar}</div>`;
+    let valText = "";
+    if (p) {
+      if (p.per) valText = `${p.current}/${p.per_total} ✓`;
+      else {
+        const unit = c.metric === "winrate" ? "%" : (c.metric === "performance" ? " pts" : "");
+        valText = `${p.current}${unit} / ${parseInt(c.target, 10)}${unit}`;
+      }
+      if (p.note) valText += ` · ${p.note}`;
+    }
+    const val = p ? `<span class="rcd-val ${p.done ? "done" : ""}">${esc(valText)}</span>` : "";
+    return `<div class="rcd-cond ${p && p.done ? "done" : ""}"><div class="rcd-cond-top"><span>${p && p.done ? "✅" : "○"} ${esc(retoCondText(c))}</span>${val}</div>${bar}${retoBreakdownHTML(c, p)}</div>`;
   }).join("");
   // dificultad declarada vs asignada
   let diffBlock = `<div class="rcd-diff">Dificultad: ${stars(assigned)} <b>${RETO_DIFF[assigned]}</b> <span class="hint-inline">(ajustada a tu nivel)</span></div>`;
@@ -353,16 +409,30 @@ async function openCreateReto() {
   $("rc-vis").value = "public"; $("rc-limit").value = ""; $("rc-desc").value = "";
   $("rc-err").textContent = "";
   $("reto-help").style.display = "none";
-  $("reto-conditions").innerHTML = Object.entries(RETO_META.metrics).map(([key, m]) => `
-    <div class="rc-cond">
+  const isPct = (k) => k === "winrate" || k === "performance";
+  $("reto-conditions").innerHTML = `<div class="rc-cond-grid">` + Object.entries(RETO_META.metrics).map(([key, m]) => {
+    const targetPh = isPct(key) ? (key === "winrate" ? "%" : "pts") : (m.cap ? "máx" : "nº");
+    const mgInput = m.min_games ? `<span class="rc-f">mín. partidas <input type="number" min="1" class="rc-mingames" placeholder="p.ej. 20"></span>` : "";
+    const perCtl = m.per_ok ? `
+        <div class="rc-pereach"><span class="rc-pereach-lbl">${esc("por cada")}:</span>
+          <label class="rc-per-opt"><input type="checkbox" class="rc-per-dim" value="brawler"> brawler</label>
+          <label class="rc-per-opt"><input type="checkbox" class="rc-per-dim" value="mode"> modo</label>
+          <label class="rc-per-opt"><input type="checkbox" class="rc-per-dim" value="map"> mapa</label>
+        </div>` : "";
+    return `
+    <div class="rc-cond" data-metric="${key}" data-cap="${m.cap ? 1 : 0}">
       <label class="rc-cond-on"><input type="checkbox" data-metric="${key}" onchange="this.closest('.rc-cond').classList.toggle('on', this.checked)"> <b>${esc(m.label)}</b></label>
       <div class="rc-cond-fields">
-        <span class="rc-f">objetivo <input type="number" min="1" class="rc-target" placeholder="${key === "winrate" ? "%" : "nº"}"></span>
-        ${m.min_games ? `<span class="rc-f">mín. partidas <input type="number" min="1" class="rc-mingames" placeholder="p.ej. 20"></span>` : ""}
+        <div class="rc-cond-line">
+          <span class="rc-f">objetivo <input type="number" min="1" class="rc-target" placeholder="${targetPh}"></span>
+          ${mgInput}
+        </div>
         <div class="rc-scopes">${scopeMsHTML("brawler", "Brawler")}${scopeMsHTML("mode", "Modo")}${scopeMsHTML("map", "Mapa")}</div>
+        ${perCtl}
       </div>
       <div class="rc-cond-help">${esc(m.help)}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("") + `</div>`;
   openEvModal("reto-create-modal");
 }
 
@@ -372,12 +442,13 @@ function toggleRetoHelp() {
 }
 
 function collectRetoConditions() {
-  const conds = [];
+  const conds = []; const errors = [];
   document.querySelectorAll("#reto-conditions .rc-cond").forEach((row) => {
     const chk = row.querySelector("input[data-metric]");
     if (!chk.checked) return;
+    const label = row.querySelector("b").textContent;
     const target = parseFloat(row.querySelector(".rc-target").value);
-    if (!target || target <= 0) return;
+    if (!target || target <= 0) { errors.push(`Pon un objetivo a «${label}».`); return; }
     const c = { metric: chk.dataset.metric, target };
     const mg = row.querySelector(".rc-mingames");
     if (mg && mg.value) c.min_games = parseInt(mg.value, 10);
@@ -385,19 +456,34 @@ function collectRetoConditions() {
     row.querySelectorAll(".rc-scope").forEach((sc) => {
       const en = sc.querySelector(".rc-scope-en input");
       if (!en || !en.checked) return;   // ámbito no activado = opcional, se ignora
-      const vals = [...sc.querySelectorAll(".rc-ms-opt input:checked")].map((c) => c.value);
+      const vals = [...sc.querySelectorAll(".rc-ms-opt input:checked")].map((x) => x.value);
       if (vals.length) scope[sc.dataset.kind] = vals.length === 1 ? vals[0] : vals;
     });
     if (Object.keys(scope).length) c.scope = scope;
+    // "Por cada": exige el objetivo por cada COMBINACIÓN de las dimensiones marcadas.
+    const perDims = [...row.querySelectorAll(".rc-per-dim:checked")].map((x) => x.value);
+    if (perDims.length) {
+      let bad = null;
+      for (const dim of perDims) {
+        const arr = scope[dim];
+        const list = Array.isArray(arr) ? arr : (arr ? [arr] : []);
+        if (!list.length) { bad = dim; break; }
+      }
+      if (bad) { errors.push(`«${label}»: para «por cada ${bad === "brawler" ? "brawler" : bad === "mode" ? "modo" : "mapa"}» selecciona al menos uno en ese ámbito.`); return; }
+      c.per = perDims;
+    }
+    // El tope de derrotas necesita un mínimo de partidas.
+    if (row.dataset.cap === "1" && !c.min_games) { errors.push(`«${label}»: indica el mínimo de partidas.`); return; }
     conds.push(c);
   });
-  return conds;
+  return { conditions: conds, errors };
 }
 
 async function submitCreateReto() {
   const name = $("rc-name").value.trim();
   if (!name) { $("rc-err").textContent = "Ponle un nombre al reto."; return; }
-  const conditions = collectRetoConditions();
+  const { conditions, errors } = collectRetoConditions();
+  if (errors.length) { $("rc-err").textContent = errors[0]; return; }
   if (!conditions.length) { $("rc-err").textContent = "Marca al menos una condición con su objetivo."; return; }
   const payload = {
     name, theme: $("rc-theme").value.trim(), description: $("rc-desc").value.trim(),

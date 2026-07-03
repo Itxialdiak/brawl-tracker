@@ -2425,6 +2425,16 @@ def event_ids_with_start() -> list:
     return [r[0] for r in rows]
 
 
+def pollable_event_ids() -> list:
+    """Eventos no finalizados (para la detección automática de resultados). Incluye los que
+    NO tienen fechas: se consideran en curso hasta marcarse como finalizados (el poller decide
+    con la ventana de fechas si las hay)."""
+    conn = get_conn()
+    rows = conn.execute("SELECT id FROM events WHERE status != 'finished'").fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
 # --- participantes ---
 def list_participants(eid) -> list[dict]:
     conn = get_conn()
@@ -2953,6 +2963,22 @@ def reto_metric(player_tag, since, until, metric, scope) -> float:
                 elif r["is_win"] == 0:
                     run = 0
             return best
+        elif metric in ("losses", "max_losses"):   # derrotas acumuladas (para el tope 'no pases de X')
+            q = f"SELECT SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) FROM battles {where}"
+        elif metric == "active_days":               # días distintos con al menos una partida (constancia)
+            q = f"SELECT COUNT(DISTINCT substr(battle_time,1,8)) FROM battles {where}"
+        elif metric == "performance":               # rendimiento AJUSTADO sobre el ámbito (win rate encogido + dificultad)
+            row = conn.execute(
+                f"SELECT SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS w, "
+                f"SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS l, "
+                f"AVG(CAST(my_trophies AS REAL)) AS avgt, AVG(o.rt) AS avgr "
+                f"FROM battles LEFT JOIN (SELECT battle_id, AVG(CAST(trophies AS REAL)) AS rt "
+                f"FROM opponents GROUP BY battle_id) o ON o.battle_id = battles.id {where}", params).fetchone()
+            base = conn.execute(
+                "SELECT AVG(CAST(my_trophies AS REAL)) FROM battles WHERE player_tag=?",
+                (normalize_tag(player_tag),)).fetchone()[0] or 0
+            adj = _adjusted_score(row["w"] or 0, row["l"] or 0, row["avgt"], row["avgr"], base)
+            return adj if adj is not None else 0.0
         else:
             return 0
         val = conn.execute(q, params).fetchone()[0]

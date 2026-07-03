@@ -178,17 +178,18 @@ EVENT_DETECT_INTERVAL = 3600  # cada hora
 
 
 def _active_event_ids():
-    """IDs de eventos cuyo rango de fechas incluye AHORA (torneo en curso). Fuera de
-    ese rango el evento no se sondea (el poller queda inactivo para él)."""
+    """IDs de eventos «en curso» que la detección automática debe sondear: no finalizados y
+    dentro de su ventana de fechas. Un evento SIN fechas se considera siempre en curso (no se
+    excluye por no haberlas puesto); solo se descarta si aún no ha empezado o si ya venció."""
     now = datetime.now(timezone.utc)
     out = []
-    for eid in db.event_ids_with_start():
+    for eid in db.pollable_event_ids():
         e = db.get_event(eid)
         if not e:
             continue
         start = detect.parse_event_date(e.get("date_start"))
         end = detect.parse_event_date(e.get("date_end"), end=True)
-        if start and now >= start and (end is None or now <= end):
+        if (start is None or now >= start) and (end is None or now <= end):
             out.append(eid)
     return out
 
