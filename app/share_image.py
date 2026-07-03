@@ -7,7 +7,14 @@ publicación, el enlace lleva al perfil público del autor (lo gestiona el front
 import io
 import os
 
-from PIL import Image, ImageDraw, ImageFont
+# Pillow es OPCIONAL: si no está instalado, la app sigue funcionando; solo se desactiva la
+# generación de imágenes de compartir (los endpoints devuelven 503 y las meta OG omiten la imagen).
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    PIL_OK = True
+except Exception:  # noqa: BLE001
+    Image = ImageDraw = ImageFont = None
+    PIL_OK = False
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _LOGO = os.path.join(_ROOT, "frontend", "media", "logo.png")
@@ -59,8 +66,10 @@ def _wrap(draw, text, font, max_w):
 
 def render_card(eyebrow: str = "", title: str = "", subtitle: str = "",
                 stats: list = None, accent=_CYAN) -> bytes:
-    """Devuelve un PNG (1080x1080) con la tarjeta y la marca de agua del logo abajo-derecha.
-    `stats` = lista de (etiqueta, valor) que se pintan como pastillas."""
+    """Devuelve un PNG (1080x1080) con la tarjeta y la marca de agua del logo abajo-derecha, o None
+    si Pillow no está instalado. `stats` = lista de (etiqueta, valor) que se pintan como pastillas."""
+    if not PIL_OK:
+        return None
     W = H = 1080
     img = Image.new("RGB", (W, H), _BG)
     d = ImageDraw.Draw(img)
@@ -104,7 +113,7 @@ def render_card(eyebrow: str = "", title: str = "", subtitle: str = "",
     return buf.getvalue()
 
 
-def _paste_watermark(img: Image.Image, W: int, H: int, m: int) -> None:
+def _paste_watermark(img, W, H, m):
     try:
         logo = Image.open(_LOGO).convert("RGBA")
     except Exception:  # noqa: BLE001

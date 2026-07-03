@@ -82,6 +82,8 @@ def api_share_user_image(uid: int):
     png = share_image.render_card(
         eyebrow="Jugador de la comunidad", title="@" + (u["username"] or ""),
         subtitle=(u.get("country") or "") and f"País: {u['country'].upper()}", stats=stats)
+    if not png:
+        return JSONResponse({"error": "Generación de imágenes no disponible (falta Pillow)."}, status_code=503)
     return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
 
 
@@ -98,4 +100,6 @@ def api_share_event_image(eid: int):
     png = share_image.render_card(
         eyebrow=kind, title=e.get("name") or "Evento", subtitle="En Brawl Sensei",
         stats=stats, accent=share_image._GOLD)
+    if not png:
+        return JSONResponse({"error": "Generación de imágenes no disponible (falta Pillow)."}, status_code=503)
     return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
