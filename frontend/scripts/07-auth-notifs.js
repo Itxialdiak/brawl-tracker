@@ -91,7 +91,8 @@ function renderUserSwitch() {
     <div class="user-menu" id="user-menu">
       <button class="user-menu-opt" onclick="userMenu('cuenta')">⚙️ Cuenta</button>
       <button class="user-menu-opt" onclick="userMenu('amigos')">👥 Amigos <span class="user-menu-badge" id="user-fr-badge" style="display:none"></span></button>
-      <button class="user-menu-opt" onclick="userMenu('mensajes')">✉️ Mensajes</button>
+      <button class="user-menu-opt" onclick="userMenu('buscar')">🔎 Buscar usuarios</button>
+      <button class="user-menu-opt" onclick="userMenu('mensajes')">✉️ Mensajes <span class="user-menu-badge" id="user-msg-badge" style="display:none"></span></button>
       <button class="user-menu-opt danger" onclick="userMenu('salir')">🚪 Cerrar sesión</button>
     </div>`;
   refreshFriendsBadge();
@@ -114,17 +115,34 @@ function userMenu(which) {
   closeUserMenu();
   if (which === "cuenta") openAccount();
   else if (which === "amigos") openFriends();
+  else if (which === "buscar") openUsers();
   else if (which === "mensajes") openMessages();
   else if (which === "salir") doLogout();
+}
+let _frCount = 0, _msgCount = 0;
+function updateUserDot() {
+  const dot = $("user-fr-dot");
+  if (dot) dot.style.display = (_frCount + _msgCount) > 0 ? "inline-block" : "none";
 }
 async function refreshFriendsBadge() {
   if (!currentUser) return;
   try {
     const r = await getJSON("/api/friends/count");
-    const n = (r && r.incoming) || 0;
-    const b = $("user-fr-badge"), dot = $("user-fr-dot");
-    if (b) { if (n > 0) { b.textContent = n; b.style.display = "inline-flex"; } else b.style.display = "none"; }
-    if (dot) dot.style.display = n > 0 ? "inline-block" : "none";
+    _frCount = (r && r.incoming) || 0;
+    const b = $("user-fr-badge");
+    if (b) { if (_frCount > 0) { b.textContent = _frCount; b.style.display = "inline-flex"; } else b.style.display = "none"; }
+    updateUserDot();
+  } catch (e) { /* 401 */ }
+  refreshMsgBadge();
+}
+async function refreshMsgBadge() {
+  if (!currentUser) return;
+  try {
+    const r = await getJSON("/api/messages/count");
+    _msgCount = (r && r.unread) || 0;
+    const b = $("user-msg-badge");
+    if (b) { if (_msgCount > 0) { b.textContent = _msgCount; b.style.display = "inline-flex"; } else b.style.display = "none"; }
+    updateUserDot();
   } catch (e) { /* 401 */ }
 }
 
@@ -197,9 +215,215 @@ async function removeFriend(uid) {
   await apiSend(`/api/friends/${uid}`, "DELETE"); loadFriends();
 }
 
-/* ---------- Mensajes (placeholder; fase posterior) ---------- */
-function openMessages() { $("messages-modal").classList.add("open"); }
+/* ---------- Buscar usuarios (sugeridos por relevancia + búsqueda por nombre) ---------- */
+function closeUsers() { $("users-modal").classList.remove("open"); }
+function openUsers() {
+  $("users-modal").classList.add("open");
+  $("us-search").value = ""; $("us-results").innerHTML = "";
+  loadSuggestedUsers();
+}
+// Etiquetas de por qué se sugiere a alguien (amigos en común, mismo club, país).
+function userReasonChips(u) {
+  const c = [];
+  if (u.mutual_friends) c.push(`<span class="us-chip">${u.mutual_friends} amigo${u.mutual_friends > 1 ? "s" : ""} en común</span>`);
+  if (u.same_club) c.push(`<span class="us-chip">mismo club</span>`);
+  if (u.country) c.push(`<span class="us-chip">${esc(u.country)}</span>`);
+  if (u.n_battles) c.push(`<span class="us-chip">${u.n_battles} partidas aportadas</span>`);
+  return c.length ? `<div class="us-chips">${c.join("")}</div>` : "";
+}
+function userActionHTML(u) {
+  if (u.relation === "friend") return `<span class="evd-muted">ya sois amigos</span>`;
+  if (u.relation === "outgoing") return `<span class="evd-muted">solicitud enviada</span>`;
+  if (u.relation === "incoming") return `<button class="mini-ok" onclick="reqFriendId(${u.id})">Aceptar</button>`;
+  return `<button class="mini-ok" onclick="reqFriendId(${u.id})">+ Añadir</button>`;
+}
+async function loadSuggestedUsers() {
+  const box = $("us-body");
+  box.innerHTML = `<p class="evd-muted" style="padding:10px">Cargando…</p>`;
+  let r;
+  try { r = await getJSON("/api/users/suggested"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:10px">No se pudo cargar.</p>`; return; }
+  const us = r.users || [];
+  if (!us.length) { box.innerHTML = `<p class="evd-muted" style="padding:10px">Aún no hay más usuarios en la comunidad.</p>`; return; }
+  box.innerHTML = `<div class="fr-sec-h">Sugeridos para ti</div>` + us.map((u) => `
+    <div class="us-row">
+      <button class="fr-name fr-link" onclick="openPublicProfile(${u.id})" title="Ver perfil público">@${esc(u.username)}</button>
+      <span class="fr-acts">${userActionHTML(u)}</span>
+      ${userReasonChips(u)}
+    </div>`).join("");
+}
+let _usSearchT = null;
+function usersSearch() { clearTimeout(_usSearchT); _usSearchT = setTimeout(doUsersSearch, 250); }
+async function doUsersSearch() {
+  const q = $("us-search").value.trim();
+  const box = $("us-results");
+  if (!q) { box.innerHTML = ""; return; }
+  let r;
+  try { r = await getJSON("/api/friends/search?q=" + encodeURIComponent(q)); } catch (e) { return; }
+  const us = r.users || [];
+  box.innerHTML = us.length
+    ? us.map((u) => `<div class="fr-res-row"><button class="fr-name fr-link" onclick="openPublicProfile(${u.id})" title="Ver perfil público">@${esc(u.username)}</button>${userActionHTML(u)}</div>`).join("")
+    : `<div class="fr-res-empty">Sin resultados</div>`;
+}
+
+/* ---------- Mensajes (fase E): bandeja de conversaciones + hilo + compositor ---------- */
+let _msgOther = null;   // id del interlocutor del hilo abierto (null = bandeja/compositor)
 function closeMessages() { $("messages-modal").classList.remove("open"); }
+async function openMessages() {   // bandeja: lista de conversaciones
+  $("messages-modal").classList.add("open");
+  _msgOther = null;
+  $("msg-title").textContent = "Mensajes";
+  $("msg-back").style.display = "none";
+  $("msg-new").style.display = "";
+  const box = $("msg-body");
+  box.innerHTML = `<p class="evd-muted" style="padding:16px">Cargando…</p>`;
+  let r;
+  try { r = await getJSON("/api/messages"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No se pudo cargar el buzón.</p>`; return; }
+  const cv = r.conversations || [];
+  const bar = cv.some((c) => c.unread) ? `<div class="msg-bar"><button class="link-btn" onclick="msgReadAll()">✓ Marcar todo como leído</button></div>` : "";
+  box.innerHTML = cv.length
+    ? bar + `<div class="msg-list">` + cv.map((c) => `
+        <button class="msg-conv${c.unread ? " unread" : ""}" onclick="msgOpenThread(${c.other_id})">
+          <span class="msg-conv-top"><span class="msg-conv-av">@${esc(c.username)}</span><span class="msg-conv-meta">${c.last_at ? esc(notifRelTime(c.last_at)) : ""}${c.unread ? ` <span class="msg-conv-badge">${c.unread}</span>` : ""}</span></span>
+          <span class="msg-conv-last">${c.last_from_me ? "Tú: " : ""}${esc(c.last || "")}</span>
+        </button>`).join("") + `</div>`
+    : `<div class="msg-empty">No tienes conversaciones todavía. Pulsa «✎ Nuevo» para escribir a un amigo.</div>`;
+  refreshMsgBadge();
+}
+async function msgReadAll() {
+  const { ok } = await apiSend("/api/messages/read-all", "POST", {});
+  if (ok) { openMessages(); }
+}
+async function msgCompose() {   // elegir a quién escribir (entre tus amigos)
+  $("msg-title").textContent = "Nuevo mensaje";
+  $("msg-back").style.display = ""; $("msg-new").style.display = "none";
+  _msgOther = null;
+  const box = $("msg-body");
+  box.innerHTML = `<p class="evd-muted" style="padding:16px">Cargando amigos…</p>`;
+  let r;
+  try { r = await getJSON("/api/friends"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No se pudo cargar.</p>`; return; }
+  const fr = (r.friends || []).slice().sort((a, b) => a.username.localeCompare(b.username));
+  box.innerHTML = fr.length
+    ? `<div class="msg-pick-h">Elige a quién escribir</div><div class="msg-list">` +
+        fr.map((u) => `<button class="msg-conv" onclick="msgOpenThread(${u.id})"><span class="msg-conv-av">@${esc(u.username)}</span></button>`).join("") + `</div>`
+    : `<div class="msg-empty">Aún no tienes amigos. Añádelos desde el menú de usuario → Amigos.</div>`;
+}
+async function msgOpenThread(uid) {   // abre la conversación (marca leídos)
+  $("messages-modal").classList.add("open");
+  _msgOther = uid;
+  const box = $("msg-body");
+  box.innerHTML = `<p class="evd-muted" style="padding:16px">Cargando…</p>`;
+  let r;
+  try { r = await getJSON(`/api/messages/${uid}`); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No se pudo abrir la conversación.</p>`; return; }
+  const uname = (r.other && r.other.username) || "";
+  $("msg-title").textContent = "@" + uname;
+  $("msg-back").style.display = ""; $("msg-new").style.display = "none";
+  renderThread(r.messages || [], uid, uname);
+  refreshMsgBadge();
+}
+function renderThread(msgs, uid, uname) {
+  const box = $("msg-body");
+  const bubbles = msgs.length
+    ? msgs.map((m) => `<div class="msg-b ${m.from_me ? "me" : "them"}">${esc(m.body)}<span class="msg-b-t">${m.created_at ? esc(notifRelTime(m.created_at)) : ""}</span></div>`).join("")
+    : `<div class="msg-empty">Aún no hay mensajes. ¡Escribe el primero!</div>`;
+  box.innerHTML = `<div class="msg-thread" id="msg-thread">${bubbles}</div>
+    <div class="msg-compose">
+      <textarea id="msg-input" rows="2" placeholder="Escribe a @${esc(uname)}… (Enter para enviar)" onkeydown="msgInputKey(event,${uid})"></textarea>
+      <button class="btn" onclick="msgSend(${uid})">Enviar</button>
+    </div>
+    <div class="msg-thread-foot">
+      <button class="link-btn" onclick="msgMarkUnread(${uid})">Marcar como no leída</button>
+      <button class="link-btn danger" onclick="msgDelete(${uid})">Borrar conversación</button>
+    </div>`;
+  const th = $("msg-thread"); if (th) th.scrollTop = th.scrollHeight;
+  const inp = $("msg-input"); if (inp) inp.focus();
+}
+async function msgMarkUnread(uid) {
+  const { ok } = await apiSend(`/api/messages/${uid}/unread`, "POST", {});
+  if (ok) { wikiToast("Marcada como no leída", "ok"); openMessages(); }
+}
+function msgInputKey(e, uid) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); msgSend(uid); } }
+async function msgSend(uid) {
+  const ta = $("msg-input"); if (!ta) return;
+  const body = (ta.value || "").trim();
+  if (!body) return;
+  ta.disabled = true;
+  const { ok, d } = await apiSend("/api/messages", "POST", { to_user: uid, body });
+  ta.disabled = false;
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo enviar", "err"); return; }
+  const uname = $("msg-title").textContent.replace(/^@/, "");
+  renderThread(d.messages || [], uid, uname);
+}
+async function msgDelete(uid) {
+  if (!confirm("¿Borrar esta conversación? Solo se ocultará para ti.")) return;
+  const { ok } = await apiSend(`/api/messages/${uid}`, "DELETE");
+  if (ok) { wikiToast("Conversación borrada", "ok"); openMessages(); }
+}
+
+/* ---------- Compartir en redes (fase F) ---------- */
+let _shareData = null;
+function closeShare() { $("share-modal").classList.remove("open"); }
+// Punto de entrada genérico: openShare({title, text, url}). Ofrece Web Share nativo, copiar
+// enlace/texto, enlaces de intención (X/Reddit/Facebook) y publicación directa si está configurada.
+async function openShare(opts) {
+  _shareData = opts || {};
+  const url = _shareData.url || location.href;
+  $("share-modal").classList.add("open");
+  $("share-preview").innerHTML =
+    `${_shareData.title ? `<div class="share-prev-title">${esc(_shareData.title)}</div>` : ""}` +
+    `${_shareData.text ? `<div class="share-prev-text">${esc(_shareData.text)}</div>` : ""}` +
+    `<div class="share-prev-url">${esc(url)}</div>`;
+  const box = $("share-body");
+  box.innerHTML = `<p class="evd-muted" style="padding:8px 2px">Cargando opciones…</p>`;
+  let cfg = { platforms: [] };
+  try { cfg = await getJSON("/api/social/config"); } catch (e) { /* sigue con lo básico */ }
+  const rows = [];
+  if (navigator.share) rows.push(`<button class="share-opt" onclick="shareNative()"><span class="share-ic">📤</span>Compartir con una app…</button>`);
+  rows.push(`<button class="share-opt" onclick="shareCopy('url')"><span class="share-ic">🔗</span>Copiar enlace</button>`);
+  rows.push(`<button class="share-opt" onclick="shareCopy('text')"><span class="share-ic">📋</span>Copiar texto + enlace</button>`);
+  (cfg.platforms || []).forEach((p) => {
+    if (p.intent) {
+      rows.push(`<button class="share-opt" onclick="shareIntent('${p.id}')"><span class="share-ic">${esc(p.icon)}</span>${esc(p.name)}</button>`);
+    } else {
+      // Instagram/TikTok: no tienen enlace de intención con texto; solo publicación directa (OAuth).
+      const on = !!p.configured;
+      rows.push(`<button class="share-opt${on ? "" : " disabled"}" ${on ? `onclick="sharePost('${p.id}')"` : ""} title="${on ? "" : "Requiere configurar la app en el servidor"}"><span class="share-ic">${esc(p.icon)}</span>${esc(p.name)}${on ? "" : ` <span class="share-soon">sin configurar</span>`}</button>`);
+    }
+  });
+  box.innerHTML = `<div class="share-opts">${rows.join("")}</div>
+    <p class="share-note">La publicación directa en Instagram y TikTok requiere registrar la app y sus claves en el servidor. Las demás abren la ventana de compartir de cada red.</p>`;
+}
+async function shareNative() {
+  try { await navigator.share({ title: _shareData.title || "", text: _shareData.text || "", url: _shareData.url || location.href }); } catch (e) { /* cancelado */ }
+}
+function shareCopy(which) {
+  const url = _shareData.url || location.href;
+  const val = which === "url" ? url : [_shareData.title, _shareData.text, url].filter(Boolean).join("\n");
+  const done = () => wikiToast("Copiado al portapapeles", "ok");
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(val).then(done, () => wikiToast("No se pudo copiar", "err"));
+  else wikiToast(val, "");
+}
+function shareIntent(pid) {
+  const url = encodeURIComponent(_shareData.url || location.href);
+  const text = encodeURIComponent([_shareData.title, _shareData.text].filter(Boolean).join(" — "));
+  let u = "";
+  if (pid === "x") u = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+  else if (pid === "reddit") u = `https://www.reddit.com/submit?url=${url}&title=${text}`;
+  else if (pid === "facebook") u = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+  if (u) window.open(u, "_blank", "noopener,noreferrer,width=640,height=680");
+}
+async function sharePost(pid) {
+  const { ok, d } = await apiSend(`/api/social/${pid}/post`, "POST", { title: _shareData.title, text: _shareData.text, url: _shareData.url });
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo publicar", "err"); return; }
+  wikiToast("Publicado", "ok");
+}
+// Atajo para compartir un evento (usa su enlace profundo /?event=id).
+function shareEvent(id, name) {
+  openShare({
+    title: name || "Evento en Brawl Sensei",
+    text: `Únete a «${name || "este evento"}» en Brawl Sensei`,
+    url: location.origin + "/?event=" + id,
+  });
+}
 
 /* ---------- Perfil público (fase C): vista de solo lectura de un usuario ---------- */
 let _pubProfile = null, _pubTag = null;
@@ -239,7 +463,10 @@ async function pubAddFriend(uid) {
   wikiToast(d.status === "friends" ? "¡Ya sois amigos!" : "Solicitud enviada", "ok");
   openPublicProfile(uid);   // recarga la relación
 }
-function pubMessage(uid) { openMessages(); }   // fase E: aquí abrirá el compositor al usuario
+function pubMessage(uid) {   // desde el perfil público: abre el hilo con ese usuario
+  const pp = $("pubprofile-modal"); if (pp) pp.classList.remove("open");
+  msgOpenThread(uid);
+}
 async function loadPubSummary(tag) {
   const box = $("pub-summary");
   if (!box) return;
@@ -271,8 +498,25 @@ async function loadPubSummary(tag) {
   const line3 = rt.overall != null ? `<div class="pub-line pub-rating">
     <div class="pub-score"><span class="num">${Math.round(rt.overall)}</span><span class="max">/100</span><span class="tier">${esc(rt.tier || "")}</span></div>
     <div class="pub-subs">${subBar("Colección", rt.collection)}${subBar("Maestría", rt.mastery)}${subBar("Eficiencia", rt.efficiency)}${subBar("Pushing", rt.pushing)}</div></div>` : "";
-  const chart = `<div class="pub-chart"><h4>Evolución de trofeos</h4>${trophyChart(r.trophy_series || [])}</div>`;
-  box.innerHTML = line1 + line2 + line3 + chart;
+  // Las 6 gráficas (mismas funciones puras que las Analíticas): 2 radares de rol, 2 donuts de
+  // modos, evolución de trofeos y forma reciente.
+  const roles = s.roles || [];
+  const byMode = (r.by_mode || []).filter((d) => d.label && d.total >= 1);
+  const byPlay = byMode.slice().sort((a, b) => b.total - a.total)
+    .map((d, i) => ({ label: d.label, value: d.total, display: d.total + "p", color: modeColor(d.label, i) }));
+  const byWr = byMode.filter((d) => d.winrate != null).sort((a, b) => b.winrate - a.winrate)
+    .map((d, i) => ({ label: d.label, value: Math.max(1, d.winrate), display: d.winrate + "%", color: modeColor(d.label, i) }));
+  const noData = `<div class="empty">Sin datos suficientes.</div>`;
+  const rolesOk = roles.some((d) => d.total > 0);
+  const card = (title, inner) => `<div class="pub-chart"><h4>${esc(title)}</h4>${inner}</div>`;
+  const charts = `<div class="pub-charts">
+    ${card("Preferencia de rol", rolesOk ? roleRadar(roles, "usage_pct", "#3dd9e8", "pubRadPref") : noData)}
+    ${card("Estilo de juego", rolesOk ? roleRadar(roles, "winrate", "#f5b82a", "pubRadStyle") : noData)}
+    ${card("Modos más jugados", byPlay.length ? donutChart(byPlay, "modos") : noData)}
+    ${card("Mejores modos", byWr.length ? donutChart(byWr, "win rate") : noData)}
+    ${card("Evolución de trofeos", trophyChart(r.trophy_series || []))}
+    ${card("Forma reciente", winrateChart(r.winrate_evolution || []))}</div>`;
+  box.innerHTML = line1 + line2 + line3 + charts;
 }
 
 /* ----- Notificaciones (Fase 6) ----- */

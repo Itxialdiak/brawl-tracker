@@ -93,7 +93,10 @@ function roundModeOptsHTML(rn, selModes) {
 function roundMapOptsHTML(rn, selModes, selMaps) {
   const sel = new Set(selMaps || []);
   const pool = roundMapPool(selModes);
-  return pool.map((mp) => `<label class="rc-ms-opt"><input type="checkbox" value="${esc(mp)}" ${sel.has(mp) ? "checked" : ""} onchange="roundMapsChanged(${rn})"><span>${esc(mapNameEs(mp))}</span></label>`).join("") || `<div class="ms-empty">Elige un modo primero</div>`;
+  return pool.map((mp) => {
+    const img = (typeof mapAsset === "function" ? (mapAsset(mp) || {}).image : "");
+    return `<label class="rc-ms-opt"><input type="checkbox" value="${esc(mp)}" ${sel.has(mp) ? "checked" : ""} onchange="roundMapsChanged(${rn})">${img ? `<img src="${esc(img)}" alt="" onerror="this.style.display='none'">` : ""}<span>${esc(mapNameEs(mp))}</span></label>`;
+  }).join("") || `<div class="ms-empty">Elige un modo primero</div>`;
 }
 // Tarjeta de una ronda AÚN NO generada (organizador): fila 1 «Ronda X» centrada; fila 2 el
 // desplegable de modos; fila 3 el de mapas (alineados a la izquierda).
@@ -103,7 +106,17 @@ function roundPickHTML(rn, rk) {
     <div class="rmm-row"><div class="rc-ms on" data-rmm="modes-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Modos: ${esc(msCountLabel(modes.length, "modo", "modos"))}</button>
       <div class="rc-ms-panel"><div class="rc-ms-opts">${roundModeOptsHTML(rn, modes)}</div></div></div></div>
     <div class="rmm-row"><div class="rc-ms on" data-rmm="maps-${rn}"><button type="button" class="rc-ms-trigger" onclick="retoMsOpen(event,this)">Mapas: ${esc(msCountLabel(maps.length, "mapa", "mapas"))}</button>
-      <div class="rc-ms-panel"><div class="rc-ms-opts">${roundMapOptsHTML(rn, modes, maps)}</div></div></div></div>`;
+      <div class="rc-ms-panel"><div class="rc-ms-search"><input type="text" placeholder="Buscar mapa…" oninput="roundMapFilter(${rn}, this.value)" onclick="event.stopPropagation()"></div><div class="rc-ms-opts">${roundMapOptsHTML(rn, modes, maps)}</div></div></div></div>`;
+}
+// Filtra en vivo la lista de mapas del desplegable (coincidencia por "contiene", sin distinguir mayúsculas).
+function roundMapFilter(rn, q) {
+  const box = document.querySelector(`.rc-ms[data-rmm="maps-${rn}"] .rc-ms-opts`);
+  if (!box) return;
+  const s = (q || "").trim().toLowerCase();
+  box.querySelectorAll(".rc-ms-opt").forEach((o) => {
+    const nm = ((o.querySelector("span") || {}).textContent || "").toLowerCase();
+    o.style.display = (!s || nm.includes(s)) ? "" : "none";
+  });
 }
 // Filas comunes (modo en la 2ª, mapa en la 3ª) de una ronda con modo/mapa ya elegido.
 function roundStaticRows(rn, mode, mp, s) {
@@ -513,6 +526,18 @@ function eventBodyHTML(d, skipMeta) {
   // Participantes y Clasificación en dos columnas (si hay clasificación); si no, participantes solo.
   const partsAndStand = standSection ? `<div class="evp-cols2">${partsSection}${standSection}</div>` : partsSection;
 
+  // Organizadores: el propietario ve la lista + añadir/quitar co-organizadores (solo él gestiona
+  // la lista). El resto solo la ve si hay co-organizadores (transparencia).
+  const orgs = d.organizers || [];
+  let orgSection = "";
+  if (orgs.length || d.is_real_owner) {
+    const chips = orgs.length
+      ? orgs.map((o) => `<span class="evd-org"><span class="evd-org-name">@${esc(o.username)}</span>${d.is_real_owner ? `<button class="evd-x" onclick="removeOrganizer(${o.id})" title="Quitar co-organizador">✕</button>` : ""}</span>`).join("")
+      : `<span class="evd-muted">Solo tú. Añade amigos como co-organizadores para gestionar juntos el evento.</span>`;
+    const addBtn = d.is_real_owner ? `<button class="evd-addround" onclick="openAddOrganizer()" title="Añadir un amigo como co-organizador">+</button>` : "";
+    orgSection = `<div class="evd-section"><h4 class="evd-h4-row">Organizadores${addBtn}</h4><div class="evd-orgs">${chips}</div></div>`;
+  }
+
   let reqHTML = "";
   if (d.is_owner && d.requests && d.requests.length) {
     reqHTML = `<div class="evd-section"><h4>Solicitudes pendientes (${d.requests.length})</h4>` +
@@ -527,6 +552,7 @@ function eventBodyHTML(d, skipMeta) {
     ${skipMeta ? "" : `<div class="evd-stats">${stats.join("")}</div>`}
     ${skipMeta || !d.description ? "" : `<div class="evd-section"><h4>Descripción</h4><p class="evd-desc">${esc(d.description)}</p></div>`}
     ${mapsBlock}
+    ${orgSection}
     ${reqHTML}
     ${partsAndStand}
     ${renderTeamsBlock(d)}
@@ -580,7 +606,7 @@ function renderEventDetail(d) {
     }
     actions.push(`<button class="ghost" onclick="openEventPageFromModal()">🔎 Ver en detalle</button>`);
   }
-  actions.push(`<button class="ghost" onclick="copyEventLink(${d.id})" title="Copiar enlace para compartir">🔗 Copiar enlace</button>`);
+  actions.push(`<button class="ghost" onclick="shareEvent(${d.id}, ${esc(JSON.stringify(d.name || ''))})" title="Compartir en redes">📣 Compartir</button>`);
 
   $("event-detail-body").innerHTML = `
     ${d.poster_url ? `<div class="evd-poster" style="background-image:url('${esc(d.poster_url)}')"></div>` : ""}
@@ -1039,6 +1065,8 @@ async function openEdit() {
   $("ee-desc").value = d.description || ""; evPosterUrl = d.poster_url || null; updatePosterPreview();
   $("ee-pw").value = ""; $("ee-confirm").checked = d.require_confirmation !== 0; $("ee-hidden").checked = !!d.hidden;
   eeVisChange(); eeMapPolChange(); eeMapsPublicChange(); eeFormatChange();
+  // Borrar el evento es exclusivo del propietario; los co-organizadores no ven el botón.
+  const delBtn = $("ee-delete-btn"); if (delBtn) delBtn.style.display = d.is_real_owner ? "" : "none";
   closeEvModal("event-detail-modal"); openEvModal("event-edit-modal");
 }
 function eeVisChange() { $("ee-private-box").style.display = $("ee-vis").value === "private" ? "block" : "none"; }
@@ -1144,7 +1172,7 @@ function eventPageActions(d) {
     else if (d.my_request) a.push(`<span class="evd-joined pending">⏳ Solicitud pendiente</span>`);
     else if (!d.status || d.status === "open") a.push(`<button class="btn" onclick="openJoin()">${d.visibility === "acceptance" ? "Solicitar plaza" : "Apuntarse"}</button>`);
   }
-  a.push(`<button class="ghost" onclick="copyEventLink(${d.id})" title="Copiar enlace para compartir">🔗 Copiar enlace</button>`);
+  a.push(`<button class="ghost" onclick="shareEvent(${d.id}, ${esc(JSON.stringify(d.name || ''))})" title="Compartir en redes">📣 Compartir</button>`);
   return a;
 }
 function renderEventPage(d) {
@@ -1195,7 +1223,7 @@ function eventPageEditHTML(d) {
     <div class="evp-editbar">
       <span class="evp-edit-note">✎ Estás editando el evento. Cambia los campos directamente y pulsa Guardar.</span>
       <div class="evp-editbar-btns">
-        <button class="danger-ghost" type="button" onclick="deleteEventFromPage()">Eliminar</button>
+        ${d.is_real_owner ? `<button class="danger-ghost" type="button" onclick="deleteEventFromPage()">Eliminar</button>` : ""}
         <button class="ghost" type="button" onclick="toggleEventPageEdit(false)">Cancelar</button>
         <button class="btn" type="button" onclick="submitEventPageEdit()">✓ Guardar cambios</button>
       </div>
@@ -1370,6 +1398,39 @@ function pickInvitePlayer(btn) {
   const have = ta.value.split(/[\s,]+/).filter(Boolean).map(norm);
   if (!have.includes(norm(tag))) ta.value = ta.value.trim() ? ta.value.trim() + ", " + tag : tag;
   btn.classList.add("used"); btn.disabled = true;
+}
+/* ----- Co-organizadores (fase D): elige entre tus amigos ----- */
+async function openAddOrganizer() {
+  openEvModal("event-organizer-modal");
+  const box = $("eorg-picklist");
+  box.innerHTML = `<p class="evd-muted" style="padding:10px">Cargando amigos…</p>`;
+  let r;
+  try { r = await getJSON("/api/friends"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:10px">No se pudo cargar tu lista de amigos.</p>`; return; }
+  const already = new Set((currentEvent.organizers || []).map((o) => o.id));
+  const cand = (r.friends || []).filter((u) => !already.has(u.id));
+  if (!cand.length) {
+    box.innerHTML = `<p class="evd-muted" style="padding:10px">${(r.friends || []).length ? "Todos tus amigos ya son organizadores." : "Aún no tienes amigos. Añádelos desde el menú de usuario → Amigos."}</p>`;
+    return;
+  }
+  box.innerHTML = `<div class="einv-pick-h">Tus amigos <span>(pincha para añadir como organizador)</span></div>
+    <div class="einv-pick-chips">${cand.sort((a, b) => a.username.localeCompare(b.username))
+      .map((u) => `<button type="button" class="einv-chip" data-uid="${u.id}" onclick="addOrganizer(${u.id}, this)">@${esc(u.username)}</button>`).join("")}</div>`;
+}
+async function addOrganizer(uid, btn) {
+  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/organizers`, "POST", { user_id: uid });
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo añadir", "err"); return; }
+  if (btn) { btn.classList.add("used"); btn.disabled = true; }
+  currentEvent.organizers = d.organizers || [];
+  wikiToast("Co-organizador añadido", "ok");
+  await openEvent(currentEvent.id);
+}
+async function removeOrganizer(uid) {
+  if (!confirm("¿Quitar a este co-organizador? Dejará de poder gestionar el evento.")) return;
+  const { ok, d } = await apiSend(`/api/events/${currentEvent.id}/organizers/${uid}`, "DELETE");
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo quitar", "err"); return; }
+  currentEvent.organizers = d.organizers || [];
+  wikiToast("Co-organizador quitado", "ok");
+  await openEvent(currentEvent.id);
 }
 async function submitInvite() {
   const raw = $("einv-tags").value.trim();

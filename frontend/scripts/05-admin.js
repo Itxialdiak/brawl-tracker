@@ -228,9 +228,16 @@ async function toggleUserTranslator(uid, val) {
 }
 async function deleteUser(uid, name) {
   if (!confirm("¿Borrar al usuario «" + name + "»? Esta acción es permanente.")) return;
-  const { ok, d } = await apiSend("/api/admin/users/" + uid, "DELETE");
+  // 2.º modal: por defecto se CONSERVAN los jugadores en el tracking; solo se borran si se confirma.
+  const alsoPlayers = confirm(
+    "Eliminar una cuenta no elimina los jugadores asociados a ella del tracking de jugadores.\n\n" +
+    "¿Quieres eliminarlos también?\n\n" +
+    "• Aceptar = borrar también los jugadores que no siga ningún otro usuario.\n" +
+    "• Cancelar = conservarlos (se siguen recogiendo sus partidas).");
+  const { ok, d } = await apiSend("/api/admin/users/" + uid + (alsoPlayers ? "?delete_players=true" : ""), "DELETE");
   if (!ok) { wikiToast(d.error || "No se pudo borrar", "err"); return; }
-  wikiToast("Usuario borrado", ""); loadAdminUsers();
+  wikiToast(alsoPlayers ? "Usuario y sus jugadores borrados" : "Usuario borrado (jugadores conservados)", "ok");
+  loadAdminUsers();
 }
 let pwUserId = null;
 function openUserPw(uid, name) {

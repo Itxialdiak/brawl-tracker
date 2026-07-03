@@ -370,7 +370,14 @@ function retoScopeToggle(chk) {
       : `<div class="ms-empty">Sin opciones (juega alguna partida primero)</div>`;
   }
 }
-function retoMsOpen(e, btn) { e.preventDefault(); e.stopPropagation(); btn.parentElement.classList.toggle("open"); }
+function retoMsOpen(e, btn) {
+  e.preventDefault(); e.stopPropagation();
+  const ms = btn.parentElement;
+  const willOpen = !ms.classList.contains("open");
+  // al abrir uno, cerramos cualquier otro desplegable abierto (modos/mapas de otras rondas, ámbitos…)
+  document.querySelectorAll(".rc-ms.open").forEach((x) => { if (x !== ms) x.classList.remove("open"); });
+  ms.classList.toggle("open", willOpen);
+}
 // Cerrar el desplegable de ámbito al hacer clic fuera de él (no se queda abierto).
 document.addEventListener("click", (e) => {
   document.querySelectorAll(".rc-ms.open").forEach((ms) => {

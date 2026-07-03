@@ -80,10 +80,12 @@ def api_admin_user_create(payload: dict = Body(...), admin: dict = Depends(auth.
 
 
 @router.delete("/api/admin/users/{uid}")
-def api_admin_user_delete(uid: int, admin: dict = Depends(auth.require_admin)):
+def api_admin_user_delete(uid: int, delete_players: bool = Query(False), admin: dict = Depends(auth.require_admin)):
+    """Borra la cuenta. Por defecto conserva los jugadores asociados en el tracking; con
+    `?delete_players=true` elimina también los que queden huérfanos (sin otro usuario que los siga)."""
     if uid == admin["id"]:
         return JSONResponse({"error": "No puedes borrarte a ti mismo."}, status_code=400)
-    db.delete_user(uid)
+    db.delete_user(uid, delete_players=delete_players)
     return {"ok": True}
 
 

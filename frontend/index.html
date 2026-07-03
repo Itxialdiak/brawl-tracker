@@ -172,6 +172,20 @@
     </div>
   </div>
 
+  <!-- Ventana: buscar usuarios (sugeridos por relevancia + búsqueda por nombre) -->
+  <div id="users-modal" class="modal-overlay" onclick="if(event.target===this)closeUsers()">
+    <div class="modal-card has-close friends-card">
+      <button class="modal-close" onclick="closeUsers()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Buscar usuarios</div>
+      <div class="modal-sub">Descubre a otros jugadores de la comunidad y visita su perfil público.</div>
+      <div class="fr-search-wrap">
+        <input type="text" id="us-search" placeholder="Buscar usuario por su nombre…" oninput="usersSearch()" autocomplete="off" />
+        <div id="us-results" class="fr-results"></div>
+      </div>
+      <div id="us-body"></div>
+    </div>
+  </div>
+
   <!-- Ventana de perfil público (solo lectura) de un usuario/jugador -->
   <div id="pubprofile-modal" class="modal-overlay" onclick="if(event.target===this)closePublicProfile()">
     <div class="modal-card has-close modal-wide pub-card">
@@ -182,13 +196,26 @@
 
   <!-- Ventana de mensajes (placeholder; la mensajería completa llega en una fase posterior) -->
   <div id="messages-modal" class="modal-overlay" onclick="if(event.target===this)closeMessages()">
-    <div class="modal-card has-close">
+    <div class="modal-card has-close msg-card">
       <button class="modal-close" onclick="closeMessages()" title="Cerrar" aria-label="Cerrar">✕</button>
-      <div class="modal-title">Mensajes</div>
-      <div id="msg-body" class="msg-placeholder">
-        <p>📬 El buzón de mensajes entre usuarios llegará muy pronto.</p>
-        <p class="hint-inline">Podrás escribir a tus amigos, leer, archivar en carpetas y marcar como leído/no leído.</p>
+      <div class="msg-head">
+        <button class="msg-back" id="msg-back" style="display:none" onclick="openMessages()" title="Volver a la bandeja">←</button>
+        <div class="modal-title" id="msg-title" style="margin:0">Mensajes</div>
+        <button class="msg-new" id="msg-new" onclick="msgCompose()" title="Nuevo mensaje">✎ Nuevo</button>
       </div>
+      <div id="msg-body">
+        <p class="evd-muted" style="padding:16px">Cargando…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: compartir en redes (fase F) -->
+  <div id="share-modal" class="modal-overlay" onclick="if(event.target===this)closeShare()">
+    <div class="modal-card has-close share-card">
+      <button class="modal-close" onclick="closeShare()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Compartir</div>
+      <div id="share-preview" class="share-preview"></div>
+      <div id="share-body"></div>
     </div>
   </div>
 
@@ -984,7 +1011,7 @@
       </div>
 
       <div class="modal-actions ee-actions">
-        <button class="danger-ghost" type="button" onclick="deleteEvent()">Eliminar evento</button>
+        <button class="danger-ghost" type="button" id="ee-delete-btn" onclick="deleteEvent()">Eliminar evento</button>
         <div style="flex:1"></div>
         <button class="ghost" type="button" onclick="closeEvModal('event-edit-modal')">Cancelar</button>
         <button class="btn" type="button" onclick="submitEditEvent()">Guardar cambios</button>
@@ -1029,6 +1056,18 @@
       <div class="modal-actions">
         <button class="ghost" type="button" onclick="closeEvModal('event-invite-modal')">Cancelar</button>
         <button class="btn" type="button" onclick="submitInvite()">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: añadir co-organizador (elige entre tus amigos) -->
+  <div class="modal-overlay" id="event-organizer-modal">
+    <div class="modal-card">
+      <h3 class="modal-title">Añadir co-organizador</h3>
+      <div class="ec-hint">Elige un amigo. Podrá co-gestionar el evento (rondas, resultados, participantes…), pero no borrarlo ni cambiar la lista de organizadores.</div>
+      <div id="eorg-picklist" class="einv-picklist"></div>
+      <div class="modal-actions">
+        <button class="ghost" type="button" onclick="closeEvModal('event-organizer-modal')">Cerrar</button>
       </div>
     </div>
   </div>

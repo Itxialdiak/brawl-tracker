@@ -43,6 +43,15 @@ def api_friends_search(q: str = Query(""), user: dict = Depends(auth.require_use
     return {"users": out}
 
 
+@router.get("/api/users/suggested")
+def api_users_suggested(user: dict = Depends(auth.require_user)):
+    """Usuarios sugeridos por relevancia (amigos de amigos, club, país, contribución) + tu relación."""
+    users = db.suggested_users(user["id"], 40)
+    for u in users:
+        u["relation"] = _relation(user["id"], u["id"])
+    return {"users": users}
+
+
 @router.post("/api/friends/request")
 def api_friend_request(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     """Envía una solicitud de amistad a otro usuario (por id o por nombre de usuario)."""
@@ -126,4 +135,5 @@ def api_user_player_summary(uid: int, tag: str, user: dict = Depends(auth.requir
     if ntag not in owned:
         return JSONResponse({"error": "Ese jugador no pertenece a este usuario."}, status_code=404)
     f = {"player": ntag}
-    return {"report": db.report_analytics(f), "rating": db.account_rating(ntag)}
+    return {"report": db.report_analytics(f), "rating": db.account_rating(ntag),
+            "roles": db.winrate_by_role(f)}

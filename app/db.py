@@ -188,6 +188,20 @@ def init_db():
             status TEXT DEFAULT 'pending', created_at TEXT,
             UNIQUE(from_user, to_user)
         );
+        -- Co-organizadores de un evento (además del propietario). Pueden co-gestionar todo salvo
+        -- borrar el evento o gestionar la propia lista de organizadores (eso es del propietario).
+        CREATE TABLE IF NOT EXISTS event_organizers (
+            event_id INTEGER NOT NULL, user_id INTEGER NOT NULL, added_at TEXT,
+            PRIMARY KEY (event_id, user_id)
+        );
+        -- Mensajería privada entre usuarios (fase E). El borrado es por lado (from/to_deleted): cada
+        -- usuario oculta la conversación para sí sin afectar al otro. Aislamiento estricto por cuenta.
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            from_user INTEGER NOT NULL, to_user INTEGER NOT NULL,
+            body TEXT NOT NULL, created_at TEXT, read_at TEXT,
+            from_deleted INTEGER DEFAULT 0, to_deleted INTEGER DEFAULT 0
+        );
         CREATE INDEX IF NOT EXISTS idx_userplayers_tag ON user_players(player_tag);
         CREATE INDEX IF NOT EXISTS idx_reports_player ON reports(player_tag);
         CREATE INDEX IF NOT EXISTS idx_battles_player  ON battles(player_tag);
@@ -199,6 +213,9 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_allies_battle     ON allies(battle_id);
         CREATE INDEX IF NOT EXISTS idx_brcoll_player     ON brawler_collection(player_tag);
         CREATE INDEX IF NOT EXISTS idx_ematches_event    ON event_matches(event_id);
+        CREATE INDEX IF NOT EXISTS idx_eorg_event         ON event_organizers(event_id);
+        CREATE INDEX IF NOT EXISTS idx_msg_to              ON messages(to_user);
+        CREATE INDEX IF NOT EXISTS idx_msg_from            ON messages(from_user);
         CREATE INDEX IF NOT EXISTS idx_retopart_reto     ON reto_participants(reto_id);
         CREATE INDEX IF NOT EXISTS idx_retopart_user     ON reto_participants(user_id);
         CREATE INDEX IF NOT EXISTS idx_retos_status      ON retos(status);
@@ -592,6 +609,69 @@ def search_users(query: str, exclude_id: int, limit: int = 12) -> list[dict]:
         (f"%{q}%", exclude_id, q, limit)).fetchall()
     conn.close()
     return [_pub_user(r) for r in rows]
+
+
+def suggested_users(uid: int, limit: int = 40) -> list[dict]:
+    """Usuarios ordenados por relevancia social (estilo red social): 1) amigos de tus amigos,
+    2) cercanía por club (algún jugador tuyo comparte club con alguno suyo), 3) mismo país,
+    4) por contribución a la comunidad (partidas aportadas). Excluye a ti y a tus amigos actuales."""
+    conn = get_conn()
+    row = conn.execute("SELECT country FROM users WHERE id=?", (uid,)).fetchone()
+    me_country = row["country"] if row else None
+    # amigos actuales (para excluir)
+    my_friends = set()
+    for r in conn.execute("SELECT user_a, user_b FROM friendships WHERE user_a=? OR user_b=?", (uid, uid)):
+        my_friends.add(r["user_a"] if r["user_b"] == uid else r["user_b"])
+    # amigos de tus amigos (nº de amigos en común)
+    fof = {}
+    if my_friends:
+        qs = ",".join("?" * len(my_friends))
+        fl = list(my_friends)
+        for r in conn.execute(
+            f"SELECT user_a, user_b FROM friendships WHERE user_a IN ({qs}) OR user_b IN ({qs})", fl + fl):
+            for other in (r["user_a"], r["user_b"]):
+                if other != uid and other not in my_friends:
+                    fof[other] = fof.get(other, 0) + 1
+    # usuarios que comparten club con alguno de tus jugadores
+    my_clubs = [r["club_name"] for r in conn.execute(
+        "SELECT DISTINCT p.club_name FROM user_players up JOIN players p ON p.tag=up.player_tag "
+        "WHERE up.user_id=? AND p.club_name IS NOT NULL AND p.club_name<>''", (uid,))]
+    club_users = set()
+    if my_clubs:
+        qs = ",".join("?" * len(my_clubs))
+        for r in conn.execute(
+            f"SELECT DISTINCT up.user_id FROM user_players up JOIN players p ON p.tag=up.player_tag "
+            f"WHERE p.club_name IN ({qs})", my_clubs):
+            if r["user_id"] != uid:
+                club_users.add(r["user_id"])
+    # contribución (partidas aportadas) y nº de jugadores por usuario
+    contrib = {r["user_id"]: (r["n_players"], r["n_battles"] or 0) for r in conn.execute(
+        "SELECT up.user_id, COUNT(DISTINCT up.player_tag) AS n_players, "
+        "COUNT(b.id) AS n_battles FROM user_players up "
+        "LEFT JOIN battles b ON b.player_tag = up.player_tag GROUP BY up.user_id")}
+    rows = conn.execute("SELECT id, username, country FROM users WHERE id<>?", (uid,)).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        if r["id"] in my_friends:
+            continue
+        common = fof.get(r["id"], 0)
+        n_players, n_battles = contrib.get(r["id"], (0, 0))
+        score = 0.0
+        if common:
+            score += 1000 + common * 25
+        if r["id"] in club_users:
+            score += 400
+        if me_country and r["country"] and r["country"] == me_country:
+            score += 120
+        score += min(n_battles / 50.0, 100)   # contribución (tope 100)
+        out.append({"id": r["id"], "username": r["username"], "country": r["country"],
+                    "mutual_friends": common, "same_club": r["id"] in club_users,
+                    "n_players": n_players, "n_battles": n_battles, "_score": score})
+    out.sort(key=lambda x: (x["_score"], x["n_battles"]), reverse=True)
+    for o in out:
+        o.pop("_score", None)
+    return out[:limit]
 
 
 def are_friends(a: int, b: int) -> bool:
@@ -1291,13 +1371,44 @@ def list_users() -> list:
     return [dict(r) for r in rows]
 
 
-def delete_user(uid: int) -> None:
+def user_orphan_player_tags(uid: int) -> list[str]:
+    """Tags que este usuario trackea y que NO trackea ningún otro (quedarían huérfanos al borrarlo)."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT player_tag FROM user_players up WHERE user_id=? AND NOT EXISTS "
+        "(SELECT 1 FROM user_players o WHERE o.player_tag = up.player_tag AND o.user_id <> ?)",
+        (uid, uid)).fetchall()
+    conn.close()
+    return [r["player_tag"] for r in rows]
+
+
+def delete_player_data(tag: str) -> None:
+    """Elimina POR COMPLETO del tracking a un jugador: su ficha, partidas, colección e informes.
+    Usarlo con cuidado (acción destructiva). Los partidos de eventos no se tocan (son del evento)."""
+    ntag = normalize_tag(tag)
+    conn = get_conn()
+    bids = [r["id"] for r in conn.execute("SELECT id FROM battles WHERE player_tag=?", (ntag,)).fetchall()]
+    if bids:
+        qs = ",".join("?" * len(bids))
+        conn.execute(f"DELETE FROM opponents WHERE battle_id IN ({qs})", bids)
+        conn.execute(f"DELETE FROM allies WHERE battle_id IN ({qs})", bids)
+    for t in ("battles", "brawler_collection", "reports", "user_players", "players"):
+        conn.execute(f"DELETE FROM {t} WHERE {'tag' if t == 'players' else 'player_tag'}=?", (ntag,))
+    conn.commit(); conn.close()
+
+
+def delete_user(uid: int, delete_players: bool = False) -> None:
+    """Borra la cuenta. Por defecto CONSERVA los jugadores asociados en el tracking (solo se quita
+    la asociación usuario↔jugador). Si `delete_players`, elimina además los que queden huérfanos."""
+    orphans = user_orphan_player_tags(uid) if delete_players else []
     conn = get_conn()
     conn.execute("DELETE FROM user_players WHERE user_id=?", (uid,))
     conn.execute("DELETE FROM user_custom_rankings WHERE user_id=?", (uid,))
     conn.execute("DELETE FROM custom_rankings WHERE owner_user_id=?", (uid,))
     conn.execute("DELETE FROM users WHERE id=?", (uid,))
     conn.commit(); conn.close()
+    for tag in orphans:
+        delete_player_data(tag)
 
 
 def set_user_admin(uid: int, is_admin: bool) -> None:
@@ -2447,6 +2558,140 @@ def event_owner(eid) -> int | None:
     return (row["owner_user_id"] if row else None)
 
 
+def is_event_owner(eid, uid) -> bool:
+    """True solo si `uid` es el propietario principal (para acciones exclusivas: borrar, gestionar
+    la lista de co-organizadores)."""
+    return event_owner(eid) == uid
+
+
+def is_event_organizer(eid, uid) -> bool:
+    """True si `uid` es co-organizador (NO incluye al propietario)."""
+    conn = get_conn()
+    row = conn.execute("SELECT 1 FROM event_organizers WHERE event_id=? AND user_id=?",
+                       (eid, uid)).fetchone()
+    conn.close()
+    return bool(row)
+
+
+def can_manage_event(eid, uid) -> bool:
+    """True si `uid` puede co-gestionar el evento: propietario o co-organizador."""
+    return is_event_owner(eid, uid) or is_event_organizer(eid, uid)
+
+
+def add_event_organizer(eid, uid) -> None:
+    conn = get_conn()
+    conn.execute("INSERT OR IGNORE INTO event_organizers (event_id, user_id, added_at) VALUES (?,?,?)",
+                 (eid, uid, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def remove_event_organizer(eid, uid) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM event_organizers WHERE event_id=? AND user_id=?", (eid, uid))
+    conn.commit(); conn.close()
+
+
+def list_event_organizers(eid) -> list[dict]:
+    """Co-organizadores del evento (id, username, country), en orden de alta."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT u.id, u.username, u.country FROM event_organizers o "
+        "JOIN users u ON u.id = o.user_id WHERE o.event_id=? ORDER BY o.added_at",
+        (eid,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# --------------------------- mensajería (fase E) ---------------------------
+
+def send_message(from_id: int, to_id: int, body: str) -> int:
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO messages (from_user, to_user, body, created_at) VALUES (?,?,?,?)",
+        (from_id, to_id, body, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); mid = cur.lastrowid; conn.close()
+    return mid
+
+
+def count_unread_messages(uid: int) -> int:
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) c FROM messages WHERE to_user=? AND read_at IS NULL AND to_deleted=0",
+                     (uid,)).fetchone()["c"]
+    conn.close()
+    return n
+
+
+def list_conversations(uid: int) -> list[dict]:
+    """Una entrada por interlocutor: último mensaje + nº de no leídos, ordenadas por recencia.
+    Solo cuenta lo que el usuario no ha borrado por su lado."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM messages WHERE (from_user=? AND from_deleted=0) OR (to_user=? AND to_deleted=0) "
+        "ORDER BY id DESC", (uid, uid)).fetchall()
+    conn.close()
+    convos = {}
+    for r in rows:
+        other = r["to_user"] if r["from_user"] == uid else r["from_user"]
+        c = convos.get(other)
+        if c is None:  # primer mensaje visto por interlocutor = el más reciente (orden DESC)
+            c = convos[other] = {"other_id": other, "last": r["body"], "last_at": r["created_at"],
+                                 "last_from_me": bool(r["from_user"] == uid), "unread": 0}
+        if r["to_user"] == uid and r["read_at"] is None and r["to_deleted"] == 0:
+            c["unread"] += 1
+    out = list(convos.values())
+    for c in out:
+        u = get_user_by_id(c["other_id"]) or {}
+        c["username"] = u.get("username", "?")
+    return out
+
+
+def get_conversation(uid: int, other_id: int, limit: int = 300) -> list[dict]:
+    """Mensajes entre `uid` y `other_id` que `uid` no ha borrado, en orden cronológico."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM messages WHERE "
+        "(from_user=? AND to_user=? AND from_deleted=0) OR "
+        "(from_user=? AND to_user=? AND to_deleted=0) "
+        "ORDER BY id ASC LIMIT ?",
+        (uid, other_id, other_id, uid, limit)).fetchall()
+    conn.close()
+    return [{"id": r["id"], "from_me": bool(r["from_user"] == uid), "body": r["body"],
+             "created_at": r["created_at"], "read": r["read_at"] is not None} for r in rows]
+
+
+def mark_conversation_read(uid: int, other_id: int) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE messages SET read_at=? WHERE to_user=? AND from_user=? AND read_at IS NULL",
+                 (datetime.now(timezone.utc).isoformat(), uid, other_id))
+    conn.commit(); conn.close()
+
+
+def mark_conversation_unread(uid: int, other_id: int) -> None:
+    """Marca la conversación como no leída volviendo a dejar sin leer el último mensaje recibido."""
+    conn = get_conn()
+    row = conn.execute("SELECT id FROM messages WHERE to_user=? AND from_user=? AND to_deleted=0 "
+                       "ORDER BY id DESC LIMIT 1", (uid, other_id)).fetchone()
+    if row:
+        conn.execute("UPDATE messages SET read_at=NULL WHERE id=?", (row["id"],))
+        conn.commit()
+    conn.close()
+
+
+def mark_all_messages_read(uid: int) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE messages SET read_at=? WHERE to_user=? AND read_at IS NULL",
+                 (datetime.now(timezone.utc).isoformat(), uid))
+    conn.commit(); conn.close()
+
+
+def delete_conversation(uid: int, other_id: int) -> None:
+    """Oculta la conversación para `uid` (no afecta al otro lado)."""
+    conn = get_conn()
+    conn.execute("UPDATE messages SET from_deleted=1 WHERE from_user=? AND to_user=?", (uid, other_id))
+    conn.execute("UPDATE messages SET to_deleted=1 WHERE to_user=? AND from_user=?", (uid, other_id))
+    conn.commit(); conn.close()
+
+
 def event_counts(eid) -> dict:
     conn = get_conn()
     p, f = _ev_counts(conn, eid)
@@ -2476,7 +2721,8 @@ def update_event(eid, fields: dict) -> None:
 
 def delete_event(eid) -> None:
     conn = get_conn()
-    for t in ("event_participants", "event_teams", "event_follows", "event_requests", "event_matches"):
+    for t in ("event_participants", "event_teams", "event_follows", "event_requests",
+              "event_matches", "event_organizers"):
         conn.execute(f"DELETE FROM {t} WHERE event_id=?", (eid,))
     conn.execute("DELETE FROM events WHERE id=?", (eid,))
     conn.commit(); conn.close()

@@ -420,32 +420,35 @@ async def api_event_detail(eid: int, user: dict = Depends(auth.require_user)):
     _apply_auto_approvals(eid, e)   # confirma propuestas de modo/mapa con +24 h sin respuesta
     counts = db.event_counts(eid)
     e["participants"], e["followers"] = counts["participants"], counts["followers"]
-    is_owner = e["owner_user_id"] == user["id"]
+    is_real_owner = e["owner_user_id"] == user["id"]
+    can_manage = is_real_owner or db.is_event_organizer(eid, user["id"])
     parts = db.list_participants(eid)
     missing = [p["player_tag"] for p in parts if not p.get("player_name")]
     if missing:  # rellena nombres desde la API (solo la 1.ª vez; luego quedan en players)
         await _ensure_player_profiles(missing)
         parts = db.list_participants(eid)
-    e["relation"] = "owner" if is_owner else (
+    e["relation"] = "owner" if can_manage else (
         "participant" if any(p.get("user_id") == user["id"] for p in parts) else (
             "follower" if db.is_following_event(eid, user["id"]) else "none"))
     pub = _event_public(e)
     pub["participants_list"] = parts
     pub["teams"] = db.list_teams(eid)
-    pub["is_owner"] = is_owner
+    pub["is_owner"] = can_manage          # gestión: propietario o co-organizador
+    pub["is_real_owner"] = is_real_owner  # acciones exclusivas del propietario (borrar, organizadores)
+    pub["organizers"] = db.list_event_organizers(eid)
     pub["is_following"] = db.is_following_event(eid, user["id"])
     pub["my_request"] = db.user_pending_request(eid, user["id"])
     pub["my_tags"] = db.list_players_for_user(user["id"])
     pub["matches"] = db.list_matches(eid)
     pub["standings"] = _compute_standings(e, pub["matches"], parts, pub["teams"])
-    if is_owner:
+    if can_manage:
         pub["requests"] = db.list_requests(eid, "pending")
     return pub
 
 
 @router.put("/api/events/{eid}")
 def api_event_update(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     body = payload or {}
     fields = {}
@@ -487,10 +490,41 @@ def api_event_update(eid: int, payload: dict = Body(...), user: dict = Depends(a
 
 @router.delete("/api/events/{eid}")
 def api_event_delete(eid: int, user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
-        raise HTTPException(status_code=403, detail="No eres el organizador.")
+    if not db.is_event_owner(eid, user["id"]):   # borrar es EXCLUSIVO del propietario (no co-organizadores)
+        raise HTTPException(status_code=403, detail="Solo el organizador principal puede borrar el evento.")
     db.delete_event(eid)
     return {"ok": True}
+
+
+# --------------------------- co-organizadores (fase D) ---------------------------
+
+@router.post("/api/events/{eid}/organizers")
+def api_event_add_organizer(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    """Añade un co-organizador (solo el propietario). El objetivo debe existir y no ser el propietario."""
+    if not db.is_event_owner(eid, user["id"]):
+        raise HTTPException(status_code=403, detail="Solo el organizador principal gestiona los organizadores.")
+    target = db.get_user_by_id((payload or {}).get("user_id"))
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    if target["id"] == user["id"]:
+        return JSONResponse({"error": "Ya eres el organizador principal."}, status_code=400)
+    db.add_event_organizer(eid, target["id"])
+    e = db.get_event(eid)
+    try:
+        db.notify_many([target["id"]], "event_organizer", "Ahora co-organizas un evento",
+                       f"@{user['username']} te ha añadido como organizador de «{(e or {}).get('name', '')}».")
+    except Exception:  # noqa: BLE001
+        pass
+    return {"ok": True, "organizers": db.list_event_organizers(eid)}
+
+
+@router.delete("/api/events/{eid}/organizers/{uid}")
+def api_event_remove_organizer(eid: int, uid: int, user: dict = Depends(auth.require_user)):
+    """Quita a un co-organizador (solo el propietario)."""
+    if not db.is_event_owner(eid, user["id"]):
+        raise HTTPException(status_code=403, detail="Solo el organizador principal gestiona los organizadores.")
+    db.remove_event_organizer(eid, uid)
+    return {"ok": True, "organizers": db.list_event_organizers(eid)}
 
 
 @router.post("/api/events/{eid}/follow")
@@ -552,7 +586,7 @@ def api_event_join(eid: int, payload: dict = Body(...), user: dict = Depends(aut
 
 @router.post("/api/events/{eid}/requests/{rid}/accept")
 def api_event_req_accept(eid: int, rid: int, user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     req = db.get_request(rid)
     if not req or req["event_id"] != eid:
@@ -573,7 +607,7 @@ def api_event_req_accept(eid: int, rid: int, user: dict = Depends(auth.require_u
 
 @router.post("/api/events/{eid}/requests/{rid}/reject")
 def api_event_req_reject(eid: int, rid: int, user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     req = db.get_request(rid)
     if not req or req["event_id"] != eid:
@@ -602,7 +636,7 @@ def _notify_followers_player_added(eid: int, e: dict, tags: list) -> None:
 
 @router.post("/api/events/{eid}/invite")
 async def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     tag = ((payload or {}).get("player_tag") or "").strip()
@@ -623,7 +657,7 @@ async def api_event_invite(eid: int, payload: dict = Body(...), user: dict = Dep
 
 @router.post("/api/events/{eid}/participants/bulk")
 async def api_event_invite_bulk(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     tags = _parse_player_tags((payload or {}).get("player_tags"))
@@ -654,7 +688,7 @@ async def api_event_invite_bulk(eid: int, payload: dict = Body(...), user: dict 
 def api_event_remove_participant(eid: int, pid: int, reason: str = Query(""), user: dict = Depends(auth.require_user)):
     """Quita a un jugador. El organizador DEBE justificarlo; al jugador le llega una
     notificación con el motivo."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     reason = (reason or "").strip()
     if not reason:
@@ -709,7 +743,7 @@ def _summary_context(e, matches, standings, parts):
 async def api_event_summary(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
     """El organizador genera un resumen (una sola llamada a Claude) y se envía como
     notificación idéntica a seguidores, apuntados y a sí mismo (Fase 6)."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     if not coach.configured():
         return JSONResponse({"error": "Falta ANTHROPIC_API_KEY para generar el resumen."}, status_code=400)
@@ -738,7 +772,7 @@ async def api_event_summary(eid: int, payload: dict = Body(default={}), user: di
 
 @router.post("/api/events/{eid}/teams")
 def api_team_create(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     name = ((payload or {}).get("name") or "").strip()
     if not name:
@@ -750,7 +784,7 @@ def api_team_create(eid: int, payload: dict = Body(...), user: dict = Depends(au
 
 @router.patch("/api/events/{eid}/teams/{tid}")
 def api_team_update(eid: int, tid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     body = payload or {}
     name = (body.get("name") or "").strip() or None
@@ -762,7 +796,7 @@ def api_team_update(eid: int, tid: int, payload: dict = Body(...), user: dict = 
 
 @router.delete("/api/events/{eid}/teams/{tid}")
 def api_team_delete(eid: int, tid: int, user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     db.delete_team(eid, tid)
     return {"ok": True}
@@ -770,7 +804,7 @@ def api_team_delete(eid: int, tid: int, user: dict = Depends(auth.require_user))
 
 @router.post("/api/events/{eid}/participants/{pid}/team")
 def api_participant_set_team(eid: int, pid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     tid = (payload or {}).get("team_id")
     db.set_participant_team(eid, pid, int(tid) if tid else None)
@@ -804,7 +838,7 @@ def api_event_upload(payload: dict = Body(...), user: dict = Depends(auth.requir
 
 @router.post("/api/events/{eid}/matches")
 def api_match_create(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
@@ -832,7 +866,7 @@ def api_match_create(eid: int, payload: dict = Body(...), user: dict = Depends(a
 
 @router.put("/api/events/{eid}/matches/{mid}")
 def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     m = db.get_match(mid)
     if not m or m["event_id"] != eid:
@@ -880,7 +914,7 @@ def api_match_update(eid: int, mid: int, payload: dict = Body(...), user: dict =
 @router.post("/api/events/{eid}/matches/close-pending")
 def api_close_pending(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
     """Cierra la ronda: marca como ANULADOS (nulos, 0 puntos) los enfrentamientos pendientes."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     n = 0
     for m in db.list_matches(eid):
@@ -993,7 +1027,7 @@ async def detect_event_matches(eid: int, e: dict = None, force: bool = False, on
 async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dict = Depends(auth.require_user)):
     """Fase 5: cruza las partidas pendientes con los battlelogs amistosos de los
     participantes y propone resultados (el organizador puede editarlos o borrarlos)."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     if not brawl_api.TOKEN:
         return JSONResponse({"error": "No hay token de la API de Brawl Stars configurado."}, status_code=400)
@@ -1008,7 +1042,7 @@ async def api_match_detect(eid: int, payload: dict = Body(default={}), user: dic
 
 @router.delete("/api/events/{eid}/matches/{mid}")
 def api_match_delete(eid: int, mid: int, user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     db.delete_match(eid, mid)
     return {"ok": True}
@@ -1109,7 +1143,7 @@ def _persist_round_proposals(eid: int):
 @router.post("/api/events/{eid}/rounds/{rn}/confirm")
 def api_round_confirm(eid: int, rn: int, user: dict = Depends(auth.require_user)):
     """El organizador confirma la propuesta de modo/mapa de una ronda → queda cerrada."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
@@ -1130,7 +1164,7 @@ def api_round_confirm(eid: int, rn: int, user: dict = Depends(auth.require_user)
 def api_round_add(eid: int, user: dict = Depends(auth.require_user)):
     """Crea una ronda VACÍA (solo aumenta el nº de rondas del torneo) para que el organizador
     elija sus modos/mapas antes de generar los emparejamientos. No genera cruces ni propone nada."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
@@ -1148,7 +1182,7 @@ def api_round_add(eid: int, user: dict = Depends(auth.require_user)):
 def api_round_change_request(eid: int, rn: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     """El organizador pide cambiar el modo/mapa de una ronda YA CONFIRMADA. Debe justificarlo;
     se notifica a los participantes, que pueden aceptar u oponerse (una sola oposición lo bloquea)."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
@@ -1228,7 +1262,7 @@ def api_round_change_vote(eid: int, rn: int, payload: dict = Body(...), user: di
 
 @router.post("/api/events/{eid}/matches/generate")
 async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
@@ -1321,7 +1355,7 @@ async def api_match_generate(eid: int, payload: dict = Body(...), user: dict = D
 @router.post("/api/events/{eid}/matches/close-round")
 def api_match_close_round(eid: int, payload: dict = Body(None), user: dict = Depends(auth.require_user)):
     """Cierra la ronda actual: marca como NO JUGADOS (nulos, 0 pts) los pendientes."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     matches = db.list_matches(eid)
     if not matches:
@@ -1339,7 +1373,7 @@ def api_match_close_round(eid: int, payload: dict = Body(None), user: dict = Dep
 def api_round_mode_map(eid: int, rn: int, payload: dict = Body(...), user: dict = Depends(auth.require_user)):
     """Fija el modo y el mapa de una ronda; se aplica a TODAS sus partidas y se guarda
     para las rondas aún no generadas."""
-    if db.event_owner(eid) != user["id"]:
+    if not db.can_manage_event(eid, user["id"]):
         raise HTTPException(status_code=403, detail="No eres el organizador.")
     e = db.get_event(eid)
     if not e:
