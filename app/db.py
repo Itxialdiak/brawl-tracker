@@ -194,6 +194,15 @@ def init_db():
             event_id INTEGER NOT NULL, user_id INTEGER NOT NULL, added_at TEXT,
             PRIMARY KEY (event_id, user_id)
         );
+        -- Redes sociales vinculadas por el usuario (fase F, publicación directa). Cada usuario vincula
+        -- SUS cuentas voluntariamente vía OAuth; guardamos el token para publicar en su nombre. Los
+        -- tokens son datos sensibles: solo se usan en el servidor, nunca se envían al cliente.
+        CREATE TABLE IF NOT EXISTS social_accounts (
+            user_id INTEGER NOT NULL, platform TEXT NOT NULL,
+            external_id TEXT, external_name TEXT,
+            access_token TEXT, refresh_token TEXT, expires_at TEXT, connected_at TEXT,
+            PRIMARY KEY (user_id, platform)
+        );
         -- Mensajería privada entre usuarios (fase E). El borrado es por lado (from/to_deleted): cada
         -- usuario oculta la conversación para sí sin afectar al otro. Aislamiento estricto por cuenta.
         CREATE TABLE IF NOT EXISTS messages (
@@ -672,6 +681,40 @@ def suggested_users(uid: int, limit: int = 40) -> list[dict]:
     for o in out:
         o.pop("_score", None)
     return out[:limit]
+
+
+def public_users(limit: int = 60, q: str = None) -> list[dict]:
+    """Lista PÚBLICA de usuarios (para invitados sin cuenta), ordenada por relevancia de la cuenta:
+    contribución a la comunidad (partidas aportadas) y nº de jugadores. Filtro opcional por nombre."""
+    conn = get_conn()
+    contrib = {r["user_id"]: (r["n_players"], r["n_battles"] or 0) for r in conn.execute(
+        "SELECT up.user_id, COUNT(DISTINCT up.player_tag) AS n_players, COUNT(b.id) AS n_battles "
+        "FROM user_players up LEFT JOIN battles b ON b.player_tag = up.player_tag GROUP BY up.user_id")}
+    qq = (q or "").strip()
+    if qq:
+        rows = conn.execute("SELECT id, username, country FROM users WHERE username LIKE ?",
+                            (f"%{qq}%",)).fetchall()
+    else:
+        rows = conn.execute("SELECT id, username, country FROM users").fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        n_players, n_battles = contrib.get(r["id"], (0, 0))
+        out.append({"id": r["id"], "username": r["username"], "country": r["country"],
+                    "n_players": n_players, "n_battles": n_battles})
+    out.sort(key=lambda x: (x["n_battles"], x["n_players"]), reverse=True)
+    return out[:limit]
+
+
+def user_contribution(uid: int) -> tuple:
+    """(nº de jugadores trackeados, nº de partidas aportadas) por el usuario."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT COUNT(DISTINCT up.player_tag) AS n_players, COUNT(b.id) AS n_battles "
+        "FROM user_players up LEFT JOIN battles b ON b.player_tag = up.player_tag WHERE up.user_id=?",
+        (uid,)).fetchone()
+    conn.close()
+    return (row["n_players"] if row else 0, (row["n_battles"] if row else 0) or 0)
 
 
 def are_friends(a: int, b: int) -> bool:
@@ -2690,6 +2733,55 @@ def delete_conversation(uid: int, other_id: int) -> None:
     conn.execute("UPDATE messages SET from_deleted=1 WHERE from_user=? AND to_user=?", (uid, other_id))
     conn.execute("UPDATE messages SET to_deleted=1 WHERE to_user=? AND from_user=?", (uid, other_id))
     conn.commit(); conn.close()
+
+
+# --------------------------- redes sociales vinculadas (fase F) ---------------------------
+
+def link_social_account(uid: int, platform: str, external_id: str = None, external_name: str = None,
+                        access_token: str = None, refresh_token: str = None, expires_at: str = None) -> None:
+    """Guarda (o actualiza) la cuenta de una red social vinculada por el usuario tras el OAuth."""
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO social_accounts (user_id, platform, external_id, external_name, access_token, "
+        "refresh_token, expires_at, connected_at) VALUES (?,?,?,?,?,?,?,?) "
+        "ON CONFLICT(user_id, platform) DO UPDATE SET external_id=excluded.external_id, "
+        "external_name=excluded.external_name, access_token=excluded.access_token, "
+        "refresh_token=excluded.refresh_token, expires_at=excluded.expires_at, connected_at=excluded.connected_at",
+        (uid, platform, external_id, external_name, access_token, refresh_token, expires_at,
+         datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def unlink_social_account(uid: int, platform: str) -> None:
+    conn = get_conn()
+    conn.execute("DELETE FROM social_accounts WHERE user_id=? AND platform=?", (uid, platform))
+    conn.commit(); conn.close()
+
+
+def list_social_accounts(uid: int) -> list[dict]:
+    """Plataformas vinculadas por el usuario (SIN exponer tokens): platform, external_name, fecha."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT platform, external_name, connected_at FROM social_accounts WHERE user_id=?", (uid,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_social_token(uid: int, platform: str) -> dict | None:
+    """Token guardado de una plataforma (uso interno del servidor para publicar)."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT external_id, external_name, access_token, refresh_token, expires_at "
+        "FROM social_accounts WHERE user_id=? AND platform=?", (uid, platform)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def has_social_accounts(uid: int) -> bool:
+    conn = get_conn()
+    row = conn.execute("SELECT 1 FROM social_accounts WHERE user_id=? LIMIT 1", (uid,)).fetchone()
+    conn.close()
+    return row is not None
 
 
 def event_counts(eid) -> dict:

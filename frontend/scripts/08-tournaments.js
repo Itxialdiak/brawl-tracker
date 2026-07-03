@@ -606,7 +606,8 @@ function renderEventDetail(d) {
     }
     actions.push(`<button class="ghost" onclick="openEventPageFromModal()">🔎 Ver en detalle</button>`);
   }
-  actions.push(`<button class="ghost" onclick="shareEvent(${d.id}, ${esc(JSON.stringify(d.name || ''))})" title="Compartir en redes">📣 Compartir</button>`);
+  if (typeof hasLinkedSocial === "function" && hasLinkedSocial())
+    actions.push(`<button class="ghost" onclick="shareEvent(${d.id}, ${esc(JSON.stringify(d.name || ''))})" title="Compartir en redes">📣 Compartir</button>`);
 
   $("event-detail-body").innerHTML = `
     ${d.poster_url ? `<div class="evd-poster" style="background-image:url('${esc(d.poster_url)}')"></div>` : ""}
@@ -1172,7 +1173,9 @@ function eventPageActions(d) {
     else if (d.my_request) a.push(`<span class="evd-joined pending">⏳ Solicitud pendiente</span>`);
     else if (!d.status || d.status === "open") a.push(`<button class="btn" onclick="openJoin()">${d.visibility === "acceptance" ? "Solicitar plaza" : "Apuntarse"}</button>`);
   }
-  a.push(`<button class="ghost" onclick="shareEvent(${d.id}, ${esc(JSON.stringify(d.name || ''))})" title="Compartir en redes">📣 Compartir</button>`);
+  // Los botones de compartir en redes solo aparecen si el usuario tiene alguna red vinculada.
+  if (typeof hasLinkedSocial === "function" && hasLinkedSocial())
+    a.push(`<button class="ghost" onclick="shareEvent(${d.id}, ${esc(JSON.stringify(d.name || ''))})" title="Compartir en redes">📣 Compartir</button>`);
   return a;
 }
 function renderEventPage(d) {

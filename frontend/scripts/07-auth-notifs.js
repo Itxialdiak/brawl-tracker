@@ -77,11 +77,44 @@ async function doLogout() {
   window.location.reload();   // limpia por completo el estado del cliente (vista y datos en memoria)
 }
 
+/* ---------- Modo invitado (sin cuenta): comunidad pública de solo lectura ---------- */
+function enterGuestMode() {
+  document.body.classList.add("guest");
+  hideLogin();                 // el login solo se abre al pulsar «Iniciar sesión»
+  setUser(null);               // cabecera en modo invitado (botón de login, sin campana)
+  const gv = $("guest-view"); if (gv) gv.style.display = "block";
+  loadGuestUsers();
+}
+function exitGuestMode() {
+  document.body.classList.remove("guest");
+  const gv = $("guest-view"); if (gv) gv.style.display = "none";
+}
+async function loadGuestUsers(q) {
+  const box = $("guest-list");
+  if (!box) return;
+  box.innerHTML = `<p class="evd-muted" style="padding:16px">Cargando comunidad…</p>`;
+  let r;
+  try { r = await getJSON("/api/public/users" + (q ? "?q=" + encodeURIComponent(q) : "")); }
+  catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No se pudo cargar la comunidad.</p>`; return; }
+  const us = r.users || [];
+  box.innerHTML = us.length
+    ? us.map((u) => `<button class="guest-user" onclick="openPublicProfile(${u.id})">
+        <span class="guest-user-nm">@${esc(u.username)}</span>
+        <span class="guest-user-meta">${u.country ? esc(u.country) + " · " : ""}${u.n_players} jugador${u.n_players === 1 ? "" : "es"} · ${u.n_battles} partidas aportadas</span>
+      </button>`).join("")
+    : `<p class="evd-muted" style="padding:16px">${q ? "Sin resultados." : "Aún no hay usuarios en la comunidad."}</p>`;
+}
+let _guestSearchT = null;
+function guestSearch() { clearTimeout(_guestSearchT); _guestSearchT = setTimeout(() => loadGuestUsers($("guest-search").value.trim()), 300); }
+
 /* ---------- Menú de usuario (desplegable estilo idioma: Cuenta/Amigos/Mensajes/Salir) ---------- */
 function renderUserSwitch() {
   const box = $("user-switch");
   if (!box) return;
-  if (!currentUser) { box.innerHTML = ""; return; }
+  if (!currentUser) {   // invitado: botón para iniciar sesión (sin menú de cuenta)
+    box.innerHTML = `<button class="user-toggle" onclick="showLogin()" title="Iniciar sesión">🔐 <span class="user-ava">Iniciar sesión</span></button>`;
+    return;
+  }
   box.innerHTML = `
     <button class="user-toggle" id="user-toggle" onclick="toggleUserMenu(event)" title="Tu cuenta">
       <span class="user-ava">@${esc(currentUser.username || "")}</span>
@@ -96,6 +129,7 @@ function renderUserSwitch() {
       <button class="user-menu-opt danger" onclick="userMenu('salir')">🚪 Cerrar sesión</button>
     </div>`;
   refreshFriendsBadge();
+  refreshSocialLinked();
 }
 function toggleUserMenu(e) {
   e.stopPropagation();
@@ -369,6 +403,7 @@ async function openShare(opts) {
   const url = _shareData.url || location.href;
   $("share-modal").classList.add("open");
   $("share-preview").innerHTML =
+    `${_shareData.imageUrl ? `<img class="share-img" src="${esc(_shareData.imageUrl)}" alt="" loading="lazy">` : ""}` +
     `${_shareData.title ? `<div class="share-prev-title">${esc(_shareData.title)}</div>` : ""}` +
     `${_shareData.text ? `<div class="share-prev-text">${esc(_shareData.text)}</div>` : ""}` +
     `<div class="share-prev-url">${esc(url)}</div>`;
@@ -378,19 +413,22 @@ async function openShare(opts) {
   try { cfg = await getJSON("/api/social/config"); } catch (e) { /* sigue con lo básico */ }
   const rows = [];
   if (navigator.share) rows.push(`<button class="share-opt" onclick="shareNative()"><span class="share-ic">📤</span>Compartir con una app…</button>`);
+  if (_shareData.imageUrl) rows.push(`<button class="share-opt" onclick="shareDownload()"><span class="share-ic">🖼️</span>Descargar imagen</button>`);
   rows.push(`<button class="share-opt" onclick="shareCopy('url')"><span class="share-ic">🔗</span>Copiar enlace</button>`);
   rows.push(`<button class="share-opt" onclick="shareCopy('text')"><span class="share-ic">📋</span>Copiar texto + enlace</button>`);
+  const linked = cfg.linked || [];
   (cfg.platforms || []).forEach((p) => {
-    if (p.intent) {
+    if (linked.includes(p.id)) {
+      // Red vinculada por el usuario → publicación DIRECTA en su nombre.
+      rows.push(`<button class="share-opt" onclick="sharePost('${p.id}')"><span class="share-ic">${esc(p.icon)}</span>Publicar en ${esc(p.name)}</button>`);
+    } else if (p.intent) {
+      // No vinculada pero con ventana de compartir web (X/Reddit/Facebook).
       rows.push(`<button class="share-opt" onclick="shareIntent('${p.id}')"><span class="share-ic">${esc(p.icon)}</span>${esc(p.name)}</button>`);
-    } else {
-      // Instagram/TikTok: no tienen enlace de intención con texto; solo publicación directa (OAuth).
-      const on = !!p.configured;
-      rows.push(`<button class="share-opt${on ? "" : " disabled"}" ${on ? `onclick="sharePost('${p.id}')"` : ""} title="${on ? "" : "Requiere configurar la app en el servidor"}"><span class="share-ic">${esc(p.icon)}</span>${esc(p.name)}${on ? "" : ` <span class="share-soon">sin configurar</span>`}</button>`);
     }
+    // No vinculada y sin enlace web (Instagram/TikTok): se omite; para publicar hay que vincularla.
   });
   box.innerHTML = `<div class="share-opts">${rows.join("")}</div>
-    <p class="share-note">La publicación directa en Instagram y TikTok requiere registrar la app y sus claves en el servidor. Las demás abren la ventana de compartir de cada red.</p>`;
+    <p class="share-note">«Publicar en …» sube el post directamente a las redes que has vinculado (Cuenta → Vincular redes). Las demás abren la ventana de compartir de cada red.</p>`;
 }
 async function shareNative() {
   try { await navigator.share({ title: _shareData.title || "", text: _shareData.text || "", url: _shareData.url || location.href }); } catch (e) { /* cancelado */ }
@@ -412,26 +450,94 @@ function shareIntent(pid) {
   if (u) window.open(u, "_blank", "noopener,noreferrer,width=640,height=680");
 }
 async function sharePost(pid) {
-  const { ok, d } = await apiSend(`/api/social/${pid}/post`, "POST", { title: _shareData.title, text: _shareData.text, url: _shareData.url });
+  const body = { title: _shareData.title, text: _shareData.text, url: _shareData.url, image_url: _shareData.imageUrl };
+  if (pid === "reddit") {   // Reddit necesita el subreddit destino
+    const sr = prompt("¿En qué subreddit quieres publicar? (p. ej. BrawlStars)");
+    if (sr === null) return;
+    body.subreddit = sr;
+  }
+  const { ok, d } = await apiSend(`/api/social/${pid}/post`, "POST", body);
   if (!ok) { wikiToast(d.error || d.detail || "No se pudo publicar", "err"); return; }
-  wikiToast("Publicado", "ok");
+  wikiToast("¡Publicado!", "ok");
 }
-// Atajo para compartir un evento (usa su enlace profundo /?event=id).
+// Descarga la imagen de la publicación (lleva la marca de agua del logo).
+function shareDownload() {
+  if (!_shareData.imageUrl) return;
+  const a = document.createElement("a");
+  a.href = _shareData.imageUrl;
+  a.download = ((_shareData.title || "brawl-sensei").replace(/[^\w-]+/g, "_")) + ".png";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+// Atajo para compartir un evento (enlace profundo /?event=id + imagen con marca de agua).
 function shareEvent(id, name) {
   openShare({
     title: name || "Evento en Brawl Sensei",
     text: `Únete a «${name || "este evento"}» en Brawl Sensei`,
-    url: location.origin + "/?event=" + id,
+    url: location.origin + "/e/" + id,   // página con Open Graph → vista previa + ficha del evento
+    imageUrl: location.origin + "/api/share/event/" + id + ".png",
+  });
+}
+// Compartir un perfil: el enlace (con Open Graph) lleva al perfil público del autor + imagen con marca de agua.
+function shareProfile(uid, username) {
+  openShare({
+    title: "@" + (username || ""),
+    text: `Perfil de @${username || ""} en Brawl Sensei`,
+    url: location.origin + "/u/" + uid,   // página con Open Graph → vista previa + perfil del autor
+    imageUrl: location.origin + "/api/share/user/" + uid + ".png",
   });
 }
 
+/* ----- Vincular redes sociales (OAuth). Los botones de compartir solo salen si hay alguna vinculada. ----- */
+let _socialLinked = [];
+async function refreshSocialLinked() {
+  if (!currentUser) { _socialLinked = []; return; }
+  try { const r = await getJSON("/api/social/config"); _socialLinked = r.linked || []; } catch (e) { _socialLinked = []; }
+}
+function hasLinkedSocial() { return _socialLinked && _socialLinked.length > 0; }
+function closeSocialLink() { $("social-modal").classList.remove("open"); }
+function openSocialLink() { $("social-modal").classList.add("open"); loadSocialLink(); }
+async function loadSocialLink() {
+  const box = $("social-list");
+  box.innerHTML = `<p class="evd-muted" style="padding:10px">Cargando…</p>`;
+  let cfg;
+  try { cfg = await getJSON("/api/social/config"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:10px">No se pudo cargar.</p>`; return; }
+  _socialLinked = cfg.linked || [];
+  box.innerHTML = `<div class="social-grid">` + (cfg.platforms || []).map((p) => {
+    const linked = _socialLinked.includes(p.id);
+    let action;
+    if (linked) action = `<button class="mini-no" onclick="socialDisconnect('${p.id}')">Desvincular</button>`;
+    else if (p.configured) action = `<button class="mini-ok" onclick="socialConnect('${p.id}')">Vincular</button>`;
+    else action = `<span class="share-soon">sin configurar</span>`;
+    return `<div class="social-item"><span class="social-ic">${esc(p.icon)}</span><span class="social-nm">${esc(p.name)}${linked ? ` <span class="social-on">✓ vinculada</span>` : ""}</span>${action}</div>`;
+  }).join("") + `</div>
+    <p class="share-note">La publicación directa requiere registrar la app en cada plataforma (las claves van en el servidor). Mientras tanto, X, Reddit y Facebook permiten compartir por enlace.</p>`;
+}
+async function socialConnect(pid) {
+  const { ok, d } = await apiSend(`/api/social/${pid}/connect`, "GET");
+  if (!ok || !d.url) { wikiToast(d.error || d.detail || "No se pudo iniciar la conexión", "err"); return; }
+  window.location.href = d.url;   // lleva al login OAuth de la red; vuelve al callback del servidor
+}
+async function socialDisconnect(pid) {
+  const { ok } = await apiSend(`/api/social/${pid}`, "DELETE");
+  if (ok) { wikiToast("Red desvinculada", "ok"); loadSocialLink(); refreshSocialLinked(); }
+}
+// Aviso al volver del OAuth (?social=connected|error) y limpieza de la URL.
+(function () {
+  const m = /[?&]social=(connected|error)/.exec(location.search);
+  if (!m) return;
+  setTimeout(() => wikiToast(m[1] === "connected" ? "Red social vinculada" : "No se pudo vincular la red", m[1] === "connected" ? "ok" : "err"), 900);
+  try { history.replaceState(null, "", location.pathname); } catch (e) { /* noop */ }
+})();
+
 /* ---------- Perfil público (fase C): vista de solo lectura de un usuario ---------- */
 let _pubProfile = null, _pubTag = null;
+// Los invitados (sin cuenta) usan los endpoints públicos; los usuarios logueados, los normales.
+function pubBase() { return currentUser ? "/api/users" : "/api/public/users"; }
 async function openPublicProfile(uid) {
   $("pubprofile-modal").classList.add("open");
   $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">Cargando…</p>`;
   let d;
-  try { d = await getJSON(`/api/users/${uid}/profile`); } catch (e) { $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">No se pudo cargar el perfil.</p>`; return; }
+  try { d = await getJSON(`${pubBase()}/${uid}/profile`); } catch (e) { $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">No se pudo cargar el perfil.</p>`; return; }
   if (d.error) { $("pub-body").innerHTML = `<p class="evd-muted" style="padding:20px">${esc(d.error)}</p>`; return; }
   _pubProfile = d;
   _pubTag = (d.players && d.players[0]) ? d.players[0].tag : null;
@@ -443,11 +549,19 @@ function renderPublicProfile() {
   const d = _pubProfile;
   const rel = d.relation;
   let acts = "";
-  if (rel === "none") acts = `<button class="btn mini-btn" onclick="pubAddFriend(${d.id})">＋ Enviar solicitud</button>`;
-  else if (rel === "outgoing") acts = `<span class="evd-muted">Solicitud enviada</span>`;
-  else if (rel === "incoming") acts = `<button class="btn mini-btn" onclick="pubAddFriend(${d.id})">Aceptar solicitud</button>`;
-  else if (rel === "friend") acts = `<span class="reto-tag done">✓ Amigos</span>`;
-  if (rel !== "self") acts += `<button class="ghost mini-btn" onclick="pubMessage(${d.id})">✉️ Enviar mensaje</button>`;
+  if (!currentUser) {
+    // Invitado: no puede interactuar; le invitamos a iniciar sesión.
+    acts = `<button class="btn mini-btn" onclick="showLogin()">Inicia sesión para interactuar</button>`;
+  } else {
+    if (rel === "none") acts = `<button class="btn mini-btn" onclick="pubAddFriend(${d.id})">＋ Enviar solicitud</button>`;
+    else if (rel === "outgoing") acts = `<span class="evd-muted">Solicitud enviada</span>`;
+    else if (rel === "incoming") acts = `<button class="btn mini-btn" onclick="pubAddFriend(${d.id})">Aceptar solicitud</button>`;
+    else if (rel === "friend") acts = `<span class="reto-tag done">✓ Amigos</span>`;
+    if (rel !== "self") acts += `<button class="ghost mini-btn" onclick="pubMessage(${d.id})">✉️ Enviar mensaje</button>`;
+    // Botón de compartir el perfil (con imagen + marca de agua): solo si el usuario tiene redes vinculadas.
+    if (typeof hasLinkedSocial === "function" && hasLinkedSocial())
+      acts += `<button class="ghost mini-btn" onclick="shareProfile(${d.id}, ${esc(JSON.stringify(d.username || ''))})">📣 Compartir</button>`;
+  }
   const players = d.players || [];
   const picker = players.length > 1
     ? `<div class="pub-players">${players.map((p) => `<button class="pub-player-chip ${p.tag === _pubTag ? "active" : ""}" onclick="pubSelectPlayer('${esc(p.tag)}')">${esc(p.name || p.tag)}</button>`).join("")}</div>`
@@ -472,7 +586,7 @@ async function loadPubSummary(tag) {
   if (!box) return;
   box.innerHTML = `<p class="evd-muted" style="padding:14px">Cargando analíticas…</p>`;
   let s;
-  try { s = await getJSON(`/api/users/${_pubProfile.id}/players/${encodeURIComponent(tag)}/summary`); }
+  try { s = await getJSON(`${pubBase()}/${_pubProfile.id}/players/${encodeURIComponent(tag)}/summary`); }
   catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:14px">Sin datos de este jugador.</p>`; return; }
   if (s.error) { box.innerHTML = `<p class="evd-muted" style="padding:14px">${esc(s.error)}</p>`; return; }
   const r = s.report || {}, ov = r.overview || {}, hl = r.highlights || {}, rt = s.rating || {};

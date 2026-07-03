@@ -294,6 +294,11 @@ function checkEventParam() {
   const id = new URLSearchParams(location.search).get("event");
   if (id && /^\d+$/.test(id)) { showSection("leagues"); openEvent(parseInt(id, 10)); }
 }
+// Enlace de una publicación → perfil público de su autor (?user=<id>). Funciona logueado o invitado.
+function checkUserParam() {
+  const id = new URLSearchParams(location.search).get("user");
+  if (id && /^\d+$/.test(id)) openPublicProfile(parseInt(id, 10));
+}
 function copyEventLink(id) {
   const url = location.origin + "/?event=" + id;
   const done = () => wikiToast("Enlace copiado", "ok");

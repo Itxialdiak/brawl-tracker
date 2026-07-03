@@ -39,6 +39,7 @@
         <div class="auth-error" id="reg-error"></div>
         <button class="btn auth-submit" id="reg-btn" onclick="doRegister()">Crear cuenta</button>
       </div>
+      <button class="auth-guest-link" onclick="hideLogin()">← Explorar la comunidad como invitado</button>
     </div>
   </div>
 
@@ -154,7 +155,18 @@
         <option value="za">Sudáfrica</option>
       </select>
       <div class="field-saved" id="country-saved"></div>
+      <button class="ghost modal-btn" onclick="openSocialLink()">🔗 Vincular redes sociales</button>
       <button class="ghost modal-btn" onclick="openPassword()">Resetear contraseña</button>
+    </div>
+  </div>
+
+  <!-- Ventana: vincular redes sociales (OAuth) -->
+  <div id="social-modal" class="modal-overlay" onclick="if(event.target===this)closeSocialLink()">
+    <div class="modal-card has-close social-link-card">
+      <button class="modal-close" onclick="closeSocialLink()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="modal-title">Vincular redes sociales</div>
+      <div class="modal-sub">Conecta tus cuentas para poder compartir en ellas desde la app. Es opcional: si no vinculas ninguna, no verás los botones de compartir en redes.</div>
+      <div id="social-list"></div>
     </div>
   </div>
 
@@ -431,6 +443,19 @@
       <polygon points="19,5.6 11,11.3 15.4,11.5 12.2,16.7 21.3,10.2 16.4,10" fill="#ffd400" stroke="#b88f00" stroke-width=".5" stroke-linejoin="round"/>
     </svg>
   </button>
+
+  <!-- ===================== MODO INVITADO (sin cuenta): comunidad pública ===================== -->
+  <section id="guest-view" style="display:none">
+    <div class="guest-hero">
+      <h2>Comunidad Brawl Sensei</h2>
+      <p>Explora los perfiles públicos de la comunidad. <b>Inicia sesión</b> para añadir tus jugadores, ver tus analíticas completas y participar en eventos y retos.</p>
+      <button class="btn" onclick="showLogin()">Iniciar sesión / Registrarse</button>
+    </div>
+    <div class="guest-search-wrap">
+      <input type="text" id="guest-search" placeholder="Buscar usuario de la comunidad por su nombre…" oninput="guestSearch()" autocomplete="off" />
+    </div>
+    <div id="guest-list" class="guest-list"></div>
+  </section>
 
   <!-- ===================== SECCIÓN: BRAWLYTICS (el tracker) ===================== -->
   <section class="app-section active" id="section-brawlytics">

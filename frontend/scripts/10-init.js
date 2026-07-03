@@ -16,8 +16,8 @@ window.addEventListener("load", scrollToTop);
 (async () => {
   await loadAuthConfig();
   const me = await fetchMe();
-  if (me && me.username) { hideLogin(); setUser(me); bootApp(); checkImportParam(); checkEventParam(); }
-  else { showLogin(); }
+  if (me && me.username) { hideLogin(); exitGuestMode(); setUser(me); bootApp(); checkImportParam(); checkEventParam(); checkUserParam(); }
+  else { enterGuestMode(); checkUserParam(); }   // sin cuenta: modo invitado (comunidad pública), sin bloquear la web
   scrollToTop();
 })();
 

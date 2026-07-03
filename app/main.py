@@ -351,7 +351,9 @@ from .routers.retos import router as _r_retos
 from .routers.friends import router as _r_friends
 from .routers.messages import router as _r_messages
 from .routers.social import router as _r_social
-for _r in (_r_players, _r_analytics, _r_modes, _r_rankings, _r_brawlers, _r_battles, _r_coach, _r_events, _r_retos, _r_friends, _r_messages, _r_social):
+from .routers.public import router as _r_public
+from .routers.share import router as _r_share
+for _r in (_r_players, _r_analytics, _r_modes, _r_rankings, _r_brawlers, _r_battles, _r_coach, _r_events, _r_retos, _r_friends, _r_messages, _r_social, _r_public, _r_share):
     app.include_router(_r)
 
 
