@@ -2182,6 +2182,41 @@ def winrate_by_role(filters: dict | None = None) -> list[dict]:
     return out
 
 
+def role_winrates_by_map(mode: str) -> dict:
+    """Para cada mapa del modo, win rate por ROL con TODAS las partidas (meta comunitario).
+    Una sola consulta (agrupa por mapa+brawler) y roll-up a roles en Python (cada brawler
+    aporta a su rol primario y secundario). Devuelve {mapa_en_minúsculas: [{role, winrate,
+    total}, ...]} ordenado por win rate desc. Pensado para poner el mejor rol en cada mapa."""
+    where_sql, params = _build_filters({"mode": mode})
+    conn = get_conn()
+    rows = conn.execute(
+        f"""SELECT map AS mp, my_brawler AS brawler,
+                   SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) AS losses,
+                   COUNT(*) AS total
+            FROM battles {where_sql}
+            GROUP BY map, my_brawler""",
+        params).fetchall()
+    conn.close()
+    per_map: dict = {}
+    for r in rows:
+        if not r["mp"] or not r["brawler"]:
+            continue
+        for role in brawler_extra.roles_of(r["brawler"]):
+            a = per_map.setdefault(r["mp"].lower(), {}).setdefault(
+                role, {"wins": 0, "losses": 0, "total": 0})
+            a["wins"] += r["wins"] or 0
+            a["losses"] += r["losses"] or 0
+            a["total"] += r["total"] or 0
+    out: dict = {}
+    for mp, roles in per_map.items():
+        lst = [{"role": role, "winrate": _winrate(a["wins"], a["losses"]), "total": a["total"]}
+               for role, a in roles.items() if a["total"] >= 2]
+        lst.sort(key=lambda x: ((x["winrate"] if x["winrate"] is not None else -1), x["total"]), reverse=True)
+        out[mp] = lst
+    return out
+
+
 def winrate_vs(filters: dict | None = None) -> list[dict]:
     filters = filters or {}
     where, params = [], []

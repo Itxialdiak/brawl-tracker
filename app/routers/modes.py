@@ -162,6 +162,11 @@ async def api_mode_hub(player: str = Query(None), mode: str = Query(...),
     your_maps = await asyncio.to_thread(db.winrate_by, "map", f)
     your_series = await asyncio.to_thread(db.trophy_series, f)
     comm = await asyncio.to_thread(db.community_meta, mode)
+    # Roles: tuyos y de la comunidad para este modo (agregados sobre TODOS los mapas del modo),
+    # y el mejor rol por mapa (para ponerlo en cada tarjeta).
+    your_roles = await asyncio.to_thread(db.winrate_by_role, f)
+    comm_roles = await asyncio.to_thread(db.winrate_by_role, {"mode": mode})
+    roles_by_map = await asyncio.to_thread(db.role_winrates_by_map, mode)
     guide = _mode_guide().get(mode) or {}
     mode_es = guide.get("name_es") or mode
     insights = _mode_insights(your_ov, your_brawlers, comm, mode_es)
@@ -178,9 +183,11 @@ async def api_mode_hub(player: str = Query(None), mode: str = Query(...),
 
     def card(name, image, active, category):
         ym = your_by_map.get(name.lower())
+        rm = roles_by_map.get(name.lower(), [])
         return {"name": name, "image": image, "active": active, "category": category,
                 "your_winrate": ym["winrate"] if ym else None,
-                "your_games": ym["total"] if ym else 0}
+                "your_games": ym["total"] if ym else 0,
+                "top_role": rm[0] if rm else None}  # mejor rol comunitario en ESTE mapa
 
     in_rotation, others, seen = [], [], set()
     for e in mode_maps:
@@ -202,9 +209,18 @@ async def api_mode_hub(player: str = Query(None), mode: str = Query(...),
                  "trophy_series": your_series, "best_brawlers": your_brawlers[:6]},
         "community": {"winrate": comm["winrate"], "total": comm["total"],
                       "by_pick": by_pick, "by_winrate": by_wr},
+        "roles": {"community": _slim_roles(comm_roles), "your": _slim_roles(your_roles)},
         "insights": insights, "guide": guide,
         "maps": {"rotation": in_rotation, "others": others},
     }
+
+
+def _slim_roles(roles: list) -> list:
+    """Top 5 roles por win rate (con >=3 partidas para fiabilidad), con su uso."""
+    rel = [r for r in roles if (r.get("total") or 0) >= 3]
+    rel.sort(key=lambda r: ((r["winrate"] if r.get("winrate") is not None else -1), r["total"]), reverse=True)
+    return [{"role": r["label"], "winrate": r["winrate"], "usage_pct": r.get("usage_pct"),
+             "total": r["total"]} for r in rel[:5]]
 
 
 @router.get("/api/map-detail")

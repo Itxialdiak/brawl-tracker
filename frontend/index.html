@@ -42,11 +42,79 @@
         <label class="auth-label">Email de contacto</label>
         <input type="email" id="reg-email" autocomplete="email" placeholder="para avisarte cuando se apruebe" onkeydown="if(event.key==='Enter')doRegister()" />
         <div class="auth-note" id="reg-note"></div>
+        <div class="auth-note">Al crear una cuenta aceptas los <button class="link-btn" onclick="openTerms()">Términos de uso</button>.</div>
         <div class="auth-error" id="reg-error"></div>
         <div class="auth-note" id="reg-success" style="display:none;color:#5fe08b"></div>
         <button class="btn auth-submit" id="reg-btn" onclick="doRegister()">Crear cuenta</button>
       </div>
       <button class="auth-guest-link" onclick="hideLogin()">← Explorar la comunidad como invitado</button>
+      <div class="auth-legal">Al usar Brawl Sensei aceptas los <button class="link-btn" onclick="openTerms()">Términos de uso</button>.</div>
+    </div>
+  </div>
+
+  <!-- Términos de uso (bilingüe ES/EN) -->
+  <div id="terms-modal" class="modal-overlay" onclick="if(event.target===this)closeTerms()">
+    <div class="modal-card has-close terms-card">
+      <button class="modal-close" onclick="closeTerms()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div class="terms-head">
+        <h3 class="modal-title" id="terms-title">Términos de uso</h3>
+        <div class="terms-lang">
+          <button class="tl-btn active" id="tl-es" onclick="termsLang('es')">Español</button>
+          <button class="tl-btn" id="tl-en" onclick="termsLang('en')">English</button>
+        </div>
+      </div>
+
+      <div id="terms-es" class="terms-body">
+        <p class="terms-updated">Última actualización: julio de 2026 · Versión beta</p>
+        <h4>1. Aceptación</h4>
+        <p>Brawl Sensei (“el Servicio”) es una aplicación de análisis, estadísticas y estrategia para el juego Brawl Stars. Al acceder o usar el Servicio, como invitado o con cuenta, aceptas estos Términos de uso. Si no estás de acuerdo, no uses el Servicio.</p>
+        <h4>2. Descripción del servicio</h4>
+        <p>El Servicio ofrece seguimiento de partidas, analíticas de jugador, tier lists, una guía de estrategia colaborativa, eventos/ligas, retos de la comunidad y un asistente con inteligencia artificial (“el Sensei”). El Servicio se encuentra en fase <b>beta</b>: las funciones pueden cambiar, fallar o interrumpirse sin previo aviso.</p>
+        <h4>3. Cuentas</h4>
+        <p>Algunas funciones requieren una cuenta. Durante la beta, el registro puede estar limitado por invitación y las cuentas nuevas pueden quedar pendientes de aprobación por un administrador antes de activarse. Eres responsable de mantener la confidencialidad de tu contraseña y de la actividad de tu cuenta. Debes facilitar datos veraces (nombre de cuenta y un email de contacto).</p>
+        <h4>4. Uso aceptable</h4>
+        <p>Te comprometes a no: (a) usar el Servicio con fines ilícitos; (b) intentar acceder a cuentas o datos ajenos; (c) sobrecargar, atacar o interferir en la infraestructura; (d) subir contenido ofensivo, ilegal o que infrinja derechos de terceros; (e) automatizar el uso del Servicio de forma abusiva. Podemos suspender o eliminar cuentas que incumplan estas normas.</p>
+        <h4>5. Datos de Brawl Stars y Supercell</h4>
+        <p>El Servicio utiliza datos públicos del juego a través de la API oficial de Supercell y de recursos de terceros. Este material es <b>no oficial</b> y <b>no está avalado por Supercell</b>. Brawl Stars y sus contenidos son marcas y propiedad de Supercell. Para más información, consulta la <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Política de Contenido para Fans de Supercell</a>.</p>
+        <h4>6. Contenido de la comunidad</h4>
+        <p>La guía de estrategia, traducciones, retos y eventos pueden incluir contenido aportado por usuarios. Al aportar contenido concedes al Servicio una licencia no exclusiva para mostrarlo dentro de la plataforma. El contenido puede ser revisado, editado o retirado. Los invitados pueden leer la guía, pero no editarla ni traducirla.</p>
+        <h4>7. Asistente de IA (el Sensei)</h4>
+        <p>El Sensei genera recomendaciones automáticas a partir de tus datos y del meta del juego. Sus respuestas son <b>orientativas</b> y pueden contener errores; no garantizamos resultados en el juego. Úsalas con criterio propio.</p>
+        <h4>8. Suscripciones y límites</h4>
+        <p>El Servicio es actualmente gratuito. En el futuro podrá introducirse un <b>modelo de suscripción</b> para regular el uso del asistente de IA y el número de jugadores en seguimiento, con distintos planes y límites. Cuando eso ocurra, estos Términos se ampliarán con las condiciones de dichos planes y se te informará antes de que apliquen.</p>
+        <h4>9. Disponibilidad y responsabilidad</h4>
+        <p>El Servicio se ofrece “tal cual”, sin garantías de disponibilidad, exactitud o adecuación a un fin concreto. En la medida permitida por la ley, no seremos responsables de daños derivados del uso o la imposibilidad de uso del Servicio, ni de la pérdida de datos.</p>
+        <h4>10. Cambios en los términos</h4>
+        <p>Podemos actualizar estos Términos. Los cambios relevantes se comunicarán a través del Servicio. El uso continuado tras una actualización implica su aceptación.</p>
+        <h4>11. Contacto</h4>
+        <p>Para cualquier cuestión sobre estos Términos, escribe a <a href="mailto:koldogdp@gmail.com">koldogdp@gmail.com</a>.</p>
+      </div>
+
+      <div id="terms-en" class="terms-body" style="display:none">
+        <p class="terms-updated">Last updated: July 2026 · Beta version</p>
+        <h4>1. Acceptance</h4>
+        <p>Brawl Sensei (“the Service”) is an analytics, statistics and strategy application for the game Brawl Stars. By accessing or using the Service, as a guest or with an account, you accept these Terms of Use. If you do not agree, do not use the Service.</p>
+        <h4>2. Description of the service</h4>
+        <p>The Service offers battle tracking, player analytics, tier lists, a collaborative strategy guide, events/leagues, community challenges and an artificial-intelligence assistant (“the Sensei”). The Service is in <b>beta</b>: features may change, fail or be interrupted without notice.</p>
+        <h4>3. Accounts</h4>
+        <p>Some features require an account. During the beta, registration may be invitation-only and new accounts may remain pending until an administrator approves them. You are responsible for keeping your password confidential and for the activity on your account. You must provide accurate information (account name and a contact email).</p>
+        <h4>4. Acceptable use</h4>
+        <p>You agree not to: (a) use the Service for unlawful purposes; (b) attempt to access other people’s accounts or data; (c) overload, attack or interfere with the infrastructure; (d) upload offensive, illegal or infringing content; (e) automate use of the Service abusively. We may suspend or delete accounts that breach these rules.</p>
+        <h4>5. Brawl Stars and Supercell data</h4>
+        <p>The Service uses public game data through Supercell’s official API and third-party resources. This material is <b>unofficial</b> and is <b>not endorsed by Supercell</b>. Brawl Stars and its content are trademarks and property of Supercell. For more information, see Supercell’s <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Fan Content Policy</a>.</p>
+        <h4>6. Community content</h4>
+        <p>The strategy guide, translations, challenges and events may include user-contributed content. By contributing, you grant the Service a non-exclusive license to display it within the platform. Content may be reviewed, edited or removed. Guests may read the guide but not edit or translate it.</p>
+        <h4>7. AI assistant (the Sensei)</h4>
+        <p>The Sensei generates automatic recommendations from your data and the game meta. Its answers are <b>advisory</b> and may contain errors; we do not guarantee in-game results. Use them at your own discretion.</p>
+        <h4>8. Subscriptions and limits</h4>
+        <p>The Service is currently free. In the future a <b>subscription model</b> may be introduced to regulate use of the AI assistant and the number of tracked players, with different plans and limits. If that happens, these Terms will be expanded with the conditions of those plans and you will be informed before they apply.</p>
+        <h4>9. Availability and liability</h4>
+        <p>The Service is provided “as is”, without warranties of availability, accuracy or fitness for a particular purpose. To the extent permitted by law, we will not be liable for damages arising from the use of, or inability to use, the Service, nor for data loss.</p>
+        <h4>10. Changes to the terms</h4>
+        <p>We may update these Terms. Material changes will be communicated through the Service. Continued use after an update constitutes acceptance.</p>
+        <h4>11. Contact</h4>
+        <p>For any questions about these Terms, write to <a href="mailto:koldogdp@gmail.com">koldogdp@gmail.com</a>.</p>
+      </div>
     </div>
   </div>
 
@@ -1388,6 +1456,15 @@
       </div>
     </div>
   </div>
+
+  <footer class="site-footer">
+    <div class="site-footer-in">
+      <button class="link-btn" onclick="openTerms()">Términos de uso</button>
+      <span class="foot-sep">·</span>
+      <button class="link-btn" onclick="openTerms('en')">Terms (English)</button>
+      <p class="foot-disclaimer">Contenido no oficial, no avalado por Supercell. Brawl Stars es una marca de Supercell. Ver la <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Política de Contenido para Fans</a>.</p>
+    </div>
+  </footer>
 
 <script src="/static/scripts/00-i18n.js"></script>
 <script src="/static/scripts/01-core-analytics.js"></script>

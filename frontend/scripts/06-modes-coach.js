@@ -196,8 +196,33 @@ function renderModeHub(d) {
     <h3 class="hub-h3"><span class="dot"></span>Meta Comunitario</h3>
     <div class="hub-hint">Tier list propio de BrawlSensei (datos reales de todos los jugadores), y tu desviación respecto a la media.</div>
     ${renderMetaComunitario(d)}
+    ${renderHubRoles(d.roles)}
     <h3 class="hub-h3"><span class="dot"></span>Mapas</h3>
     ${renderHubMaps(d.mode, d.maps)}`;
+}
+/* Fila de roles: "Mejores roles según la comunidad" + "Tus mejores roles" (top 5 c/u).
+   En móvil, las dos cajas van en UNA fila como carrusel deslizable (scroll-snap). */
+function hubRoleRow(r) {
+  const wr = r.winrate, col = pctColor(wr);
+  const use = r.usage_pct != null ? `<span class="hub-role-use">${r.usage_pct}% uso</span>` : "";
+  return `<div class="hub-role-row">
+    <span class="hub-role-nm">${esc(r.role)}</span>
+    <div class="hub-role-bar"><span style="width:${Math.max(2, wr || 0)}%;background:${col}"></span></div>
+    <span class="hub-role-wr" style="color:${col}">${wr == null ? "—" : wr + "%"}</span>${use}</div>`;
+}
+function renderHubRoles(roles) {
+  roles = roles || {};
+  const box = (title, sub, list) => {
+    const rows = (list || []).map(hubRoleRow).join("") || `<div class="empty">Juega más partidas para tener datos por rol.</div>`;
+    return `<div class="hub-roles-box">
+      <div class="hub-side-title">${esc(title)}</div>
+      <div class="hub-roles-sub">${esc(sub)}</div>
+      <div class="hub-roles-list">${rows}</div></div>`;
+  };
+  return `<div class="hub-roles-row">
+    ${box("Mejores roles según la comunidad", "Media en los mapas de este modo", roles.community)}
+    ${box("Tus mejores roles", "Tu rendimiento en este modo", roles.your)}
+  </div>`;
 }
 function renderMetaComunitario(d) {
   const c = d.community || {};
@@ -215,9 +240,13 @@ function hubMapCard(m, mode) {
     : m.category === "ranked" ? `<span class="map-cat ranked" title="En rotación · Competitivo">🏅</span>` : "";
   const img = m.image ? `<img src="${m.image}" alt="" loading="lazy" onerror="this.style.display='none'">` : `<div class="hub-map-noimg">🗺️</div>`;
   const wr = m.your_winrate == null ? `<span class="map-wr none">—</span>` : `<span class="map-wr" style="color:${pctColor(m.your_winrate)}">${m.your_winrate}%</span>`;
+  // Mejor rol comunitario EN ESTE mapa concreto.
+  const tr = m.top_role;
+  const roleHtml = tr ? `<div class="hub-map-role" title="mejor rol de la comunidad en este mapa">${esc(tr.role)} <b style="color:${pctColor(tr.winrate)}">${tr.winrate == null ? "—" : tr.winrate + "%"}</b></div>` : "";
   return `<div class="hub-map-card ${m.active ? "" : "inactive"}" data-map="${esc(m.name)}" data-mode="${esc(mode)}">
     <div class="hub-map-img">${img}${badge}</div>
-    <div class="hub-map-foot"><span class="hub-map-name">${esc(mapNameEs(m.name))}</span>${wr}</div></div>`;
+    <div class="hub-map-foot"><span class="hub-map-name">${esc(mapNameEs(m.name))}</span>${wr}</div>
+    ${roleHtml}</div>`;
 }
 function renderHubMaps(mode, maps) {
   const rot = (maps.rotation || []).map((m) => hubMapCard(m, mode)).join("");

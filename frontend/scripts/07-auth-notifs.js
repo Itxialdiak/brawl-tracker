@@ -5,6 +5,19 @@
 /* ---------- Autenticación ---------- */
 function showLogin() { $("auth-overlay").style.display = "flex"; }
 function hideLogin() { $("auth-overlay").style.display = "none"; }
+
+/* ---------- Términos de uso (modal bilingüe ES/EN) ---------- */
+function openTerms(lang) { $("terms-modal").classList.add("open"); termsLang(lang || _termsLang || "es"); }
+function closeTerms() { $("terms-modal").classList.remove("open"); }
+let _termsLang = "es";
+function termsLang(lang) {
+  _termsLang = lang === "en" ? "en" : "es";
+  $("terms-es").style.display = _termsLang === "es" ? "" : "none";
+  $("terms-en").style.display = _termsLang === "en" ? "" : "none";
+  $("tl-es").classList.toggle("active", _termsLang === "es");
+  $("tl-en").classList.toggle("active", _termsLang === "en");
+  const t = $("terms-title"); if (t) t.textContent = _termsLang === "en" ? "Terms of Use" : "Términos de uso";
+}
 function setUser(user) {
   currentUser = user || null;
   renderUserSwitch();
