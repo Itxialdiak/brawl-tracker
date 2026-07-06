@@ -31,6 +31,13 @@ function setUser(user) {
   applyAdminTabPerms(perms);
   const bell = $("notif-bell"); if (bell) bell.style.display = user ? "inline-flex" : "none";
   if (user) startNotifPolling(); else { clearInterval(_notifTimer); }
+  renderMainPlayerWarn();
+}
+// Aviso amarillo si la cuenta tiene jugadores pero ninguno principal (needs_main del backend).
+function renderMainPlayerWarn() {
+  const el = $("main-player-warn");
+  if (!el) return;
+  el.style.display = (currentUser && currentUser.needs_main) ? "" : "none";
 }
 
 function switchAuth(which) {
@@ -250,19 +257,23 @@ async function renderPlayersManager() {
       </div></div>`;
   }).join("");
 }
+// Refresca el usuario en memoria (rol Croker y aviso de jugador principal dependen de los jugadores).
+async function refreshMainStatus() {
+  try { const me = await fetchMe(); if (me) { currentUser = me; setUser(me); } } catch (_) {}
+}
 async function setMainPlayer(tag) {
   const { ok, d } = await apiSend("/api/players/" + encodeURIComponent(tag) + "/main", "POST", {});
   if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
   wikiToast("Jugador principal actualizado ✓", "ok");
   await renderPlayersManager();
-  // El club del principal define el rol Croker: refresca la sesión en memoria.
-  try { const me = await fetchMe(); if (me) { currentUser = me; setUser(me); } } catch (_) {}
+  await refreshMainStatus();   // club del principal → Croker; y quita el aviso amarillo
 }
 async function removeManagedPlayer(tag, name) {
   if (!confirm("¿Dejar de seguir a «" + name + "»? (No borra al jugador del tracking, solo lo quita de tu cuenta.)")) return;
   const { ok, d } = await apiSend("/api/players/" + encodeURIComponent(tag), "DELETE");
   if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
   await renderPlayersManager();
+  await refreshMainStatus();
   if (typeof refreshAll === "function") refreshAll();   // actualiza el selector de jugador de la app
 }
 async function addManagedPlayer() {
@@ -274,6 +285,7 @@ async function addManagedPlayer() {
   inp.value = "";
   wikiToast(d.is_new === false ? "Ese jugador ya estaba en tu cuenta" : "Jugador añadido ✓", "ok");
   await renderPlayersManager();
+  await refreshMainStatus();
   if (typeof refreshAll === "function") refreshAll();
 }
 

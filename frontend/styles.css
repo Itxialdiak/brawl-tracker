@@ -2521,6 +2521,13 @@ body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
 .pub-player-chip.active { color: var(--bg); background: var(--gold); border-color: var(--gold); }
 .pub-player-chip.is-main { border-color: var(--gold); }
 
+/* Aviso de jugador principal no seleccionado (banda ámbar bajo la cabecera) */
+.main-player-warn { max-width: 1200px; margin: 12px auto 0; padding: 11px 16px; border-radius: 12px;
+  background: rgba(245,184,42,.12); border: 1px solid rgba(245,184,42,.45); color: var(--gold);
+  font-size: 13.5px; line-height: 1.5; text-align: center; }
+.main-player-warn .link-btn { color: var(--gold); font-weight: 700; text-decoration: underline; }
+.main-player-warn .link-btn:hover { color: #ffd76b; }
+
 /* Gestor de jugadores (jugador principal + seguidos) */
 .pm-add { display: flex; gap: 8px; margin: 6px 0 4px; }
 #pm-tag { flex: 1; min-width: 0; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px;

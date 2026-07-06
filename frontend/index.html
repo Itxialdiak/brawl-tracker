@@ -526,6 +526,12 @@
     </div>
   </header>
 
+  <!-- Aviso: la cuenta no tiene jugador principal seleccionado -->
+  <div id="main-player-warn" class="main-player-warn" style="display:none">
+    ⚠️ No hay un jugador principal seleccionado para esta cuenta. Por favor
+    <button class="link-btn" onclick="openPlayersManager()">establece un jugador principal</button>.
+  </div>
+
   <!-- Botón flotante (solo móvil): power cube de Supervivencia → vuelve arriba -->
   <button id="home-fab" class="home-fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba" title="Volver arriba">
     <svg viewBox="0 0 32 32" aria-hidden="true">

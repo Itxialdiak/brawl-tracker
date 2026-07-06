@@ -1592,6 +1592,41 @@ def set_main_player(uid: int, tag: str) -> bool:
     return True
 
 
+def ensure_main_player(uid: int) -> str | None:
+    """Mantiene coherente el jugador principal: (a) limpia uno OBSOLETO (que la cuenta ya no
+    sigue), (b) si la cuenta tiene EXACTAMENTE un jugador y ningún principal válido, lo asigna
+    solo (el primer jugador es el principal por defecto). Devuelve el principal resultante."""
+    conn = get_conn()
+    row = conn.execute("SELECT main_player_tag FROM users WHERE id=?", (uid,)).fetchone()
+    if row is None:
+        conn.close(); return None
+    tags = [r["player_tag"] for r in conn.execute(
+        "SELECT player_tag FROM user_players WHERE user_id=?", (uid,)).fetchall()]
+    main = row["main_player_tag"]
+    changed = False
+    if main and main not in tags:          # el principal ya no está en la cuenta
+        main = None; changed = True
+    if not main and len(tags) == 1:        # un único jugador → es el principal
+        main = tags[0]; changed = True
+    if changed:
+        conn.execute("UPDATE users SET main_player_tag=? WHERE id=?", (main, uid))
+        conn.commit()
+    conn.close()
+    if changed and main:
+        recompute_croker(uid)
+    return main
+
+
+def main_player_status(uid: int) -> dict:
+    """Estado del jugador principal para la UI. `needs_main` es True si la cuenta tiene
+    jugadores pero ninguno marcado como principal (y no se pudo autoasignar)."""
+    main = ensure_main_player(uid)
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) FROM user_players WHERE user_id=?", (uid,)).fetchone()[0]
+    conn.close()
+    return {"main_player_tag": main, "n_players": n, "needs_main": bool(main is None and n >= 1)}
+
+
 def refresh_croker_for_player(tag: str) -> None:
     """Cuando cambia el club de un jugador (sondeo), recalcula el Croker de todo usuario cuyo
     jugador PRINCIPAL sea ese (efecto inmediato en el flag; los límites lo leerán de aquí)."""

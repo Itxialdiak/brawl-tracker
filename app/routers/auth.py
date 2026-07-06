@@ -14,11 +14,13 @@ router = APIRouter()
 
 def _public_user(u: dict) -> dict:
     role = rbac.role_of(u)
+    mp = db.main_player_status(u["id"])   # autoasigna principal si hay uno solo; avisa si falta
     return {"id": u["id"], "username": u["username"], "country": u.get("country"),
             "is_admin": bool(u.get("is_admin")), "is_translator": bool(u.get("is_translator")),
             "role": role, "role_label": rbac.LABEL.get(role, "Usuario"),
             "status": u.get("status") or "active", "is_croker": bool(u.get("is_croker")),
-            "permissions": rbac.permissions(u)}
+            "permissions": rbac.permissions(u),
+            "main_player_tag": mp["main_player_tag"], "needs_main": mp["needs_main"]}
 
 
 @router.get("/api/auth/config")
