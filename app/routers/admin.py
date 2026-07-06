@@ -4,7 +4,7 @@ Extraído de main.py; se incluye con app.include_router()."""
 import re
 from fastapi import APIRouter, Body, Query, Depends
 from fastapi.responses import JSONResponse
-from .. import db, auth
+from .. import db, auth, rbac
 
 router = APIRouter()
 
@@ -101,6 +101,74 @@ def api_admin_user_setadmin(uid: int, payload: dict = Body(...), admin: dict = D
 @router.post("/api/admin/users/{uid}/translator")
 def api_admin_user_settranslator(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
     db.set_user_translator(uid, bool((payload or {}).get("is_translator")))
+    return {"ok": True}
+
+
+@router.get("/api/admin/rbac")
+def api_admin_rbac(admin: dict = Depends(auth.require_admin)):
+    """Catálogo de roles + los que ESTE administrador puede asignar (para la pestaña de
+    gestión de roles: arrastrar un usuario de una lista a otra)."""
+    return {
+        "roles": [
+            {"id": r, "label": rbac.LABEL[r], "label_plural": rbac.LABEL_PLURAL[r],
+             "level": rbac.LEVEL[r]}
+            for r in rbac.ROLES
+        ],
+        "assignable": rbac.assignable_roles(admin),
+        "my_role": rbac.role_of(admin),
+    }
+
+
+@router.post("/api/admin/users/{uid}/role")
+def api_admin_user_setrole(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    """Asigna un rol RBAC. Autorización estricta: un admin no puede tocar a root ni a
+    otros admins, ni otorgar un rol de autoridad >= a la suya. Solo root reparte admin/root."""
+    new_role = rbac.normalize((payload or {}).get("role"))
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    if uid == admin["id"]:
+        return JSONResponse({"error": "No puedes cambiar tu propio rol."}, status_code=400)
+    if not rbac.can_assign_role(admin, target, new_role):
+        return JSONResponse(
+            {"error": "No tienes autoridad para asignar ese rol a ese usuario."}, status_code=403)
+    db.set_user_role(uid, new_role)
+    return {"ok": True, "role": new_role, "role_label": rbac.LABEL.get(new_role, "Usuario")}
+
+
+@router.post("/api/admin/users/{uid}/approve")
+def api_admin_user_approve(uid: int, admin: dict = Depends(auth.require_admin)):
+    """Aprueba una cuenta pendiente (registro con verja) -> queda activa."""
+    if not rbac.has_perm(admin, rbac.APPROVE_ACCOUNTS):
+        return JSONResponse({"error": "No puedes aprobar cuentas."}, status_code=403)
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    db.set_user_status(uid, "active")
+    return {"ok": True, "status": "active"}
+
+
+@router.post("/api/admin/users/{uid}/status")
+def api_admin_user_status(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    """Cambia el estado de la cuenta: active / pending / disabled."""
+    if not rbac.has_perm(admin, rbac.APPROVE_ACCOUNTS):
+        return JSONResponse({"error": "No puedes cambiar el estado de cuentas."}, status_code=403)
+    status = (payload or {}).get("status")
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    if uid == admin["id"]:
+        return JSONResponse({"error": "No puedes cambiar tu propio estado."}, status_code=400)
+    if not rbac.can_manage_user(admin, target) and target.get("status") != "pending":
+        return JSONResponse({"error": "No tienes autoridad sobre ese usuario."}, status_code=403)
+    db.set_user_status(uid, status)
+    return {"ok": True, "status": status}
+
+
+@router.post("/api/admin/users/{uid}/croker")
+def api_admin_user_croker(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    """Marca/desmarca al usuario como jugador Croker (bono de límites)."""
+    db.set_user_croker(uid, bool((payload or {}).get("is_croker")))
     return {"ok": True}
 
 

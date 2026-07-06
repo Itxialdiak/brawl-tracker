@@ -2362,7 +2362,7 @@ body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
 
 
 /* === perfil público (fase C): vista de solo lectura de un usuario ===================== */
-.pub-card { max-width: 720px; width: 96vw; }
+.pub-card { max-width: 960px; width: 96vw; }
 #pubprofile-modal.modal-overlay { z-index: 1170; }   /* por encima del modal de amigos */
 .fr-name.fr-link { background: transparent; border: none; padding: 0; cursor: pointer; text-align: left;
   color: var(--text); font-family: var(--body); }
@@ -2370,7 +2370,8 @@ body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
 .pub-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .pub-name { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: .4px; color: var(--cyan); }
 .pub-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.pub-players { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.pub-players { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+  max-height: 156px; overflow-y: auto; padding-right: 4px; }
 .pub-player-chip { font-family: var(--display); font-weight: 600; font-size: 12px; color: var(--muted);
   background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px; padding: 6px 13px; cursor: pointer; transition: all .12s; }
 .pub-player-chip:hover { color: var(--text); }

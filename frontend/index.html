@@ -31,12 +31,19 @@
         <button class="btn auth-submit" id="login-btn" onclick="doLogin()">Entrar</button>
       </div>
       <div id="auth-register" class="auth-form" style="display:none">
-        <label class="auth-label">Usuario</label>
+        <div id="reg-gate-row" style="display:none">
+          <label class="auth-label">Contraseña de acceso (invitación)</label>
+          <input type="password" id="reg-code" autocomplete="off" onkeydown="if(event.key==='Enter')doRegister()" />
+        </div>
+        <label class="auth-label">Nombre de cuenta</label>
         <input type="text" id="reg-user" autocomplete="username" onkeydown="if(event.key==='Enter')doRegister()" />
         <label class="auth-label">Contraseña</label>
         <input type="password" id="reg-pass" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()" />
+        <label class="auth-label">Email de contacto</label>
+        <input type="email" id="reg-email" autocomplete="email" placeholder="para avisarte cuando se apruebe" onkeydown="if(event.key==='Enter')doRegister()" />
         <div class="auth-note" id="reg-note"></div>
         <div class="auth-error" id="reg-error"></div>
+        <div class="auth-note" id="reg-success" style="display:none;color:#5fe08b"></div>
         <button class="btn auth-submit" id="reg-btn" onclick="doRegister()">Crear cuenta</button>
       </div>
       <button class="auth-guest-link" onclick="hideLogin()">← Explorar la comunidad como invitado</button>

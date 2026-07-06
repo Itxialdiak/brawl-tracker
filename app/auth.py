@@ -16,6 +16,7 @@ import secrets
 from fastapi import Request, HTTPException
 
 from . import db
+from . import rbac
 
 _ITERATIONS = 200_000
 
@@ -79,28 +80,56 @@ def current_user(request: Request) -> dict | None:
 
 
 def require_user(request: Request) -> dict:
-    """Dependencia: exige sesión válida; si no, 401."""
+    """Dependencia: exige sesión válida y cuenta activa; si no, 401/403."""
     user = current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No has iniciado sesión.")
+    status = user.get("status") or "active"
+    if status == "pending":
+        raise HTTPException(status_code=403,
+                            detail="Tu cuenta está pendiente de aprobación por un administrador.")
+    if status == "disabled":
+        raise HTTPException(status_code=403, detail="Tu cuenta está deshabilitada.")
     return user
 
 
 def require_admin(request: Request) -> dict:
-    """Dependencia: exige sesión válida y rol de administrador; si no, 401/403."""
-    user = current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="No has iniciado sesión.")
-    if not user.get("is_admin"):
+    """Dependencia: exige sesión válida y rol root/admin; si no, 401/403."""
+    user = require_user(request)
+    if rbac.role_of(user) not in (rbac.ROOT, rbac.ADMIN):
         raise HTTPException(status_code=403, detail="Necesitas permisos de administrador.")
     return user
 
 
+def require_root(request: Request) -> dict:
+    """Dependencia: exige sesión válida y rol root (control total)."""
+    user = require_user(request)
+    if rbac.role_of(user) != rbac.ROOT:
+        raise HTTPException(status_code=403, detail="Solo el root puede hacer esto.")
+    return user
+
+
 def require_translator(request: Request) -> dict:
-    """Dependencia: exige sesión válida y rol de admin O de traductor/colaborador."""
-    user = current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="No has iniciado sesión.")
-    if not (user.get("is_admin") or user.get("is_translator")):
+    """Dependencia: exige poder traducir (admin/root, colaborador o traductor)."""
+    user = require_user(request)
+    if not rbac.has_perm(user, rbac.TRANSLATE):
         raise HTTPException(status_code=403, detail="Necesitas permisos de traductor.")
     return user
+
+
+def require_admin_panel(request: Request) -> dict:
+    """Dependencia: acceso a ALGÚN panel de administración (admin/root o colaborador)."""
+    user = require_user(request)
+    if not rbac.has_perm(user, rbac.ADMIN_PANEL):
+        raise HTTPException(status_code=403, detail="Necesitas acceso al panel de administración.")
+    return user
+
+
+def require_perm(perm: str):
+    """Fábrica de dependencias por permiso concreto (rbac.MANAGE_USERS, etc.)."""
+    def _dep(request: Request) -> dict:
+        user = require_user(request)
+        if not rbac.has_perm(user, perm):
+            raise HTTPException(status_code=403, detail="No tienes permiso para esta acción.")
+        return user
+    return _dep

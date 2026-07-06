@@ -1,7 +1,7 @@
 {
   "_meta": {
     "note": "Wiki Fandom ES (stats/súper/hipercarga/descripción) + builds de Brawl Time Ninja (win rate). Se actualiza solo a diario; o con scrape_wiki.py.",
-    "hypercharges_in_game": 100,
+    "hypercharges_in_game": 101,
     "schema": {
       "hypercharge": {
         "name": "texto o null",
@@ -651,7 +651,7 @@
     ]
   },
   "16000005": {
-    "description_es": "Aunque la gente piensa que Spike es el compañero adorable de Colt y Shelly en el rancho, nadie puede imaginar cuán traumático es su espinoso pasado... Spike es un Brawler Legendario con poca salud, pero un daño devastadoramente alto. Fue uno de los 15 Brawlers que se lanzaron en el lanzamiento de la primera Beta. Su ataque es una bola espinosa que explota al impactar y se divide en 6 espinas. Su Súper lanza un proyectil espinoso que crea un área de púas en el suelo que ralentiza y daña. Su primer gadget, Lluvia de espinas, dispara rápidamente oleadas de espinas en todas direcciones a su alrededor. Su segundo gadget, Vida Vegetal, genera un cactus para proporcionar cobertura para él y sus compañeros de equipo, y los cura en un radio una vez que el cactus es destruido.",
+    "description_es": "Aunque la gente piensa que Spike es el compañero adorable de Colt y Shelly en el rancho, nadie puede imaginar cuán traumático es su espinoso pasado... Spike es un Brawler Legendario con poca salud, pero un daño devastadoramente alto. Fue uno de los 15 Brawlers que se lanzaron en el lanzamiento de la primera Beta. Su ataque es una bola espinosa que explota al impactar y se divide en 6 espinas. Su Súper lanza un proyectil espinoso que crea un área de púas en el suelo que ralentiza y daña. Su primer gadget, Lluvia de espinas, permite a Spike lanzar una hilera de púas para su siguiente ataque. Su segundo gadget, Vida Vegetal, genera un cactus para proporcionar cobertura para él y sus compañeros de equipo, y los cura en un radio una vez que el cactus es destruido.",
     "stats_by_level": {
       "health": [
         3000,
@@ -667,17 +667,17 @@
         6000
       ],
       "damage": [
-        490,
-        539,
-        588,
-        637,
-        686,
-        735,
-        784,
-        833,
-        882,
-        931,
-        980
+        540,
+        594,
+        648,
+        702,
+        756,
+        810,
+        864,
+        918,
+        972,
+        1026,
+        1080
       ],
       "super": [
         400,
@@ -749,17 +749,30 @@
         10800
       ],
       "damage": [
-        540,
-        594,
-        648,
-        702,
-        756,
-        810,
-        864,
-        918,
-        972,
-        1026,
-        1080
+        524,
+        576,
+        629,
+        681,
+        734,
+        786,
+        838,
+        891,
+        943,
+        996,
+        1048
+      ],
+      "super": [
+        700,
+        770,
+        840,
+        910,
+        980,
+        1050,
+        1120,
+        1190,
+        1260,
+        1330,
+        1400
       ],
       "speed": 540
     },
@@ -772,7 +785,7 @@
       "name": "Sobrecalentamiento",
       "description": "Bolt se sobrecalienta, lo que aumenta su velocidad y reduce el daño que recibe. También deja un rastro detrás de sí que inflige daño. Bolt se sobrecalienta, obteniendo un aumento de velocidad y un escudo que reduce el daño recibido en un 40%. Durante 4 segundos, deja tras de sí un rastro de rayos; los enemigos que lo toquen sufrirán quemaduras durante 4 segundos."
     },
-    "passive": "=== Carga cinética=== Este brawler carga su súper mientras se desplaza. Bolt carga su súper al desplazarse. Si Bolt parte de velocidad cero y comienza a rodar, tarda 30 segundos en cargar completamente su súper si no pierde velocidad. === Impulso=== La velocidad de movimiento aumenta mientras se desplaza.",
+    "passive": "=== Carga cinética=== Este brawler carga su súper mientras se desplaza. Bolt carga su súper y su hipercarga al desplazarse. Necesita moverse 186,67 casillas para cargar por completo su Súper sin atacar. === Impulso=== La velocidad de movimiento aumenta mientras se desplaza.",
     "star_powers_es": [
       {
         "name": "Vuelo Forzoso",
@@ -780,7 +793,7 @@
       },
       {
         "name": "Avance irrefrenable",
-        "description": "Durante su súper, Bolt es inmune al control de multitudes y su velocidad máxima aumenta un 15%. Mientras su Súper esté activa, Bolt es inmune a los efectos de control de multitudes (aturdimientos, ralentizaciones o empujones). Además, su velocidad máxima aumenta un 15% adicional durante este estado."
+        "description": "Durante su súper, Bolt es inmune al control de multitudes. Mientras su Súper esté activa, Bolt es inmune a los efectos de control de multitudes (aturdimientos, ralentizaciones o empujones)."
       }
     ],
     "gadgets_es": [
@@ -793,6 +806,11 @@
         "description": "Bolt salta a una ubicación en inflige daño de área. Al aterrizar, también destruye el entorno, pero pierde toda su velocidad. Al apuntar con el botón del gadget, Bolt realiza un pequeño salto."
       }
     ],
+    "hypercharge": {
+      "name": "Bolo Bolt",
+      "description": "El súper de Bolt destruye los muros. Durante su súper Hipercargado, Bolt destruirá todos los muros en su camino. Sin embargo, Bolt no puede destruir muros indestructibles y pierde parte de su velocidad tras destruir un muro. También recibe un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
+      "multiplier": "30%"
+    },
     "body_image": "https://static.wikia.nocookie.net/brawlstars/images/8/8e/Bolt.png/revision/latest/scale-to-width-down/500?cb=20260418153233&path-prefix=es",
     "builds": [
       {
@@ -921,17 +939,17 @@
         1400
       ],
       "super": [
-        600,
-        660,
-        720,
-        780,
-        840,
-        900,
+        800,
+        880,
         960,
-        1020,
-        1080,
-        1140,
-        1200
+        1040,
+        1120,
+        1200,
+        1280,
+        1360,
+        1440,
+        1520,
+        1600
       ],
       "speed": 770,
       "range": "2.67 (Corto)"
@@ -943,12 +961,12 @@
     },
     "super": {
       "name": "Arena Improvisada",
-      "description": "Damian salta y crea su propia arena, que dura 5 segundos. Dentro de la arena, los enemigos que golpean los altavoces reciben un impacto que les empuja hacia atrás y les inflige 1400 puntos de daño. Damian dará un gran salto e invocará una arena, cayendo en el centro de la misma. Esta arena es una prisión similar a la del Gadget \"Tirada maestra\" de Meeple. La prisión durará 5 segundos y encierra en esta a los enemigos que estén en la zona de impacto."
+      "description": "Damian salta y crea su propia arena, que dura 5 segundos. Dentro de la arena, los enemigos que golpean los altavoces reciben un impacto que les empuja hacia atrás y les inflige 1400 puntos de daño. Damian salta una gran distancia, permaneciendo en el aire durante 1 segundo, sin importar la distancia que haya recorrido. Si necesita cruzar una mayor cantidad de bloques o lagos, su distancia de salto aumentará hasta un límite o hasta la zona de tierra válida más cercana."
     },
     "star_powers_es": [
       {
         "name": "Conmoción en las gradas",
-        "description": "Empuja a un enemigo contra una pared y lo aturde 0,5 segundos. Si el empuje de la patada de Damian provoca que choque con una pared, el enemigo será aturdido por 0,5 segundos."
+        "description": "Empuja a un enemigo contra una pared y lo aturde 0,5 segundos. Si el empuje de la patada de Damian provoca que choque con una pared, el enemigo será aturdido por 0,5 segundos. Esto no se aplica a los altavoces del súper."
       },
       {
         "name": "Puñetazo Antirreglamentario",
@@ -962,12 +980,12 @@
       },
       {
         "name": "Barrera Antisonido",
-        "description": "Damian invoca un muro temporal de amplificadores indestructibles. Damian invoca un muro de 3 casillas alineadas que dura 7 segundos y actúa de forma similar al súper de Sprout. Damian puede apuntar este Gadget, controlando la posición y distancia en la que puede colocar los muros."
+        "description": "Damian invoca un muro temporal de amplificadores indestructibles. Damian invoca un muro de 3 casillas alineadas que dura 7 segundos. A pesar de su descripción, este muro funciona como cualquier otro muro del juego y puede destruirse con habilidades rompemuros."
       }
     ],
     "hypercharge": {
       "name": "Salto candente",
-      "description": "El súper de Damian también prende fuego al suelo al aterrizar. Las llamas infligen 800 de daño por segundo a los enemigos atrapados en su arena. Con su Súper Hipercargado, el súper de Damian incendiará el suelo, haciendo que los enemigos dentro de la prisión sufran 800 de daño por segundo durante los primeros 3 segundos de su súper. También recibe un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
+      "description": "El súper de Damian también prende fuego al suelo al aterrizar. Las llamas infligen 1200 de daño por segundo a los enemigos atrapados en su arena. Con su Súper Hipercargado, el súper de Damian incendiará el suelo, haciendo que los enemigos dentro de la prisión sufran 1200 de daño por segundo durante los primeros 3 segundos de su súper. También recibe un aumento de velocidad del 20%, así como un aumento de daño y un escudo del 5%.",
       "multiplier": "20%",
       "icon": "https://static.wikia.nocookie.net/brawlstars/images/b/b7/Damian-Hypercharge.png/revision/latest?cb=20260420202119"
     },
@@ -5041,7 +5059,7 @@
     ]
   },
   "16000051": {
-    "description_es": "El sueño de Ash era ser actor, pero lejos de recibir aplausos, su ingrato trabajo consiste en limpiar el parque. Se ha metido en una papelera para protegerse de los cristales rotos y de las mordedoras de rata. Normal que esté de un humor de perros.Ash es un Brawler Épico que se pudo desbloquear como recompensa de Brawl Pass en el nivel 30 en la temporada 8: Érase una vez un Brawl, ahora puede ser obtenido en el Camino Starr. Ash tiene una alta salud, una producción de daño y una velocidad de movimiento variables, y un rango de ataque corto. Fue el Brawler N°50 agregado al juego. La barra de furia de Ash se llena en una cierta cantidad cada vez que inflige o recibe daño y le da aumentos de velocidad de Ash y aumentos de daño que aumentan cuanto más se llena su barra de furia.",
+    "description_es": "El sueño de Ash era ser actor, pero lejos de recibir aplausos, su ingrato trabajo consiste en limpiar el parque. Se ha metido en una papelera para protegerse de los cristales rotos y de las mordedoras de rata. Normal que esté de un humor de perros.Ash es un Brawler Épico que se pudo desbloquear como recompensa de Brawl Pass en el nivel 30 en la temporada 8: Érase una vez un Brawl, ahora puede ser obtenido en el Camino Starr. Ash tiene la tercera cantidad de salud más alta del juego, una producción de daño y una velocidad de movimiento variables, y un rango de ataque corto. Fue el Brawler N°50 agregado al juego. La barra de furia de Ash se llena en una cierta cantidad cada vez que inflige o recibe daño y le da aumentos de velocidad de Ash y aumentos de daño que aumentan cuanto más se llena su barra de furia. Su Atributo carga su súper cada vez que recibe daño de cualquier fuente.",
     "stats_by_level": {
       "health": [
         5900,
@@ -5111,7 +5129,7 @@
       },
       {
         "name": "Plátano podrido",
-        "description": "Ash pierde un 10% de salud y gana al instante un 40% de furia. Cuando este gadget es activado, Ash pierde el 10% de sus puntos de salud actuales y llena el 40% su barra de furia. Dado que la reducción de salud se basa en sus puntos de salud actuales, Ash no puede derrotarse a sí mismo al usar este gadget, a menos que esté marcado por R-T."
+        "description": "Ash pierde un 5% de salud y gana al instante un 40% de furia. Cuando este gadget es activado, Ash pierde el 5% de sus puntos de salud actuales y llena el 40% su barra de furia. Dado que la reducción de salud se basa en sus puntos de salud actuales, Ash no puede derrotarse a sí mismo al usar este gadget, a menos que esté marcado por R-T."
       }
     ],
     "hypercharge": {
@@ -5193,7 +5211,7 @@
       },
       {
         "name": "Lluvia de monedas",
-        "description": "Griff lanza un montón de monedas en una zona, que infligen 400 puntos de daño por segundo a los rivales que se encuentren dentro de ella. Griff lanza una lluvia de monedas en un radio de 2.4 casillas en el mapa que daña a los enemigos dentro de ella, infligiendo 400 puntos de daño por segundo."
+        "description": "Griff lanza un montón de monedas en una zona, que infligen 600 puntos de daño por segundo a los rivales que se encuentren dentro de ella. Griff lanza una lluvia de monedas en un radio de 2.4 casillas en el mapa que daña a los enemigos dentro de ella, infligiendo 600 puntos de daño por segundo."
       }
     ],
     "hypercharge": {
@@ -8928,7 +8946,7 @@
     "role": "Apoyo",
     "attack": {
       "name": "Secador Cuántico",
-      "description": "Wendy dispara con su secador, para infligir 2200 de daño y obtener un escudo de 1268. Si golpea a un aliado, le otorga un escudo de 2000. Aquí tienes la traducción del texto al español con el estilo característico de Brawl Stars: Wendy dispara una ráfaga que inflige un daño moderado a los enemigos y se otorga a sí misma un escudo consumible equivalente al 31.7% de su salud máxima."
+      "description": "Wendy dispara con su secador, para infligir 2200 de daño y obtener un escudo de 1268. Si golpea a un aliado, le otorga un escudo de 2000. Wendy dispara una ráfaga que inflige un daño moderado a los enemigos y se otorga a sí misma un escudo degradable equivalente al 31.7% de su salud máxima. Sin embargo, al lanzar el ataque hacia sus aliados, en su lugar les proporciona a ellos un escudo equivalente al 50% de la salud máxima de Wendy."
     },
     "super": {
       "name": "Protectora Planetaria",
@@ -8938,7 +8956,7 @@
     "star_powers_es": [
       {
         "name": "Escudo Hiperbárico",
-        "description": "El generador de escudo de Wendy ralentiza a los enemigos que se encuentren en su interior. Los enemigos que se encuentren dentro del aerogenerador de Wendy serán ralentizados."
+        "description": "El generador de escudo de Wendy ralentiza a los enemigos que se encuentren en su interior. Los enemigos que se encuentren dentro del área del súper de Wendy serán ralentizados."
       },
       {
         "name": "Escudo Solar",
@@ -8948,7 +8966,7 @@
     "gadgets_es": [
       {
         "name": "Energía Eólica",
-        "description": "La plataforma de Wendy la potencia y le permite saltar una distancia corta. Wendy salta 5 casillas hacia adelante en la dirección a la que está mirando, lo que le permite saltar sobre muros o agua. Si es necesario cruzar una mayor cantidad de bloques o lagos, su distancia de salto se incrementará hasta un límite o hasta el terreno transitable más cercano."
+        "description": "La plataforma de Wendy la potencia y le permite saltar una distancia corta. Wendy salta 5 casillas hacia una dirección elegida al apuntar el Gadget, lo que le permite saltar sobre muros o agua. Si es necesario cruzar una mayor cantidad de muros, su distancia de salto se incrementará hasta un límite o hasta el terreno transitable más cercano."
       },
       {
         "name": "Granada Sostenible",

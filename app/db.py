@@ -252,8 +252,26 @@ def init_db():
     _ensure_column(cur, "wiki_nodes", "orig_lang", "TEXT DEFAULT 'es'")   # idioma del contenido original
     _ensure_column(cur, "wiki_history", "lang", "TEXT DEFAULT 'es'")       # idioma de la versión guardada
     _ensure_column(cur, "users", "is_translator", "INTEGER DEFAULT 0")    # colaborador de traducción (Rosetta)
-    # El usuario itxialdiak es administrador por defecto.
-    cur.execute("UPDATE users SET is_admin=1 WHERE username='itxialdiak'")
+    # --- RBAC (control de accesos por roles) ---
+    _ensure_column(cur, "users", "role", "TEXT")            # root/admin/collaborator/translator/user (fuente de verdad)
+    _ensure_column(cur, "users", "status", "TEXT DEFAULT 'active'")  # active / pending (a la espera de aprobación) / disabled
+    _ensure_column(cur, "users", "email", "TEXT")          # email de contacto (registro; dato mínimo)
+    _ensure_column(cur, "users", "is_croker", "INTEGER DEFAULT 0")   # rol de JUGADOR: miembro del club Crokers (bono de límites)
+    _ensure_column(cur, "users", "ai_tokens_remaining", "INTEGER")   # "Pergaminos" restantes (sistema desactivado; base lista)
+    _ensure_column(cur, "users", "ai_tokens_period", "TEXT")         # periodo (AAAA-MM) de la última recarga de Pergaminos
+    # El usuario root por defecto (configurable con ROOT_USERNAME) es administrador root.
+    import os as _os
+    _root_username = _os.environ.get("ROOT_USERNAME", "itxialdiak")
+    cur.execute("UPDATE users SET is_admin=1 WHERE username=?", (_root_username,))
+    # El root designado por entorno SIEMPRE tiene rol root (idempotente: garantiza que
+    # exista un root aunque su cuenta se creara con rol 'user').
+    cur.execute("UPDATE users SET role='root' WHERE username=?", (_root_username,))
+    # Backfill del rol para cuentas existentes (una sola vez): deriva de los flags antiguos.
+    cur.execute("UPDATE users SET role='admin' WHERE is_admin=1 AND (role IS NULL OR role='')")
+    cur.execute("UPDATE users SET role='translator' WHERE is_translator=1 AND (role IS NULL OR role='')")
+    cur.execute("UPDATE users SET role='user' WHERE role IS NULL OR role=''")
+    # Toda cuenta preexistente queda activa (el flujo de aprobación solo afecta a registros nuevos).
+    cur.execute("UPDATE users SET status='active' WHERE status IS NULL OR status=''")
     conn.commit()
     conn.close()
     seed_wiki_if_empty()
@@ -549,13 +567,20 @@ def account_rating(tag: str, catalog_totals: dict | None = None) -> dict:
 # Usuarios y relación usuario <-> jugadores
 # ---------------------------------------------------------------------------
 
-def create_user(username: str, password_hash: str) -> int | None:
-    """Crea un usuario. Devuelve su id, o None si el nombre ya existe."""
+def create_user(username: str, password_hash: str, email: str | None = None,
+                status: str = "active") -> int | None:
+    """Crea un usuario con rol 'user'. Devuelve su id, o None si el nombre ya existe.
+
+    `status`: 'active' (por defecto, p. ej. altas manuales del admin) o 'pending'
+    (registro público a la espera de aprobación por un administrador)."""
+    if status not in ("active", "pending", "disabled"):
+        status = "active"
     conn = get_conn(); cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO users (username, password_hash, created_at) VALUES (?,?,?)",
-            (username, password_hash, datetime.now(timezone.utc).isoformat()),
+            "INSERT INTO users (username, password_hash, created_at, email, role, status) "
+            "VALUES (?,?,?,?, 'user', ?)",
+            (username, password_hash, datetime.now(timezone.utc).isoformat(), email, status),
         )
         uid = cur.lastrowid
         conn.commit()
@@ -1071,9 +1096,18 @@ def ui_translated_langs() -> list:
 
 
 def set_user_translator(user_id: int, val: bool) -> None:
-    conn = get_conn()
-    conn.execute("UPDATE users SET is_translator=? WHERE id=?", (1 if val else 0, user_id))
-    conn.commit(); conn.close()
+    # Compatibilidad: alternar traductor solo mueve entre user<->translator; no toca
+    # roles superiores (admin/collaborator ya tienen is_translator por su rol).
+    u = get_user_by_id(user_id)
+    role = (u or {}).get("role") or "user"
+    if val and role == "user":
+        set_user_role(user_id, "translator")
+    elif not val and role == "translator":
+        set_user_role(user_id, "user")
+    else:
+        conn = get_conn()
+        conn.execute("UPDATE users SET is_translator=? WHERE id=?", (1 if val else 0, user_id))
+        conn.commit(); conn.close()
 
 
 def seed_ui_translations() -> None:
@@ -1409,7 +1443,8 @@ def revert_wiki_version(hid: int, by_user_id) -> bool:
 def list_users() -> list:
     conn = get_conn()
     rows = conn.execute(
-        "SELECT id, username, is_admin, is_translator, country, created_at FROM users ORDER BY username").fetchall()
+        "SELECT id, username, is_admin, is_translator, role, status, email, is_croker, "
+        "country, created_at FROM users ORDER BY username").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -1455,8 +1490,47 @@ def delete_user(uid: int, delete_players: bool = False) -> None:
 
 
 def set_user_admin(uid: int, is_admin: bool) -> None:
+    # Compatibilidad: alternar admin equivale a poner rol admin o degradar a user.
+    set_user_role(uid, "admin" if is_admin else "user")
+
+
+# Roles válidos y qué espejos (is_admin/is_translator) implica cada uno. Mantener
+# alineado con app/rbac.py (que es la fuente de verdad de la lógica de permisos).
+_ROLE_MIRRORS = {
+    "root":         (1, 0),
+    "admin":        (1, 0),
+    "collaborator": (0, 1),  # colabora en traducciones → is_translator=1
+    "translator":   (0, 1),
+    "user":         (0, 0),
+}
+
+
+def set_user_role(uid: int, role: str) -> None:
+    """Asigna el rol RBAC y sincroniza los flags espejo is_admin/is_translator.
+
+    No aplica reglas de autorización (quién puede asignar qué): eso lo decide la
+    capa de rbac.can_assign_role en el router antes de llamar aquí."""
+    if role not in _ROLE_MIRRORS:
+        role = "user"
+    is_admin, is_translator = _ROLE_MIRRORS[role]
     conn = get_conn()
-    conn.execute("UPDATE users SET is_admin=? WHERE id=?", (1 if is_admin else 0, uid))
+    conn.execute("UPDATE users SET role=?, is_admin=?, is_translator=? WHERE id=?",
+                 (role, is_admin, is_translator, uid))
+    conn.commit(); conn.close()
+
+
+def set_user_status(uid: int, status: str) -> None:
+    """active / pending / disabled."""
+    if status not in ("active", "pending", "disabled"):
+        return
+    conn = get_conn()
+    conn.execute("UPDATE users SET status=? WHERE id=?", (status, uid))
+    conn.commit(); conn.close()
+
+
+def set_user_croker(uid: int, val: bool) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE users SET is_croker=? WHERE id=?", (1 if val else 0, uid))
     conn.commit(); conn.close()
 
 

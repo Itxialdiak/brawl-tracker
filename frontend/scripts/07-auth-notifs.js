@@ -27,12 +27,22 @@ function switchAuth(which) {
   $("login-error").textContent = ""; $("reg-error").textContent = "";
 }
 
+let _authCfg = {};
 async function loadAuthConfig() {
   try {
     const cfg = await (await fetch("/api/auth/config")).json();
-    const open = !!cfg.registration_open;
-    $("reg-btn").disabled = !open;                      // botón gris si el registro está cerrado
-    $("reg-note").textContent = open ? "" : "El registro está cerrado durante la beta.";
+    _authCfg = cfg || {};
+    const available = !!cfg.registration_available;     // registro libre O por invitación (verja)
+    const gated = !!cfg.registration_gated;             // requiere contraseña de acceso
+    $("reg-btn").disabled = !available;                 // botón gris si no hay vía de registro
+    const gateRow = $("reg-gate-row"); if (gateRow) gateRow.style.display = gated ? "block" : "none";
+    // La pestaña "Crear cuenta" solo aparece si hay alguna vía de creación disponible.
+    const regTab = $("auth-tab-register"); if (regTab) regTab.style.display = available ? "" : "none";
+    $("reg-note").textContent = !available
+      ? "El registro está cerrado durante la beta."
+      : gated
+        ? "Registro por invitación: necesitas la contraseña de acceso. Tu cuenta quedará pendiente de aprobación por un administrador."
+        : "";
   } catch (e) { /* si falla, el botón se queda como esté */ }
 }
 
@@ -55,11 +65,22 @@ async function doLogin() {
 async function doRegister() {
   if ($("reg-btn").disabled) return;                   // doble seguro: cerrado en beta
   const username = $("reg-user").value.trim(), password = $("reg-pass").value;
-  $("reg-error").textContent = "";
+  const email = ($("reg-email") ? $("reg-email").value.trim() : "");
+  const code = ($("reg-code") ? $("reg-code").value : "");
+  $("reg-error").textContent = ""; $("reg-success").style.display = "none";
   try {
-    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
+    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password, email, code }) });
     const data = await r.json();
     if (!r.ok) { $("reg-error").textContent = data.error || data.detail || "No se pudo crear la cuenta."; return; }
+    if (data.pending) {
+      // Registro con aprobación: no se inicia sesión. Confirmación y vuelta al login.
+      $("reg-user").value = ""; $("reg-pass").value = "";
+      if ($("reg-email")) $("reg-email").value = ""; if ($("reg-code")) $("reg-code").value = "";
+      const s = $("reg-success");
+      s.textContent = data.message || "Cuenta creada. Un administrador debe aprobarla antes de que puedas entrar.";
+      s.style.display = "block";
+      return;
+    }
     onAuthSuccess(data);
   } catch (e) { $("reg-error").textContent = "Error de red."; }
 }
