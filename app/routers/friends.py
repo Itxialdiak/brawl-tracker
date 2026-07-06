@@ -123,7 +123,8 @@ def api_user_profile(uid: int, user: dict = Depends(auth.require_user)):
     if target.get("hidden") and not user.get("is_admin"):
         return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
     players = [{"tag": p["tag"], "name": p["name"], "icon_id": p.get("icon_id"),
-                "club_name": p.get("club_name"), "battles": p.get("battles") or 0}
+                "club_name": p.get("club_name"), "battles": p.get("battles") or 0,
+                "is_main": bool(p.get("is_main"))}
                for p in db.list_players_for_user(uid)]
     return {"id": target["id"], "username": target["username"], "country": target.get("country"),
             "relation": _relation(user["id"], uid), "players": players}

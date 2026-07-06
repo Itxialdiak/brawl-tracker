@@ -8,6 +8,33 @@ function updatePendingBadge(n) {
   [b1, b2].forEach((b) => { if (b) { b.textContent = n; b.style.display = n > 0 ? "" : "none"; } });
   const all = $("approve-all-btn"); if (all) all.style.display = n > 0 ? "" : "none";
 }
+// Visibilidad de pestañas del panel según los permisos del usuario (RBAC). Colaboradores
+// ven Métricas (solo página) + Historial + Cambios + Traducciones; traductores solo Traducciones;
+// admin/root todas. No carga datos: solo ajusta qué pestañas se ven y cuál queda activa.
+function applyAdminTabPerms(perms) {
+  perms = perms || [];
+  const has = (p) => !p || perms.includes(p);
+  let firstVisible = null, activeVisible = false;
+  document.querySelectorAll(".atab").forEach((t) => {
+    const ok = has(t.dataset.perm);
+    t.style.display = ok ? "" : "none";
+    if (ok && !firstVisible) firstVisible = t;
+    if (ok && t.classList.contains("active")) activeVisible = true;
+  });
+  if (firstVisible && !activeVisible) {
+    document.querySelectorAll(".atab").forEach((t) => t.classList.remove("active"));
+    firstVisible.classList.add("active");
+    const name = firstVisible.dataset.atab;
+    document.querySelectorAll(".admin-panel").forEach((p) => p.classList.toggle("active", p.id === "admin-" + name));
+  }
+}
+// Abre la pestaña activa (visible) al entrar en Administración; carga sus datos.
+function openDefaultAdminTab() {
+  const tabs = [...document.querySelectorAll(".atab")].filter((t) => t.style.display !== "none");
+  const active = tabs.find((t) => t.classList.contains("active")) || tabs[0];
+  if (active) showAdminTab(active.dataset.atab);
+}
+
 function showAdminTab(name) {
   document.querySelectorAll(".atab").forEach((t) => t.classList.toggle("active", t.dataset.atab === name));
   document.querySelectorAll(".admin-panel").forEach((p) => p.classList.toggle("active", p.id === "admin-" + name));
@@ -424,17 +451,21 @@ async function loadAdminMetrics() {
       card("Jugadores trackeados", fmt(m.active_players), `${fmt(m.orphans)} huérfanos · ${fmt(m.players)} en total`) +
       card("Partidas en BD", fmt(m.battles)) +
       card("Informes IA generados", fmt(m.reports));
-    const ai = m.ai || {};
-    const aiCards = card("Total", eur(ai.total), tokSub(ai.total)) +
-      card("Este mes", eur(ai.month), tokSub(ai.month)) +
-      card("Esta semana", eur(ai.week), tokSub(ai.week)) +
-      card("Hoy", eur(ai.day), tokSub(ai.day));
-    const modelName = (ai.model || "claude").replace("claude-", "").replace(/-/g, " ");
+    let consumo = "";
+    // Los colaboradores NO ven consumo: el backend redacta `ai` (consumption_hidden).
+    if (m.ai) {
+      const ai = m.ai;
+      const aiCards = card("Total", eur(ai.total), tokSub(ai.total)) +
+        card("Este mes", eur(ai.month), tokSub(ai.month)) +
+        card("Esta semana", eur(ai.week), tokSub(ai.week)) +
+        card("Hoy", eur(ai.day), tokSub(ai.day));
+      const modelName = (ai.model || "claude").replace("claude-", "").replace(/-/g, " ");
+      consumo = `<h4 class="metrics-sub">Métricas de Consumo · coste estimado de la IA</h4>
+        <div class="metrics-grid">${aiCards}</div>
+        <p class="hint" style="margin-top:10px;font-size:.78rem">Estimado con tarifas de <b>${esc(modelName)}</b> (${(ai.price_in_eur || 0).toFixed(2)} € entrada / ${(ai.price_out_eur || 0).toFixed(2)} € salida por millón de tokens; la salida cuesta 5× la entrada) y conversión aproximada USD→EUR.</p>`;
+    }
     wrap.innerHTML = `<h4 class="metrics-sub">Métricas de la aplicación</h4>
-      <div class="metrics-grid">${general}</div>
-      <h4 class="metrics-sub">Métricas de Consumo · coste estimado de la IA</h4>
-      <div class="metrics-grid">${aiCards}</div>
-      <p class="hint" style="margin-top:10px;font-size:.78rem">Estimado con tarifas de <b>${esc(modelName)}</b> (${(ai.price_in_eur || 0).toFixed(2)} € entrada / ${(ai.price_out_eur || 0).toFixed(2)} € salida por millón de tokens; la salida cuesta 5× la entrada) y conversión aproximada USD→EUR.</p>`;
+      <div class="metrics-grid">${general}</div>${consumo}`;
   } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
 }
 

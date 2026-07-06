@@ -618,6 +618,8 @@
   .mm-head { padding: 28px 24px 20px; background-size: cover; background-position: center; }
   .mm-head h2 { font-family: var(--display); font-weight: 800; font-size: 26px; color: #fff; }
   .mm-wr { font-size: 13px; color: #cdd3e0; margin-top: 4px; }
+  .mm-roles { padding: 16px 24px 0; }
+  .mm-roles .mm-title { margin-bottom: 10px; }
   .mm-body { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 20px 24px 24px; }
   .mm-col { display: flex; flex-direction: column; gap: 16px; }
   .mm-title { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 4px; }
@@ -838,6 +840,7 @@
   /* ===================== Términos de uso (modal bilingüe) + pie ===================== */
   .auth-legal { margin-top: 12px; font-size: 11.5px; color: var(--muted); text-align: center; }
   .auth-legal .link-btn { font-size: 11.5px; }
+  #terms-modal.modal-overlay { z-index: 1200; }   /* por encima de cuenta/otros modales */
   .terms-card { max-width: 720px; width: 96vw; max-height: 88vh; display: flex; flex-direction: column; }
   .terms-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-right: 34px; }
   .terms-lang { display: flex; gap: 4px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
@@ -1421,6 +1424,18 @@
   .top-mini-tx { display:flex; flex-direction:column; min-width:0; }
   .top-mini-name { font-size:12.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .top-mini-tro { font-size:11.5px; color:var(--gold); font-weight:700; }
+  /* Chips de rol en la cabecera del podio "Mejores por rol" */
+  .top10-panel h2 { flex-wrap: wrap; }
+  .br-role-chips { display:flex; flex-wrap:wrap; gap:6px; margin-left:auto; }
+  /* Colapso móvil de TODOS los Tops: en móvil solo el podio (top 3); 4–13 tras "Ver más". */
+  .top-more-btn { display:none; }
+  @media (max-width: 768px) {
+    .top-more-btn { display:block; width:100%; margin-top:12px; background:var(--bg-elev);
+      border:1px solid var(--border); color:var(--cyan); border-radius:10px; padding:10px;
+      font-family:var(--display); font-weight:700; font-size:12.5px; cursor:pointer; }
+    .top-rest .top-mini-row { display:none; }
+    .top-rest.open .top-mini-row { display:grid; margin-top:10px; }
+  }
   @media (max-width: 560px) { .podium-img img { max-height:110px; } .podium-col.pos1 .podium-img img { max-height:135px; } }
   /* Top 13: extras junto al podio (solo PC) */
   .top13-main { display:flex; align-items:flex-end; justify-content:center; gap:18px; }
@@ -1644,6 +1659,17 @@
   .dojo-welcome { font-family: var(--display); font-size: 16px; line-height: 1.5; margin-bottom: 12px; }
   .dojo-q { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
   .dojo-quiz { margin-bottom: 12px; }
+  /* Selector de modelo del Sensei (solo admins: incluye modelos premium/Opus) */
+  .sensei-model-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+  .smc-lbl { font-size: 12px; color: var(--muted); font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .sensei-model-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sensei-model-chip { font-family: var(--display); font-weight: 600; font-size: 12px; color: var(--muted);
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px; padding: 6px 13px; cursor: pointer; transition: all .12s; }
+  .sensei-model-chip:hover { color: var(--text); border-color: var(--cyan); }
+  .sensei-model-chip.active { color: var(--bg); background: var(--cyan); border-color: var(--cyan); }
+  .sensei-model-chip.premium { border-color: rgba(245,184,42,.5); }
+  .sensei-model-chip.premium.active { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+  .smc-cost { font-size: 11px; opacity: .85; }
   .dojo-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .dojo-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
   .dojo-btn.gated { opacity: .6; cursor: not-allowed; }
@@ -2493,6 +2519,25 @@ body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
   background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px; padding: 6px 13px; cursor: pointer; transition: all .12s; }
 .pub-player-chip:hover { color: var(--text); }
 .pub-player-chip.active { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+.pub-player-chip.is-main { border-color: var(--gold); }
+
+/* Gestor de jugadores (jugador principal + seguidos) */
+.pm-add { display: flex; gap: 8px; margin: 6px 0 4px; }
+#pm-tag { flex: 1; min-width: 0; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 14px; color: var(--text); font-family: var(--body); font-size: 14px; outline: none; }
+#pm-tag:focus { border-color: var(--cyan); }
+.pm-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; max-height: 52vh; overflow-y: auto; }
+.pm-row { display: flex; align-items: center; gap: 11px; background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 11px; padding: 10px 13px; }
+.pm-row.is-main { border-color: rgba(245,184,42,.5); background: rgba(245,184,42,.06); }
+.pm-icon { width: 38px; height: 38px; border-radius: 9px; object-fit: cover; background: var(--panel); flex: 0 0 auto; }
+.pm-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pm-name { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); }
+.pm-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--gold);
+  background: rgba(245,184,42,.15); padding: 2px 7px; border-radius: 20px; margin-left: 6px; }
+.pm-meta { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-acts { display: flex; gap: 6px; flex-wrap: wrap; flex: 0 0 auto; }
+.pm-acts .mini-btn { font-size: 12px; padding: 6px 11px; }
 .pub-line { margin-bottom: 14px; }
 .pub-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
 .pub-stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }

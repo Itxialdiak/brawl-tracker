@@ -260,6 +260,7 @@ def init_db():
     _ensure_column(cur, "users", "ai_tokens_remaining", "INTEGER")   # "Pergaminos" restantes (sistema desactivado; base lista)
     _ensure_column(cur, "users", "ai_tokens_period", "TEXT")         # periodo (AAAA-MM) de la última recarga de Pergaminos
     _ensure_column(cur, "users", "hidden", "INTEGER DEFAULT 0")      # cuenta de sistema (p. ej. tester): oculta del descubrimiento público
+    _ensure_column(cur, "users", "main_player_tag", "TEXT")         # jugador PRINCIPAL de la cuenta (identidad; def. del perfil público; base del rol Croker)
     # El usuario root por defecto (configurable con ROOT_USERNAME) es administrador root.
     import os as _os
     _root_username = _os.environ.get("ROOT_USERNAME", "itxialdiak")
@@ -306,10 +307,13 @@ def add_player(tag: str, name: str | None = None, icon_id: int | None = None,
 
 def update_player_profile(tag: str, name: str | None, icon_id: int | None,
                           club_name: str | None = None) -> None:
+    ntag = normalize_tag(tag)
     conn = get_conn()
     conn.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), club_name=COALESCE(?,club_name) WHERE tag=?",
-                 (name, icon_id, club_name, normalize_tag(tag)))
+                 (name, icon_id, club_name, ntag))
     conn.commit(); conn.close()
+    if club_name is not None:  # el club puede haber cambiado → recalcula Croker de quien lo tenga de principal
+        refresh_croker_for_player(ntag)
 
 
 def player_needs_profile(tag: str) -> bool:
@@ -1538,6 +1542,68 @@ def set_user_croker(uid: int, val: bool) -> None:
     conn.commit(); conn.close()
 
 
+# --- Jugador principal (identidad de la cuenta) + rol Croker automático -----------------
+# El club que otorga el rol Croker (configurable). Se compara normalizado (sin mayúsculas
+# ni símbolos), así aguanta decoraciones del nombre del club.
+_CROKERS_MARK = "".join(ch for ch in os.environ.get("CROKERS_CLUB", "Crokers").lower() if ch.isalnum()) or "crokers"
+
+
+def _is_crokers_club(club_name: str | None) -> bool:
+    if not club_name:
+        return False
+    norm = "".join(ch for ch in club_name.lower() if ch.isalnum())
+    return _CROKERS_MARK in norm
+
+
+def get_main_player(uid: int) -> str | None:
+    conn = get_conn()
+    row = conn.execute("SELECT main_player_tag FROM users WHERE id=?", (uid,)).fetchone()
+    conn.close()
+    return row["main_player_tag"] if row and row["main_player_tag"] else None
+
+
+def recompute_croker(uid: int) -> bool:
+    """Recalcula is_croker del usuario a partir del CLUB de su jugador principal. Automático:
+    si el principal está en el club Crokers → is_croker=1; si no (o no hay principal) → 0.
+    Devuelve el nuevo valor booleano."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT p.club_name FROM users u LEFT JOIN players p ON p.tag = u.main_player_tag "
+        "WHERE u.id=?", (uid,)).fetchone()
+    val = 1 if (row and _is_crokers_club(row["club_name"])) else 0
+    conn.execute("UPDATE users SET is_croker=? WHERE id=?", (val, uid))
+    conn.commit(); conn.close()
+    return bool(val)
+
+
+def set_main_player(uid: int, tag: str) -> bool:
+    """Declara el jugador principal de la cuenta. Debe ser un jugador que el usuario sigue.
+    Recalcula el rol Croker según el club de ese jugador. Devuelve True si se aplicó."""
+    ntag = normalize_tag(tag)
+    conn = get_conn()
+    owned = conn.execute(
+        "SELECT 1 FROM user_players WHERE user_id=? AND player_tag=?", (uid, ntag)).fetchone()
+    if not owned:
+        conn.close()
+        return False
+    conn.execute("UPDATE users SET main_player_tag=? WHERE id=?", (ntag, uid))
+    conn.commit(); conn.close()
+    recompute_croker(uid)
+    return True
+
+
+def refresh_croker_for_player(tag: str) -> None:
+    """Cuando cambia el club de un jugador (sondeo), recalcula el Croker de todo usuario cuyo
+    jugador PRINCIPAL sea ese (efecto inmediato en el flag; los límites lo leerán de aquí)."""
+    ntag = normalize_tag(tag)
+    conn = get_conn()
+    uids = [r["id"] for r in conn.execute(
+        "SELECT id FROM users WHERE main_player_tag=?", (ntag,)).fetchall()]
+    conn.close()
+    for uid in uids:
+        recompute_croker(uid)
+
+
 def ensure_root(username: str) -> None:
     """Garantiza que el usuario dado sea root (control total). Idempotente. Se llama en el
     arranque DESPUÉS de crear la cuenta personal (init_db corre antes de que exista)."""
@@ -1561,14 +1627,20 @@ def _ensure_ai_usage(conn) -> None:
     conn.execute("""CREATE TABLE IF NOT EXISTS ai_usage (
         id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, kind TEXT,
         input_tokens INTEGER, output_tokens INTEGER)""")
+    # Modelo usado (Sensei multi-modelo): permite calcular el coste por modelo (Opus cuesta más).
+    try:
+        conn.execute("ALTER TABLE ai_usage ADD COLUMN model TEXT")
+    except Exception:  # noqa: BLE001
+        pass  # ya existe
 
 
-def log_ai_usage(kind: str, input_tokens: int, output_tokens: int) -> None:
-    """Registra el consumo de tokens de una llamada a la IA (para métricas de admin)."""
+def log_ai_usage(kind: str, input_tokens: int, output_tokens: int, model: str | None = None) -> None:
+    """Registra el consumo de tokens de una llamada a la IA (para métricas de admin). Guarda
+    el modelo para poder valorar el coste real (Sonnet vs Opus)."""
     conn = get_conn()
     _ensure_ai_usage(conn)
-    conn.execute("INSERT INTO ai_usage (at, kind, input_tokens, output_tokens) VALUES (?,?,?,?)",
-                 (datetime.now(timezone.utc).isoformat(), kind, int(input_tokens or 0), int(output_tokens or 0)))
+    conn.execute("INSERT INTO ai_usage (at, kind, input_tokens, output_tokens, model) VALUES (?,?,?,?,?)",
+                 (datetime.now(timezone.utc).isoformat(), kind, int(input_tokens or 0), int(output_tokens or 0), model))
     conn.commit(); conn.close()
 
 
@@ -1610,13 +1682,20 @@ def admin_metrics(model: str = "claude-sonnet-4-6") -> dict:
     p_in, p_out = _ai_price(model)
 
     def toks(cutoff=None):
+        # Coste POR MODELO: cada familia (sonnet/opus/haiku) tiene su precio; filas antiguas sin
+        # modelo se valoran con el modelo por defecto. Así el coste es correcto con multi-modelo.
         where = " WHERE at>=?" if cutoff is not None else ""
         params = (cutoff.isoformat(),) if cutoff is not None else ()
-        r = one("SELECT COALESCE(SUM(input_tokens),0), COALESCE(SUM(output_tokens),0), COUNT(*) "
-                "FROM ai_usage" + where, params)
-        inp, out = r[0], r[1]
-        cost_usd = inp / 1_000_000 * p_in + out / 1_000_000 * p_out
-        return {"input": inp, "output": out, "tokens": inp + out, "requests": r[2],
+        rows = conn.execute(
+            "SELECT model, COALESCE(SUM(input_tokens),0) AS inp, COALESCE(SUM(output_tokens),0) AS out, "
+            "COUNT(*) AS n FROM ai_usage" + where + " GROUP BY model", params).fetchall()
+        inp = out = n = 0
+        cost_usd = 0.0
+        for r in rows:
+            pi, po = _ai_price(r["model"] or model)
+            cost_usd += r["inp"] / 1_000_000 * pi + r["out"] / 1_000_000 * po
+            inp += r["inp"]; out += r["out"]; n += r["n"]
+        return {"input": inp, "output": out, "tokens": inp + out, "requests": n,
                 "cost_eur": round(cost_usd * _USD_TO_EUR, 4)}
 
     ai = {"total": toks(), "month": toks(now - timedelta(days=30)),
@@ -1629,12 +1708,20 @@ def admin_metrics(model: str = "claude-sonnet-4-6") -> dict:
 
 
 def follow_player(user_id: int, tag: str) -> None:
+    ntag = normalize_tag(tag)
     conn = get_conn()
     conn.execute(
         "INSERT OR IGNORE INTO user_players (user_id, player_tag, added_at) VALUES (?,?,?)",
-        (user_id, normalize_tag(tag), datetime.now(timezone.utc).isoformat()),
+        (user_id, ntag, datetime.now(timezone.utc).isoformat()),
     )
+    # Si el usuario aún no tiene jugador principal, este pasa a serlo (su identidad).
+    row = conn.execute("SELECT main_player_tag FROM users WHERE id=?", (user_id,)).fetchone()
+    set_main = row is not None and not (row["main_player_tag"])
+    if set_main:
+        conn.execute("UPDATE users SET main_player_tag=? WHERE id=?", (ntag, user_id))
     conn.commit(); conn.close()
+    if set_main:
+        recompute_croker(user_id)
 
 
 def unfollow_player(user_id: int, tag: str) -> None:
@@ -1661,6 +1748,8 @@ def user_follows(user_id: int, tag: str) -> bool:
 
 def list_players_for_user(user_id: int) -> list[dict]:
     conn = get_conn()
+    main = conn.execute("SELECT main_player_tag FROM users WHERE id=?", (user_id,)).fetchone()
+    main_tag = main["main_player_tag"] if main else None
     rows = conn.execute(
         """SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name,
                   (SELECT COUNT(*) FROM battles b WHERE b.player_tag = p.tag) AS battles
@@ -1669,7 +1758,14 @@ def list_players_for_user(user_id: int) -> list[dict]:
         (user_id,),
     ).fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["is_main"] = (main_tag is not None and d["tag"] == main_tag)
+        out.append(d)
+    # El jugador principal primero (es la identidad; el perfil público lo muestra por defecto).
+    out.sort(key=lambda x: (not x["is_main"],))
+    return out
 
 
 def link_orphan_players_to(user_id: int) -> None:

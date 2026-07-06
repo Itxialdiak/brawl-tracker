@@ -3,8 +3,9 @@
 Un visitante sin cuenta puede ver la comunidad: la lista de usuarios (ordenada por relevancia) y sus
 perfiles públicos de solo lectura (datos agregados; nunca privados). Solo lectura, sin escritura."""
 import asyncio
+import time
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
 from .. import db, brawl_api
@@ -13,14 +14,34 @@ router = APIRouter()
 
 _ICON_CDN = "https://cdn.brawlify.com/profile-icons/regular/{id}.png"
 
+# Rate-limit sencillo en memoria para la búsqueda pública por tag (evita inundar la tabla
+# de jugadores y la cuota de la API de Supercell desde una vía anónima).
+_LOOKUP_HITS: dict = {}
+_LOOKUP_MAX = 8            # búsquedas
+_LOOKUP_WINDOW = 60.0      # por minuto y por IP
+
+
+def _lookup_rate_ok(ip: str) -> bool:
+    now = time.time()
+    hits = [t for t in _LOOKUP_HITS.get(ip or "?", []) if now - t < _LOOKUP_WINDOW]
+    if len(hits) >= _LOOKUP_MAX:
+        _LOOKUP_HITS[ip or "?"] = hits
+        return False
+    hits.append(now)
+    _LOOKUP_HITS[ip or "?"] = hits
+    return True
+
 
 @router.get("/api/public/player/{tag}")
-async def api_public_player_lookup(tag: str):
+async def api_public_player_lookup(tag: str, request: Request):
     """Búsqueda PÚBLICA por tag (para invitados sin cuenta): da de alta al jugador en el
     tracking (huérfano, sin dueño), lo sondea y devuelve un RESUMEN público. Al reconsultar,
     los datos se actualizan (el poller ya lo tiene fichado). No requiere cuenta."""
     if not brawl_api.TOKEN:
         return JSONResponse({"error": "La búsqueda no está disponible ahora mismo."}, status_code=503)
+    ip = request.client.host if request.client else "?"
+    if not _lookup_rate_ok(ip):
+        return JSONResponse({"error": "Demasiadas búsquedas seguidas. Espera un minuto."}, status_code=429)
     ntag = db.normalize_tag(tag)
     if len(ntag) < 4:
         return JSONResponse({"error": "Tag inválido. Ejemplo: #2P0LYQQRJ"}, status_code=400)
@@ -34,13 +55,14 @@ async def api_public_player_lookup(tag: str):
     name = profile.get("name")
     icon_id = (profile.get("icon") or {}).get("id")
     club_name = (profile.get("club") or {}).get("name")
-    await asyncio.to_thread(db.add_player, ntag, name, icon_id, club_name)     # alta huérfana (idempotente)
+    is_new = await asyncio.to_thread(db.add_player, ntag, name, icon_id, club_name)  # alta huérfana (idempotente)
     await asyncio.to_thread(db.snapshot_brawlers, ntag, profile.get("brawlers"))
-    try:
-        from ..main import _poll_player
-        await _poll_player(ntag)     # sondeo inmediato: recoge sus partidas recientes
-    except Exception as e:  # noqa: BLE001
-        print(f"[public lookup] sondeo de {ntag} falló: {e}")
+    if is_new:  # solo sondeamos al ALTA; en reconsultas ya lo actualiza el poller de fondo
+        try:
+            from ..main import _poll_player
+            await _poll_player(ntag)
+        except Exception as e:  # noqa: BLE001
+            print(f"[public lookup] sondeo de {ntag} falló: {e}")
     f = {"player": ntag}
     report = await asyncio.to_thread(db.report_analytics, f)
     return {
@@ -68,7 +90,8 @@ def api_public_profile(uid: int):
         # Cuentas de sistema (tester) no son visibles públicamente.
         return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
     players = [{"tag": p["tag"], "name": p["name"], "icon_id": p.get("icon_id"),
-                "club_name": p.get("club_name"), "battles": p.get("battles") or 0}
+                "club_name": p.get("club_name"), "battles": p.get("battles") or 0,
+                "is_main": bool(p.get("is_main"))}
                for p in db.list_players_for_user(uid)]
     return {"id": target["id"], "username": target["username"], "country": target.get("country"),
             "relation": "none", "players": players, "guest": True}

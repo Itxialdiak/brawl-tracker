@@ -12,13 +12,13 @@ router = APIRouter()
 # --------------------------- Administración ---------------------------
 
 @router.get("/api/admin/proposals")
-def api_admin_proposals(status: str = Query("pending"), admin: dict = Depends(auth.require_admin)):
+def api_admin_proposals(status: str = Query("pending"), admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     st = status if status in ("pending", "approved", "rejected", "all") else "pending"
     return {"proposals": db.list_proposals(None if st == "all" else st)}
 
 
 @router.get("/api/admin/proposals/{pid}")
-def api_admin_proposal_detail(pid: int, admin: dict = Depends(auth.require_admin)):
+def api_admin_proposal_detail(pid: int, admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     p = db.get_proposal(pid)
     if not p:
         return JSONResponse({"error": "No encontrado."}, status_code=404)
@@ -33,13 +33,13 @@ def api_admin_proposal_detail(pid: int, admin: dict = Depends(auth.require_admin
 
 
 @router.post("/api/admin/proposals/{pid}/approve")
-def api_admin_approve(pid: int, admin: dict = Depends(auth.require_admin)):
+def api_admin_approve(pid: int, admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     ok = db.apply_proposal(pid, admin["id"])
     return {"ok": ok}
 
 
 @router.post("/api/admin/proposals/{pid}/reject")
-def api_admin_reject(pid: int, admin: dict = Depends(auth.require_admin)):
+def api_admin_reject(pid: int, admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     p = db.get_proposal(pid)
     if not p or p["status"] != "pending":
         return JSONResponse({"error": "No disponible."}, status_code=400)
@@ -48,7 +48,7 @@ def api_admin_reject(pid: int, admin: dict = Depends(auth.require_admin)):
 
 
 @router.post("/api/admin/proposals/approve-all")
-def api_admin_approve_all(admin: dict = Depends(auth.require_admin)):
+def api_admin_approve_all(admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     pend = db.list_proposals("pending")
     # aplicar de más antigua a más nueva
     n = 0
@@ -104,15 +104,29 @@ def api_admin_user_delete(uid: int, delete_players: bool = Query(False), admin: 
 
 @router.post("/api/admin/users/{uid}/admin")
 def api_admin_user_setadmin(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    """Compat: alterna admin. MISMA autorización estricta que /role (solo root reparte admin;
+    nadie degrada a root ni a otros admins)."""
     val = bool((payload or {}).get("is_admin"))
     if uid == admin["id"] and not val:
         return JSONResponse({"error": "No puedes quitarte tus propios permisos."}, status_code=400)
-    db.set_user_admin(uid, val)
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    new_role = "admin" if val else "user"
+    if not rbac.can_assign_role(admin, target, new_role):
+        return JSONResponse({"error": "No tienes autoridad para esta acción."}, status_code=403)
+    db.set_user_role(uid, new_role)
     return {"ok": True}
 
 
 @router.post("/api/admin/users/{uid}/translator")
 def api_admin_user_settranslator(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
+    """Compat: alterna traductor. Exige autoridad sobre el usuario (no toca a root/otros admins)."""
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    if uid == admin["id"] or not rbac.can_manage_user(admin, target):
+        return JSONResponse({"error": "No tienes autoridad sobre ese usuario."}, status_code=403)
     db.set_user_translator(uid, bool((payload or {}).get("is_translator")))
     return {"ok": True}
 
@@ -157,32 +171,34 @@ def api_admin_user_approve(uid: int, admin: dict = Depends(auth.require_admin)):
     target = db.get_user_by_id(uid)
     if not target:
         return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    if not rbac.can_manage_user(admin, target):
+        return JSONResponse({"error": "No tienes autoridad sobre esa cuenta."}, status_code=403)
     db.set_user_status(uid, "active")
     return {"ok": True, "status": "active"}
 
 
 @router.post("/api/admin/users/{uid}/status")
 def api_admin_user_status(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
-    """Cambia el estado de la cuenta: active / pending / disabled."""
+    """Cambia el estado de la cuenta: active / pending / disabled. Exige autoridad sobre el
+    usuario SIEMPRE (no hay atajo por estado pendiente)."""
     if not rbac.has_perm(admin, rbac.APPROVE_ACCOUNTS):
         return JSONResponse({"error": "No puedes cambiar el estado de cuentas."}, status_code=403)
     status = (payload or {}).get("status")
+    if status not in ("active", "pending", "disabled"):
+        return JSONResponse({"error": "Estado no válido."}, status_code=400)
     target = db.get_user_by_id(uid)
     if not target:
         return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
     if uid == admin["id"]:
         return JSONResponse({"error": "No puedes cambiar tu propio estado."}, status_code=400)
-    if not rbac.can_manage_user(admin, target) and target.get("status") != "pending":
+    if not rbac.can_manage_user(admin, target):
         return JSONResponse({"error": "No tienes autoridad sobre ese usuario."}, status_code=403)
     db.set_user_status(uid, status)
     return {"ok": True, "status": status}
 
 
-@router.post("/api/admin/users/{uid}/croker")
-def api_admin_user_croker(uid: int, payload: dict = Body(...), admin: dict = Depends(auth.require_admin)):
-    """Marca/desmarca al usuario como jugador Croker (bono de límites)."""
-    db.set_user_croker(uid, bool((payload or {}).get("is_croker")))
-    return {"ok": True}
+# El rol Croker es AUTOMÁTICO (según el club del jugador principal, ver db.recompute_croker);
+# no hay endpoint manual para alternarlo.
 
 
 @router.post("/api/admin/users/{uid}/password")
@@ -201,12 +217,12 @@ def api_admin_user_password(uid: int, payload: dict = Body(...), admin: dict = D
 
 
 @router.get("/api/admin/history")
-def api_admin_history(admin: dict = Depends(auth.require_admin)):
+def api_admin_history(admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     return {"history": db.list_wiki_history()}
 
 
 @router.post("/api/admin/history/{hid}/revert")
-def api_admin_history_revert(hid: int, admin: dict = Depends(auth.require_admin)):
+def api_admin_history_revert(hid: int, admin: dict = Depends(auth.require_perm(rbac.REVIEW_CHANGES))):
     ok = db.revert_wiki_version(hid, admin["id"])
     return {"ok": ok}
 
@@ -244,7 +260,12 @@ def api_admin_player_delete(tag: str, delete_battles: bool = Query(False),
 
 
 @router.get("/api/admin/metrics")
-def api_admin_metrics(admin: dict = Depends(auth.require_admin)):
-    """Usuarios, jugadores, partidas, informes y consumo de IA (tokens + coste en €)."""
+def api_admin_metrics(user: dict = Depends(auth.require_admin_panel)):
+    """Usuarios, jugadores, partidas, informes y consumo de IA (tokens + coste en €).
+    Los COLABORADORES ven las métricas de página pero NO las de consumo (se redacta `ai`)."""
     from .. import coach
-    return db.admin_metrics(coach.MODEL)
+    m = db.admin_metrics(coach.MODEL)
+    if not rbac.has_perm(user, rbac.VIEW_CONSUMPTION):
+        m.pop("ai", None)
+        m["consumption_hidden"] = True
+    return m

@@ -57,8 +57,24 @@ async def api_add_player(payload: dict = Body(...), user: dict = Depends(auth.re
     return {"tag": tag, "name": name, "is_new": is_new}
 
 
+@router.post("/api/players/{tag}/main")
+def api_set_main_player(tag: str, user: dict = Depends(auth.require_user)):
+    """Declara el jugador PRINCIPAL de la cuenta (identidad; def. del perfil público). Debe
+    ser un jugador que sigues. Recalcula el rol Croker según el club de ese jugador."""
+    if not db.set_main_player(user["id"], tag):
+        return JSONResponse({"error": "Ese jugador no está en tu cuenta."}, status_code=400)
+    return {"ok": True, "main": db.normalize_tag(tag)}
+
+
 @router.delete("/api/players/{tag}")
 def api_remove_player(tag: str, user: dict = Depends(auth.require_user)):
+    """Deja de seguir a un jugador. No permite quitar el PRINCIPAL (es tu identidad; primero
+    cambia el principal a otro)."""
+    ntag = db.normalize_tag(tag)
+    if db.get_main_player(user["id"]) == ntag:
+        return JSONResponse(
+            {"error": "Es tu jugador principal. Marca otro como principal antes de quitarlo."},
+            status_code=400)
     # Solo lo desvincula de este usuario; si no lo sigue nadie más, db lo limpia.
     db.unfollow_player(user["id"], tag)
-    return {"removed": db.normalize_tag(tag)}
+    return {"removed": ntag}

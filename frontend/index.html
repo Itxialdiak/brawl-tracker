@@ -232,6 +232,22 @@
       <div class="field-saved" id="country-saved"></div>
       <button class="ghost modal-btn" onclick="openSocialLink()">🔗 Vincular redes sociales</button>
       <button class="ghost modal-btn" onclick="openPassword()">Resetear contraseña</button>
+      <button class="ghost modal-btn" onclick="openTerms()">📄 Términos de uso</button>
+    </div>
+  </div>
+
+  <!-- Ventana: gestor de jugadores (jugador principal + seguidos) -->
+  <div id="players-modal" class="modal-overlay" onclick="if(event.target===this)closePlayersManager()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closePlayersManager()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title">Tus jugadores</h3>
+      <p class="modal-sub">Tu <b>jugador principal</b> es tu identidad: es el que aparece por defecto en tu perfil público y define tu club (y si eres del club Crokers). El resto son jugadores que sigues (amigos o compañeros). Siempre puedes tener tu jugador principal.</p>
+      <div class="pm-add">
+        <input type="text" id="pm-tag" placeholder="#TAG del jugador" autocomplete="off" onkeydown="if(event.key==='Enter')addManagedPlayer()" />
+        <button class="btn" onclick="addManagedPlayer()">＋ Añadir</button>
+      </div>
+      <div class="auth-error" id="pm-err"></div>
+      <div id="pm-list" class="pm-list"></div>
     </div>
   </div>
 
@@ -791,6 +807,7 @@
           </div>
         </div>
         <p class="dojo-pre">Ahora, en base a tus intereses, prepararé una lección para ti.</p>
+        <div id="sensei-model-row" class="sensei-model-row" style="display:none"></div>
         <div class="row-top dojo-actions">
           <button class="btn dojo-btn" id="coach-btn">Preparar lección</button>
           <span class="coach-hint" id="coach-hint"></span>
@@ -1308,13 +1325,13 @@
 
   <section class="app-section" id="section-admin">
     <div class="admin-tabs">
-      <button class="atab active" data-atab="pending" onclick="showAdminTab('pending')">Cambios pendientes <span class="admin-badge" id="admin-tab-badge" style="display:none">0</span></button>
-      <button class="atab" data-atab="users" onclick="showAdminTab('users')">Usuarios <span class="admin-badge" id="admin-users-badge" style="display:none">0</span></button>
-      <button class="atab" data-atab="roles" onclick="showAdminTab('roles')">Roles</button>
-      <button class="atab" data-atab="players" onclick="showAdminTab('players')">Jugadores</button>
-      <button class="atab" data-atab="metrics" onclick="showAdminTab('metrics')">Métricas</button>
-      <button class="atab" data-atab="history" onclick="showAdminTab('history')">Historial</button>
-      <button class="atab" data-atab="i18n" onclick="showAdminTab('i18n')">Traducciones</button>
+      <button class="atab active" data-atab="pending" data-perm="review_changes" onclick="showAdminTab('pending')">Cambios pendientes <span class="admin-badge" id="admin-tab-badge" style="display:none">0</span></button>
+      <button class="atab" data-atab="users" data-perm="manage_users" onclick="showAdminTab('users')">Usuarios <span class="admin-badge" id="admin-users-badge" style="display:none">0</span></button>
+      <button class="atab" data-atab="roles" data-perm="assign_roles" onclick="showAdminTab('roles')">Roles</button>
+      <button class="atab" data-atab="players" data-perm="manage_content" onclick="showAdminTab('players')">Jugadores</button>
+      <button class="atab" data-atab="metrics" data-perm="view_page_metrics" onclick="showAdminTab('metrics')">Métricas</button>
+      <button class="atab" data-atab="history" data-perm="review_changes" onclick="showAdminTab('history')">Historial</button>
+      <button class="atab" data-atab="i18n" data-perm="translate" onclick="showAdminTab('i18n')">Traducciones</button>
     </div>
 
     <div class="admin-panel active" id="admin-pending">

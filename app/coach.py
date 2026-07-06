@@ -18,25 +18,66 @@ MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 MIN_BATTLES = 3  # por debajo de esto no merece la pena analizar
 
+# Catálogo de modelos del Sensei. El "standard" es el configurado por entorno (Sonnet, barato).
+# Los premium (Opus) hacen un análisis MÁS PROFUNDO, cuestan más "Pergaminos" (cuando el sistema
+# esté activo) y de momento están RESTRINGIDOS a administradores. `tokens_cost` = coste en Pergaminos.
+MODELS = {
+    "standard": {"id": MODEL, "label": "Sensei", "sub": "análisis estándar",
+                 "tokens_cost": 1, "admin_only": False, "max_tokens": 3200},
+    "opus-4-6": {"id": "claude-opus-4-6", "label": "Gran Sensei · Opus 4.6", "sub": "análisis profundo",
+                 "tokens_cost": 5, "admin_only": True, "max_tokens": 5000},
+    "opus-4-7": {"id": "claude-opus-4-7", "label": "Gran Sensei · Opus 4.7", "sub": "análisis profundo",
+                 "tokens_cost": 6, "admin_only": True, "max_tokens": 5000},
+    "opus-4-8": {"id": "claude-opus-4-8", "label": "Gran Sensei · Opus 4.8", "sub": "análisis profundo (máximo)",
+                 "tokens_cost": 7, "admin_only": True, "max_tokens": 5500},
+}
+DEFAULT_MODEL_KEY = "standard"
+
+
+def resolve_model(key: str | None, is_admin: bool) -> dict:
+    """Devuelve la config del modelo pedido si el usuario puede usarlo; si no, el estándar."""
+    m = MODELS.get(key or "")
+    if not m or (m.get("admin_only") and not is_admin):
+        return MODELS[DEFAULT_MODEL_KEY]
+    return m
+
+
+def models_for(is_admin: bool) -> list:
+    """Modelos que puede elegir el usuario (los premium solo si es admin)."""
+    return [{"key": k, "label": m["label"], "sub": m["sub"], "tokens_cost": m["tokens_cost"],
+             "premium": bool(m["admin_only"]), "default": k == DEFAULT_MODEL_KEY}
+            for k, m in MODELS.items() if (is_admin or not m["admin_only"])]
+
 
 def configured() -> bool:
     return bool(API_KEY)
 
 
 SYSTEM = (
-    "Eres un Sensei (maestro entrenador) de Brawl Stars: cercano, motivador y honesto. "
-    "Analizas las estadísticas REALES de un alumno y le devuelves un plan de mejora en "
-    "castellano. Básate SOLO en los datos que te dan; no inventes cifras ni partidas. "
-    "Puedes usar conocimiento general del juego (estilo de cada brawler, posicionamiento, "
-    "control de mapa, gestión de rangos) pero conéctalo siempre con los patrones del alumno "
-    "y, cuando te lo den, con el meta comunitario. El informe tiene TRES partes, cada una con "
-    "su título en **negrita**: (1) un apartado APRECIATIVO que reconozca méritos y logros "
-    "reales del alumno según los datos (sé específico, motiva); (2) ÁREAS DE MEJORA concretas "
-    "(debilidades, malos emparejamientos, mapas y modos flojos, brawlers a dejar de pickear) "
-    "con ejemplos claros de cómo corregirlas; (3) QUÉ PRACTICAR: pasos accionables y medibles, "
-    "tanto para corregir lo flojo como para potenciar y asentar lo que ya hace bien. No uses "
-    "tablas. Si una muestra es "
-    "pequeña, dilo en vez de sacar conclusiones tajantes. Sé concreto y breve en cada sección."
+    "Eres un Sensei (maestro entrenador) de Brawl Stars: cercano, motivador, honesto y RIGUROSO. "
+    "Analizas las estadísticas REALES de un alumno —win rate, RENDIMIENTO AJUSTADO (win rate "
+    "encogido por nº de partidas y corregido por la dificultad de copas de los rivales), la FIABILIDAD "
+    "de cada dato, los ROLES que juega, su FLEXIBILIDAD/variabilidad, el rating de cuenta y el meta "
+    "comunitario— y devuelves un plan de mejora en castellano. Básate SOLO en los datos que te dan; "
+    "no inventes cifras ni partidas. Puedes usar conocimiento del juego (estilo de cada brawler, "
+    "posicionamiento, control de mapa, gestión de rangos) pero conéctalo siempre con los patrones del "
+    "alumno y, cuando te lo den, con el meta comunitario.\n"
+    "REGLAS DE RIGOR: (a) prioriza el RENDIMIENTO AJUSTADO y la FIABILIDAD sobre el win rate crudo; "
+    "con muestras pequeñas (fiabilidad baja) sé prudente y DILO, no saques conclusiones tajantes; "
+    "(b) señala el posible SESGO cuando los datos son escasos o están concentrados en pocos brawlers/roles; "
+    "(c) analiza su perfil de ROLES y su FLEXIBILIDAD (¿especialista o versátil?, ¿en qué roles rinde y en "
+    "cuáles no?).\n"
+    "ESTRUCTURA DEL INFORME (cada apartado con su título en **negrita**): "
+    "(1) **Aprecio** — méritos y logros reales según los datos, sé específico y motiva; "
+    "(2) **Roles y flexibilidad** — qué roles juegas y dominas, tu versatilidad y qué implica para tu juego; "
+    "(3) **Áreas de mejora** — debilidades, malos emparejamientos, mapas/modos/brawlers flojos, con el porqué; "
+    "(4) **Fiabilidad y sesgo** — qué conclusiones son sólidas y cuáles provisionales por poca muestra o sesgo; "
+    "(5) **Qué practicar** — pasos accionables y medibles; "
+    "(6) **Análisis final** — una síntesis clara con la prioridad nº1 y el rumbo a seguir. "
+    "No uses tablas. Extiéndete donde los datos lo justifiquen y sé breve donde no.\n"
+    "Entre los retos, incluye SIEMPRE alguna MISIÓN DE CALIDAD DE DATOS (métrica \"games\": "
+    "'juega N partidas más con <brawler> o en <modo>') allí donde la muestra sea escasa o la fiabilidad "
+    "baja, para que los próximos análisis sean más fiables."
 )
 
 
@@ -79,6 +120,8 @@ def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> 
     by_map = db.winrate_by("map", f)
     vs = db.winrate_vs(f)
     by_brawler = [] if brawler else db.winrate_by("brawler", f)
+    by_role = db.winrate_by_role(f)
+    account_wide = not any([brawler, mode, map, role])
 
     L = []
     bits = []
@@ -86,12 +129,25 @@ def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> 
     if mode: bits.append(f"el modo {mode}")
     if map: bits.append(f"el mapa {map}")
     L.append("Ámbito: " + (", ".join(bits) if bits else "la cuenta entera") + ".")
+    L.append("NOTA DE LECTURA: 'rend' = rendimiento ajustado (win rate encogido por nº de partidas + "
+             "dificultad por copas; más fiable que el win rate crudo). 'fiab' = fiabilidad del dato en % "
+             "(sube con el nº de partidas). Prioriza 'rend' y 'fiab' sobre el win rate crudo.")
     wr = ov["winrate"]
     L.append(
         f"Global: {ov['total']} partidas, win rate {wr if wr is not None else 's/d'}%, "
         f"{ov['wins']}V-{ov['losses']}D, balance de trofeos {ov['trophy_delta']:+d}, "
         f"jugador estelar {ov['star_rate'] if ov['star_rate'] is not None else 's/d'}%."
     )
+    if account_wide:
+        try:
+            rt = db.account_rating(player)
+            if rt and rt.get("overall") is not None:
+                L.append(
+                    f"Rating de cuenta (BrawlSensei): {round(rt['overall'])}/100 ({rt.get('tier', '')}). "
+                    f"Sub-scores — Colección {round(rt.get('collection') or 0)}, Maestría {round(rt.get('mastery') or 0)}, "
+                    f"Eficiencia {round(rt.get('efficiency') or 0)}, Pushing {round(rt.get('pushing') or 0)}.")
+        except Exception:  # noqa: BLE001
+            pass
     if ov.get("annotated"):
         L.append(
             f"Stats manuales (sobre {ov['annotated']} partidas anotadas a mano, muestra parcial): "
@@ -99,12 +155,30 @@ def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> 
             f"daño {ov['avg_damage']}, curación {ov['avg_healing']}."
         )
 
+    # Roles y flexibilidad
+    rok = [r for r in by_role if (r.get("total") or 0) >= 3 and r.get("winrate") is not None]
+    if rok:
+        rok = sorted(rok, key=lambda r: -(r.get("usage_pct") or 0))
+        L.append("Roles que juegas (uso%, win rate, rend, fiab): " + "; ".join(
+            f"{r['label']} — uso {r.get('usage_pct')}%, WR {r['winrate']}%, rend {r.get('shrunk_score')}, fiab {r.get('reliability')}%"
+            for r in rok))
+        n_relevant = len([r for r in rok if (r.get("usage_pct") or 0) >= 10])
+        n_brawlers = len([r for r in by_brawler if (r.get("total") or 0) >= 3]) if by_brawler else 0
+        top_role = rok[0]
+        conc = round(top_role.get("usage_pct") or 0)
+        L.append(
+            f"Flexibilidad: {n_relevant} rol(es) con peso relevante; {n_brawlers} brawlers con muestra suficiente; "
+            f"tu rol más jugado ({top_role['label']}) concentra el {conc}% del uso. "
+            "(Concentración alta = especialista, más predecible pero datos más sólidos por rol; "
+            "reparto amplio = versátil y adaptable, pero datos más diluidos por rol.)")
+
     if by_brawler:
         top = sorted([r for r in by_brawler if r["total"] >= 2 and r["winrate"] is not None],
                      key=lambda r: -r["total"])[:12]
         if top:
-            L.append("Por brawler (más jugados): " + "; ".join(
-                f"{r['label']} {r['winrate']}% en {r['total']}p (estelar {r['star_rate'] if r['star_rate'] is not None else 's/d'}%)"
+            L.append("Por brawler (más jugados; WR, rend, fiab, estelar): " + "; ".join(
+                f"{r['label']} {r['winrate']}% en {r['total']}p (rend {r.get('shrunk_score')}, fiab {r.get('reliability')}%, "
+                f"estelar {r['star_rate'] if r['star_rate'] is not None else 's/d'}%)"
                 for r in top))
 
     mok = [r for r in by_mode if r["winrate"] is not None]
@@ -146,14 +220,30 @@ def build_summary(player: str, brawler=None, mode=None, map=None, role=None) -> 
     except Exception:  # noqa: BLE001
         pass
 
+    # Fiabilidad y sesgo de la muestra (para que el Sensei module su confianza y proponga misiones de datos).
+    low_brawlers = [r for r in (by_brawler or []) if 0 < (r.get("total") or 0) < 6]
+    thin_modes = [r for r in by_mode if 0 < (r.get("total") or 0) < 6]
+    notes = [f"muestra total {ov['total']} partidas"]
+    if low_brawlers:
+        notes.append(f"{len(low_brawlers)} brawlers con <6 partidas (WR poco fiable): "
+                     + ", ".join(r["label"] for r in low_brawlers[:8]))
+    if thin_modes:
+        notes.append(f"{len(thin_modes)} modos con <6 partidas")
+    notes.append("donde la fiabilidad sea baja, propón misiones de calidad de datos (jugar más) en vez de "
+                 "conclusiones tajantes")
+    L.append("Fiabilidad y sesgo: " + "; ".join(notes) + ".")
+
     return {"total": ov["total"], "text": "\n".join(L)}
 
 
-async def generate_report(player: str, filters: dict) -> tuple[str, str, list]:
+async def generate_report(player: str, filters: dict, model_key: str | None = None,
+                          is_admin: bool = False) -> tuple[str, str, list]:
     """Genera (nombre, contenido, retos) de un informe del Sensei. El nombre lo decide
     Claude; los retos son misiones medibles (validadas contra el catálogo de métricas).
-    Si Claude no devuelve un JSON de retos válido, se usan retos deterministas."""
+    Si Claude no devuelve un JSON de retos válido, se usan retos deterministas.
+    `model_key` elige el modelo (los premium/Opus solo si `is_admin`)."""
     label = scope_label_from(filters)
+    model = resolve_model(model_key, is_admin)
     if not API_KEY:
         raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env. Saca una en https://console.anthropic.com y reinicia.")
 
@@ -170,7 +260,7 @@ async def generate_report(player: str, filters: dict) -> tuple[str, str, list]:
 
     client = AsyncAnthropic(api_key=API_KEY)
     msg = await client.messages.create(
-        model=MODEL, max_tokens=3000, system=_system_for(filters.get("lang")),
+        model=model["id"], max_tokens=model["max_tokens"], system=_system_for(filters.get("lang")),
         messages=[{
             "role": "user",
             "content": (
@@ -192,7 +282,7 @@ async def generate_report(player: str, filters: dict) -> tuple[str, str, list]:
         }],
     )
     try:
-        db.log_ai_usage("report", msg.usage.input_tokens, msg.usage.output_tokens)
+        db.log_ai_usage("report", msg.usage.input_tokens, msg.usage.output_tokens, model["id"])
     except Exception:  # noqa: BLE001
         pass
     text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()

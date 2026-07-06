@@ -26,11 +26,12 @@ def _public_report(r: dict, with_content: bool) -> dict:
     return out
 
 
-async def _run_report(report_id: int, player: str, filters: dict, user_id: int):
+async def _run_report(report_id: int, player: str, filters: dict, user_id: int,
+                      model_key: str = None, is_admin: bool = False):
     """Genera el informe llamando a Claude, lo guarda y crea los retos del Sensei que
     propone. Corre por su cuenta en segundo plano."""
     try:
-        name, content, new_retos = await coach.generate_report(player, filters)
+        name, content, new_retos = await coach.generate_report(player, filters, model_key, is_admin)
         await asyncio.to_thread(db.set_report_result, report_id, name, content)
         await asyncio.to_thread(_assign_sensei_retos, user_id, player, report_id, new_retos)
     except Exception as e:  # noqa: BLE001
@@ -81,8 +82,10 @@ async def api_create_report(payload: dict = Body(...), user: dict = Depends(auth
         "lang": (payload or {}).get("lang") or "es",  # el Sensei responde en el idioma de la app
     }
     label = coach.scope_label_from(filters)
+    model_key = (payload or {}).get("model")   # premium (Opus) solo para admin; el resto cae a estándar
+    is_admin = bool(user.get("is_admin"))
     rid = await asyncio.to_thread(db.create_report, player, json.dumps(filters), label)
-    task = asyncio.create_task(_run_report(rid, player, filters, user["id"]))
+    task = asyncio.create_task(_run_report(rid, player, filters, user["id"], model_key, is_admin))
     _report_tasks.add(task)
     task.add_done_callback(_report_tasks.discard)
     return _public_report(await asyncio.to_thread(db.get_report, rid), with_content=False)
@@ -120,9 +123,12 @@ async def api_delete_report(report_id: int, user: dict = Depends(auth.require_us
 
 @router.get("/api/sensei/status")
 def api_sensei_status(user: dict = Depends(auth.require_user)):
-    """Estado del candado del Sensei (para el botón Consultar) y si la IA está lista."""
+    """Estado del candado del Sensei (para el botón Consultar), si la IA está lista y los
+    modelos disponibles (los premium/Opus solo aparecen para administradores)."""
+    is_admin = bool(user.get("is_admin"))
     return {"configured": coach.configured(),
-            "gate": retos.sensei_gate(user["id"], bool(user.get("is_admin")))}
+            "gate": retos.sensei_gate(user["id"], is_admin),
+            "models": coach.models_for(is_admin)}
 
 
 @router.post("/api/sensei/reset")

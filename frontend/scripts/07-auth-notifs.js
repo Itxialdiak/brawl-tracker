@@ -23,10 +23,12 @@ function setUser(user) {
   renderUserSwitch();
   const cs = $("um-country"); if (cs) cs.value = (user && user.country) || "";
   const navAdmin = $("nav-admin");
-  // Administración: visible para admins y para traductores/colaboradores (estos solo verán
-  // la pestaña "Traducciones"; el resto se ocultan por CSS con body.tr-only).
-  if (navAdmin) navAdmin.style.display = (user && (user.is_admin || user.is_translator)) ? "" : "none";
-  document.body.classList.toggle("tr-only", !!(user && user.is_translator && !user.is_admin));
+  // Administración: visible para quien tenga acceso a ALGÚN panel (admin/root, colaborador
+  // o traductor). Qué pestañas ve cada uno se decide por permisos (applyAdminTabPerms).
+  const perms = (user && user.permissions) || [];
+  const hasPanel = perms.includes("admin_panel") || perms.includes("translate");
+  if (navAdmin) navAdmin.style.display = (user && hasPanel) ? "" : "none";
+  applyAdminTabPerms(perms);
   const bell = $("notif-bell"); if (bell) bell.style.display = user ? "inline-flex" : "none";
   if (user) startNotifPolling(); else { clearInterval(_notifTimer); }
 }
@@ -186,6 +188,7 @@ function renderUserSwitch() {
     </button>
     <div class="user-menu" id="user-menu">
       <button class="user-menu-opt" onclick="userMenu('cuenta')">⚙️ Cuenta</button>
+      <button class="user-menu-opt" onclick="userMenu('jugadores')">🎮 Jugadores</button>
       <button class="user-menu-opt" onclick="userMenu('amigos')">👥 Amigos <span class="user-menu-badge" id="user-fr-badge" style="display:none"></span></button>
       <button class="user-menu-opt" onclick="userMenu('buscar')">🔎 Buscar usuarios</button>
       <button class="user-menu-opt" onclick="userMenu('mensajes')">✉️ Mensajes <span class="user-menu-badge" id="user-msg-badge" style="display:none"></span></button>
@@ -211,11 +214,69 @@ document.addEventListener("click", (e) => {
 function userMenu(which) {
   closeUserMenu();
   if (which === "cuenta") openAccount();
+  else if (which === "jugadores") openPlayersManager();
   else if (which === "amigos") openFriends();
   else if (which === "buscar") openUsers();
   else if (which === "mensajes") openMessages();
   else if (which === "salir") doLogout();
 }
+/* ---------- Gestor de jugadores (jugador principal + seguidos) ---------- */
+async function openPlayersManager() {
+  $("players-modal").classList.add("open");
+  $("pm-err").textContent = "";
+  await renderPlayersManager();
+}
+function closePlayersManager() { $("players-modal").classList.remove("open"); }
+async function renderPlayersManager() {
+  const box = $("pm-list");
+  box.innerHTML = `<p class="evd-muted" style="padding:12px">Cargando…</p>`;
+  let players;
+  try { players = await getJSON("/api/players"); }
+  catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:12px">No se pudo cargar.</p>`; return; }
+  if (!players.length) {
+    box.innerHTML = `<p class="evd-muted" style="padding:12px">Aún no sigues a ningún jugador. Añade tu tag arriba: será tu <b>jugador principal</b>.</p>`;
+    return;
+  }
+  box.innerHTML = players.map((p) => {
+    const icon = p.icon_url ? `<img class="pm-icon" src="${esc(p.icon_url)}" onerror="this.style.display='none'">` : `<span class="pm-icon"></span>`;
+    const tagJ = esc(JSON.stringify(p.tag)), nameJ = esc(JSON.stringify(p.name || p.tag));
+    return `<div class="pm-row ${p.is_main ? "is-main" : ""}">
+      ${icon}
+      <div class="pm-tx"><span class="pm-name">${esc(p.name || p.tag)}${p.is_main ? ' <span class="pm-badge">★ principal</span>' : ""}</span>
+        <span class="pm-meta">${esc(p.tag)}${p.club_name ? " · " + esc(p.club_name) : ""} · ${(p.battles || 0).toLocaleString("es-ES")} partidas</span></div>
+      <div class="pm-acts">
+        ${p.is_main ? "" : `<button class="ghost mini-btn" onclick="setMainPlayer(${tagJ})">Hacer principal</button>`}
+        ${p.is_main ? "" : `<button class="danger-ghost mini-btn" onclick="removeManagedPlayer(${tagJ}, ${nameJ})">Quitar</button>`}
+      </div></div>`;
+  }).join("");
+}
+async function setMainPlayer(tag) {
+  const { ok, d } = await apiSend("/api/players/" + encodeURIComponent(tag) + "/main", "POST", {});
+  if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
+  wikiToast("Jugador principal actualizado ✓", "ok");
+  await renderPlayersManager();
+  // El club del principal define el rol Croker: refresca la sesión en memoria.
+  try { const me = await fetchMe(); if (me) { currentUser = me; setUser(me); } } catch (_) {}
+}
+async function removeManagedPlayer(tag, name) {
+  if (!confirm("¿Dejar de seguir a «" + name + "»? (No borra al jugador del tracking, solo lo quita de tu cuenta.)")) return;
+  const { ok, d } = await apiSend("/api/players/" + encodeURIComponent(tag), "DELETE");
+  if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
+  await renderPlayersManager();
+  if (typeof refreshAll === "function") refreshAll();   // actualiza el selector de jugador de la app
+}
+async function addManagedPlayer() {
+  const inp = $("pm-tag"), tag = inp.value.trim();
+  $("pm-err").textContent = "";
+  if (tag.length < 4) { $("pm-err").textContent = "Introduce un tag válido (ej. #2P0LYQQRJ)."; return; }
+  const { ok, d } = await apiSend("/api/players", "POST", { tag });
+  if (!ok) { $("pm-err").textContent = d.error || d.detail || "No se pudo añadir."; return; }
+  inp.value = "";
+  wikiToast(d.is_new === false ? "Ese jugador ya estaba en tu cuenta" : "Jugador añadido ✓", "ok");
+  await renderPlayersManager();
+  if (typeof refreshAll === "function") refreshAll();
+}
+
 let _frCount = 0, _msgCount = 0;
 function updateUserDot() {
   const dot = $("user-fr-dot");
@@ -627,7 +688,7 @@ function renderPublicProfile() {
   }
   const players = d.players || [];
   const picker = players.length > 1
-    ? `<div class="pub-players">${players.map((p) => `<button class="pub-player-chip ${p.tag === _pubTag ? "active" : ""}" onclick="pubSelectPlayer('${esc(p.tag)}')">${esc(p.name || p.tag)}</button>`).join("")}</div>`
+    ? `<div class="pub-players">${players.map((p) => `<button class="pub-player-chip ${p.tag === _pubTag ? "active" : ""} ${p.is_main ? "is-main" : ""}" onclick="pubSelectPlayer('${esc(p.tag)}')" ${p.is_main ? 'title="Jugador principal"' : ""}>${p.is_main ? "★ " : ""}${esc(p.name || p.tag)}</button>`).join("")}</div>`
     : "";
   $("pub-body").innerHTML = `
     <div class="pub-head"><div class="pub-name">@${esc(d.username)}</div><div class="pub-acts">${acts}</div></div>

@@ -380,10 +380,7 @@ function showSection(name) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   }
   if (name === "guide") loadWikiTree();
-  if (name === "admin") {
-    if (currentUser && !currentUser.is_admin && currentUser.is_translator) showAdminTab("i18n");
-    else loadAdminPending();
-  }
+  if (name === "admin") openDefaultAdminTab();
   if (name === "leagues") loadLeagues();
   if (name === "actualizaciones") loadActualizaciones();
   if (name === "servers") loadServerStatus();

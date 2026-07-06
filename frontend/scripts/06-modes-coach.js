@@ -111,7 +111,7 @@ function renderVersatileTop13(top) {
       <div class="podium">${podiumHtml}</div>
       <div class="podium-extra extra-right"><div class="extra-title">Win rate medio</div>${effRows}</div>
     </div>
-    ${restHtml ? `<div class="top-mini-row">${restHtml}</div>` : ""}</div>`;
+    ${collapsibleRest(restHtml, top.slice(3, 13).length)}</div>`;
 }
 
 async function gotoBrawler(id) {
@@ -210,8 +210,9 @@ function hubRoleRow(r) {
     <div class="hub-role-bar"><span style="width:${Math.max(2, wr || 0)}%;background:${col}"></span></div>
     <span class="hub-role-wr" style="color:${col}">${wr == null ? "—" : wr + "%"}</span>${use}</div>`;
 }
-function renderHubRoles(roles) {
+function renderHubRoles(roles, scope) {
   roles = roles || {};
+  const isMap = scope === "map";
   const box = (title, sub, list) => {
     const rows = (list || []).map(hubRoleRow).join("") || `<div class="empty">Juega más partidas para tener datos por rol.</div>`;
     return `<div class="hub-roles-box">
@@ -220,8 +221,8 @@ function renderHubRoles(roles) {
       <div class="hub-roles-list">${rows}</div></div>`;
   };
   return `<div class="hub-roles-row">
-    ${box("Mejores roles según la comunidad", "Media en los mapas de este modo", roles.community)}
-    ${box("Tus mejores roles", "Tu rendimiento en este modo", roles.your)}
+    ${box("Mejores roles según la comunidad", isMap ? "En este mapa" : "Media en los mapas de este modo", roles.community)}
+    ${box("Tus mejores roles", isMap ? "Tu rendimiento en este mapa" : "Tu rendimiento en este modo", roles.your)}
   </div>`;
 }
 function renderMetaComunitario(d) {
@@ -283,6 +284,10 @@ function renderMapModal(d) {
     <div class="mm-head"${headBg}>
       <h2>${esc(mapNameEs(d.map))}</h2>
       <div class="mm-wr">${wr == null ? "Aún no juegas aquí" : `Tu win rate: <b style="color:${pctColor(wr)}">${wr}%</b> · ${d.your.total} partidas`}</div>
+    </div>
+    <div class="mm-roles">
+      <div class="mm-title">Roles en este mapa</div>
+      ${renderHubRoles(d.roles, "map")}
     </div>
     <div class="mm-body">
       <div class="mm-col">
@@ -575,6 +580,26 @@ function heatmap(ct) {
 /* ---------- Sensei: informes + retos generados + candado de entrenamiento ---------- */
 let reportPollTimer = null;
 let senseiGate = null;
+let senseiModels = [], senseiModel = null;
+// Selector de modelo del Sensei: solo se muestra si hay algún modelo PREMIUM disponible
+// (hoy restringido a administradores). Los premium (Opus) hacen un análisis más profundo.
+function renderSenseiModels() {
+  const row = $("sensei-model-row");
+  if (!row) return;
+  const hasPremium = senseiModels.some((m) => m.premium);
+  if (!hasPremium || senseiModels.length <= 1) { row.style.display = "none"; row.innerHTML = ""; senseiModel = null; return; }
+  if (!senseiModel || !senseiModels.some((m) => m.key === senseiModel)) {
+    senseiModel = (senseiModels.find((m) => m.default) || senseiModels[0]).key;
+  }
+  const chips = senseiModels.map((m) =>
+    `<button class="sensei-model-chip ${senseiModel === m.key ? "active" : ""} ${m.premium ? "premium" : ""}" data-model="${esc(m.key)}" title="${esc(m.sub)}${m.premium ? " · cuesta " + m.tokens_cost + " Pergaminos" : ""}">
+      ${esc(m.label)}${m.premium ? ` <span class="smc-cost">◆${m.tokens_cost}</span>` : ""}</button>`).join("");
+  row.style.display = "";
+  row.innerHTML = `<span class="smc-lbl">Profundidad del análisis:</span><div class="sensei-model-chips">${chips}</div>`;
+  row.querySelectorAll(".sensei-model-chip").forEach((c) => c.addEventListener("click", () => {
+    senseiModel = c.dataset.model; renderSenseiModels();
+  }));
+}
 
 function senseiImgFallback(img) {
   // Si no existe media/sensei.png, deja un dojo con emoji en su lugar.
@@ -656,6 +681,8 @@ async function loadReports() {
     ]);
   } catch (e) { return; }
   senseiGate = status && status.gate ? status.gate : null;
+  senseiModels = (status && status.models) || [];
+  renderSenseiModels();
   renderReportList(reports);
   const generating = reports.some((r) => r.status === "generating");
   setCoachButton(generating);
@@ -716,6 +743,7 @@ async function generateReport() {
     map: senseiSel.map.join(",") || null,
     role: senseiSel.role.join(",") || null,
     lang: (typeof currentLang === "function" ? currentLang() : "es"),  // el Sensei contesta en el idioma de la app
+    model: senseiModel || null,   // modelo elegido (premium/Opus solo si eres admin; si no, cae a estándar)
   };
   setCoachButton(true);
   try {

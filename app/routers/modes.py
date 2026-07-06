@@ -50,7 +50,34 @@ def _brawler_title(name: str | None) -> str:
     return (name or "").title()
 
 
-def _mode_insights(your_ov: dict, your_brawlers: list, comm: dict, mode_es: str) -> list:
+def _role_insight(your_roles: list, comm_roles: list, mode_es: str):
+    """Frase de desviación por ROL: compara tu rendimiento/uso en el rol que mejor le
+    funciona a la comunidad en este modo."""
+    if not comm_roles or not your_roles:
+        return None
+    cr = sorted([r for r in comm_roles if (r.get("total") or 0) >= 5 and r.get("winrate") is not None],
+                key=lambda r: r["winrate"], reverse=True)
+    if not cr:
+        return None
+    top = cr[0]
+    mine = {r["label"]: r for r in your_roles}.get(top["label"])
+    if not mine or (mine.get("total") or 0) < 3:
+        return (f"La comunidad rinde muy bien con el rol {top['label']} en {mode_es} "
+                f"({top['winrate']}% WR) y tú apenas lo juegas.")
+    yw = mine.get("winrate")
+    if yw is not None:
+        d = round(yw - top["winrate"], 1)
+        if d <= -5:
+            return (f"Con el rol {top['label']} en {mode_es} rindes {abs(d)} puntos por debajo de "
+                    f"la comunidad ({yw}% vs {top['winrate']}%).")
+        if d >= 5:
+            return (f"Con el rol {top['label']} en {mode_es} rindes {d} puntos por encima de "
+                    f"la comunidad ({yw}% vs {top['winrate']}%).")
+    return None
+
+
+def _mode_insights(your_ov: dict, your_brawlers: list, comm: dict, mode_es: str,
+                   your_roles: list = None, comm_roles: list = None) -> list:
     """Frases de desviación frente a la media de BrawlSensei (lo que engancha)."""
     out = []
     yw, cw, yt = your_ov.get("winrate"), comm.get("winrate"), your_ov.get("total") or 0
@@ -79,7 +106,10 @@ def _mode_insights(your_ov: dict, your_brawlers: list, comm: dict, mode_es: str)
     if best:
         yb, d, cb = best
         out.append(f"Con {_brawler_title(yb['label'])} rindes {d} puntos sobre la media ({yb['winrate']}% vs {cb['winrate']}%): es de tus armas en {mode_es}.")
-    return out[:3]
+    ri = _role_insight(your_roles, comm_roles, mode_es)
+    if ri:
+        out.append(ri)
+    return out[:4]
 
 
 def _draft_helper(your_brawlers: list, comm: dict) -> list:
@@ -169,7 +199,7 @@ async def api_mode_hub(player: str = Query(None), mode: str = Query(...),
     roles_by_map = await asyncio.to_thread(db.role_winrates_by_map, mode)
     guide = _mode_guide().get(mode) or {}
     mode_es = guide.get("name_es") or mode
-    insights = _mode_insights(your_ov, your_brawlers, comm, mode_es)
+    insights = _mode_insights(your_ov, your_brawlers, comm, mode_es, your_roles, comm_roles)
 
     cat = await assets.get_map_catalog()
     mode_maps = cat["by_mode"].get(assets.norm_mode(mode), [])
@@ -237,6 +267,12 @@ async def api_map_detail(player: str = Query(None), map: str = Query(...),
     your_allies = await asyncio.to_thread(db.winrate_with_allies, f)
     your_enemies = await asyncio.to_thread(db.winrate_vs, f)
     comm = await asyncio.to_thread(db.community_meta, mode, map)
+    # Roles ESPECÍFICOS DE ESTE MAPA: tuyos y de la comunidad (no del modo en general).
+    comm_role_f = {"map": map}
+    if mode:
+        comm_role_f["mode"] = mode
+    your_roles = await asyncio.to_thread(db.winrate_by_role, f)
+    comm_roles = await asyncio.to_thread(db.winrate_by_role, comm_role_f)
     cat = await assets.get_map_catalog()
     entry = cat["by_name"].get(map.lower()) or {}
     draft = _draft_helper(your_brawlers, comm)
@@ -252,5 +288,6 @@ async def api_map_detail(player: str = Query(None), map: str = Query(...),
         "community": {"by_pick": comm["brawlers"][:6],
                       "by_winrate": sorted([b for b in comm["brawlers"] if b["games"] >= 3],
                                            key=lambda x: (x["winrate"] or 0), reverse=True)[:6]},
+        "roles": {"community": _slim_roles(comm_roles), "your": _slim_roles(your_roles)},
         "draft": draft, "tips": _map_tips(draft, guide),
     }

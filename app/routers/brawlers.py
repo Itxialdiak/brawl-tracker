@@ -136,29 +136,45 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         else:
             items.append(item)
 
-    # Top 10 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
+    # Top 13 por trofeos; los 3 del podio con imagen a cuerpo entero de la skin equipada.
+    # Se reutiliza para el Top 13 general Y para el top de cada rol (filtro del podio).
     from .. import skins
-    owned_sorted = sorted([it for it in items if it["owned"] and it["trophies"] is not None],
-                          key=lambda x: x["trophies"], reverse=True)[:13]
-    top_brawlers = []
-    for pos, it in enumerate(owned_sorted):
-        tb = {"id": it["id"], "name": it["name"], "trophies": it["trophies"],
-              "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"],
-              "your_winrate": it["your_winrate"], "your_battles": it["your_battles"],
-              "your_adj": it["your_adj"], "your_reliability": it["your_reliability"]}
-        if pos < 3:  # podio: imagen de la ficha (skin equipada si la hay, o cuerpo entero)
-            ex = brawler_extra.get(it["id"])
-            image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")
-            c = coll_by_id.get(it["id"])
-            if c and c.get("skin_id") and c.get("skin_name"):
-                try:
-                    skin_url = skins.get_image(c["skin_id"]) or await skins.resolve_and_cache(c["skin_id"], it["name"], c["skin_name"])
-                    if skin_url:
-                        image_full = skin_url
-                except Exception:  # noqa: BLE001
-                    pass
-            tb["image_full"] = image_full
-        top_brawlers.append(tb)
+
+    async def _full_image(it):
+        """Imagen de cuerpo entero de la ficha: skin equipada si la hay, o cuerpo entero."""
+        ex = brawler_extra.get(it["id"])
+        image_full = ex.get("body_image") or (by_id.get(it["id"]) or {}).get("image_full")
+        c = coll_by_id.get(it["id"])
+        if c and c.get("skin_id") and c.get("skin_name"):
+            try:
+                skin_url = skins.get_image(c["skin_id"]) or await skins.resolve_and_cache(c["skin_id"], it["name"], c["skin_name"])
+                if skin_url:
+                    image_full = skin_url
+            except Exception:  # noqa: BLE001
+                pass
+        return image_full
+
+    async def _podium(subset):
+        subset = sorted(subset, key=lambda x: x["trophies"], reverse=True)[:13]
+        out = []
+        for pos, it in enumerate(subset):
+            tb = {"id": it["id"], "name": it["name"], "trophies": it["trophies"],
+                  "portrait": it["portrait"], "rarity": it["rarity"], "rank_band": it["rank_band"],
+                  "your_winrate": it["your_winrate"], "your_battles": it["your_battles"],
+                  "your_adj": it["your_adj"], "your_reliability": it["your_reliability"]}
+            if pos < 3:  # solo el podio necesita la imagen grande (evita resolver skins de más)
+                tb["image_full"] = await _full_image(it)
+            out.append(tb)
+        return out
+
+    owned_items = [it for it in items if it["owned"] and it["trophies"] is not None]
+    top_brawlers = await _podium(owned_items)
+    # Top 13 por ROL (primario o secundario) para el filtro del podio.
+    roles_present = sorted({r for it in owned_items for r in (it["role"], it.get("role_secondary")) if r})
+    top_by_role = {}
+    for role in roles_present:
+        subset = [it for it in owned_items if it["role"] == role or it.get("role_secondary") == role]
+        top_by_role[role] = await _podium(subset)
 
     counts = await asyncio.to_thread(db.collection_counts, tag)
     n_temp = len(temporary)                        # los temporales no cuentan en la colección
@@ -177,7 +193,7 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     from .. import upcoming
     return {"counters": counters, "rating": rating, "account": account,
             "brawlers": items, "temporary": temporary, "top_brawlers": top_brawlers,
-            "upcoming": upcoming.list_all()}
+            "top_by_role": top_by_role, "upcoming": upcoming.list_all()}
 
 
 @router.get("/api/versatile")

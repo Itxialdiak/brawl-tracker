@@ -106,14 +106,45 @@ function renderBrDistrib() {
     distribPanel("Por trofeos", bandRows);
 }
 
+/* Colapso móvil compartido por TODOS los podios (Brawlers, Modos, rol): en móvil solo se
+   ve el podio (top 3) y las posiciones 4–13 se despliegan con "Ver más". En PC se ven todas. */
+function collapsibleRest(restHtml, count) {
+  if (!restHtml) return "";
+  return `<div class="top-rest">
+    <button class="top-more-btn" onclick="toggleTopRest(this)">Ver más (${count})</button>
+    <div class="top-mini-row">${restHtml}</div>
+  </div>`;
+}
+function toggleTopRest(btn) {
+  const wrap = btn.parentElement;
+  const open = wrap.classList.toggle("open");
+  const n = wrap.querySelectorAll(".top-mini").length;
+  btn.textContent = open ? "Ver menos" : `Ver más (${n})`;
+}
+
+let brTopRole = null;  // null = "General" (Top 13 de toda la cuenta)
 function renderTop13() {
   const el = $("br-top10");
-  const top = brawlersData && brawlersData.top_brawlers;
-  if (!el || !top || !top.length) { if (el) el.innerHTML = ""; return; }
+  if (!el || !brawlersData) { if (el) el.innerHTML = ""; return; }
+  const byRole = brawlersData.top_by_role || {};
+  const order = (typeof ROLE_ORDER !== "undefined" ? ROLE_ORDER : []);
+  const roles = Object.keys(byRole).sort((a, b) => {
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+  if (brTopRole && !byRole[brTopRole]) brTopRole = null;      // rol ya no disponible → General
+  const general = brawlersData.top_brawlers || [];
+  if (!general.length && !roles.length) { el.innerHTML = ""; return; }
+  const top = brTopRole ? (byRole[brTopRole] || []) : general;
+  // Filtros de rol: "General" (por defecto) + un chip por rol disponible.
+  const chips = `<div class="br-role-chips">
+    <button class="br-role-chip ${!brTopRole ? "active" : ""}" data-trole="">General</button>
+    ${roles.map((r) => `<button class="br-role-chip ${brTopRole === r ? "active" : ""}" data-trole="${esc(r)}">${esc(r)}</button>`).join("")}
+  </div>`;
   const podium = top.slice(0, 3).map((b, i) => ({ ...b, pos: i + 1 }));
-  const order = [podium[1], podium[0], podium[2]].filter(Boolean);  // 2 · 1 · 3
-  const podiumHtml = order.map((b) => {
-    const src = b.image_full || b.portrait;
+  const ord = [podium[1], podium[0], podium[2]].filter(Boolean);  // 2 · 1 · 3
+  const podiumHtml = ord.map((b) => {
+    const src = b.image_full || b.portrait;   // SIEMPRE cuerpo entero (skin equipada) en el podio
     const img = src ? `<img src="${src}" alt="" onerror="this.style.display='none'">` : "";
     return `<div class="podium-col pos${b.pos}" onclick="showBrawlerDetail(${b.id})" title="Ver ficha">
       <div class="podium-img">${img}</div>
@@ -121,7 +152,7 @@ function renderTop13() {
         <span class="podium-name">${esc(b.name)}</span>
         <span class="podium-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
   }).join("");
-  // Extras (solo PC): rendimiento de los 3 ganadores + gráfica de eficiencia.
+  // Extras (solo PC): rendimiento de los 3 del podio + gráfica de eficiencia.
   const winnersMini = podium.map((b) => {
     const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
     const adj = b.your_adj;
@@ -143,14 +174,20 @@ function renderTop13() {
       <div class="top-mini-tx"><span class="top-mini-name">${esc(b.name)}</span>
         <span class="top-mini-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
   }).join("");
+  const body = top.length
+    ? `<div class="top13-main">
+        <div class="podium-extra extra-left"><div class="extra-title">Rendimiento</div>${winnersMini}</div>
+        <div class="podium">${podiumHtml}</div>
+        <div class="podium-extra extra-right"><div class="extra-title">Eficiencia · win rate</div>${effRows}</div>
+      </div>
+      ${collapsibleRest(restHtml, top.slice(3, 13).length)}`
+    : `<div class="empty" style="padding:22px">No tienes brawlers de este rol en tu colección.</div>`;
   el.innerHTML = `<div class="top10-panel">
-    <h2><span class="dot"></span>Top 13 Brawlers</h2>
-    <div class="top13-main">
-      <div class="podium-extra extra-left"><div class="extra-title">Rendimiento</div>${winnersMini}</div>
-      <div class="podium">${podiumHtml}</div>
-      <div class="podium-extra extra-right"><div class="extra-title">Eficiencia · win rate</div>${effRows}</div>
-    </div>
-    ${restHtml ? `<div class="top-mini-row">${restHtml}</div>` : ""}</div>`;
+    <h2><span class="dot"></span>Top 13 Brawlers${chips}</h2>
+    ${body}</div>`;
+  el.querySelectorAll(".br-role-chip").forEach((c) => c.addEventListener("click", () => {
+    brTopRole = c.dataset.trole || null; renderTop13();
+  }));
 }
 
 /* ==== Tier Lists (sección) ==== */
