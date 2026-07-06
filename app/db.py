@@ -259,6 +259,7 @@ def init_db():
     _ensure_column(cur, "users", "is_croker", "INTEGER DEFAULT 0")   # rol de JUGADOR: miembro del club Crokers (bono de límites)
     _ensure_column(cur, "users", "ai_tokens_remaining", "INTEGER")   # "Pergaminos" restantes (sistema desactivado; base lista)
     _ensure_column(cur, "users", "ai_tokens_period", "TEXT")         # periodo (AAAA-MM) de la última recarga de Pergaminos
+    _ensure_column(cur, "users", "hidden", "INTEGER DEFAULT 0")      # cuenta de sistema (p. ej. tester): oculta del descubrimiento público
     # El usuario root por defecto (configurable con ROOT_USERNAME) es administrador root.
     import os as _os
     _root_username = _os.environ.get("ROOT_USERNAME", "itxialdiak")
@@ -639,6 +640,7 @@ def search_users(query: str, exclude_id: int, limit: int = 12) -> list[dict]:
     conn = get_conn()
     rows = conn.execute(
         "SELECT id, username, country FROM users WHERE username LIKE ? AND id != ? "
+        "AND COALESCE(hidden,0)=0 "
         "ORDER BY (username = ?) DESC, username LIMIT ?",
         (f"%{q}%", exclude_id, q, limit)).fetchall()
     conn.close()
@@ -683,7 +685,8 @@ def suggested_users(uid: int, limit: int = 40) -> list[dict]:
         "SELECT up.user_id, COUNT(DISTINCT up.player_tag) AS n_players, "
         "COUNT(b.id) AS n_battles FROM user_players up "
         "LEFT JOIN battles b ON b.player_tag = up.player_tag GROUP BY up.user_id")}
-    rows = conn.execute("SELECT id, username, country FROM users WHERE id<>?", (uid,)).fetchall()
+    rows = conn.execute(
+        "SELECT id, username, country FROM users WHERE id<>? AND COALESCE(hidden,0)=0", (uid,)).fetchall()
     conn.close()
     out = []
     for r in rows:
@@ -717,10 +720,11 @@ def public_users(limit: int = 60, q: str = None) -> list[dict]:
         "FROM user_players up LEFT JOIN battles b ON b.player_tag = up.player_tag GROUP BY up.user_id")}
     qq = (q or "").strip()
     if qq:
-        rows = conn.execute("SELECT id, username, country FROM users WHERE username LIKE ?",
-                            (f"%{qq}%",)).fetchall()
+        rows = conn.execute("SELECT id, username, country FROM users WHERE username LIKE ? "
+                            "AND COALESCE(hidden,0)=0", (f"%{qq}%",)).fetchall()
     else:
-        rows = conn.execute("SELECT id, username, country FROM users").fetchall()
+        rows = conn.execute("SELECT id, username, country FROM users "
+                            "WHERE COALESCE(hidden,0)=0").fetchall()
     conn.close()
     out = []
     for r in rows:
@@ -1444,7 +1448,7 @@ def list_users() -> list:
     conn = get_conn()
     rows = conn.execute(
         "SELECT id, username, is_admin, is_translator, role, status, email, is_croker, "
-        "country, created_at FROM users ORDER BY username").fetchall()
+        "hidden, country, created_at FROM users ORDER BY username").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -1531,6 +1535,25 @@ def set_user_status(uid: int, status: str) -> None:
 def set_user_croker(uid: int, val: bool) -> None:
     conn = get_conn()
     conn.execute("UPDATE users SET is_croker=? WHERE id=?", (1 if val else 0, uid))
+    conn.commit(); conn.close()
+
+
+def ensure_root(username: str) -> None:
+    """Garantiza que el usuario dado sea root (control total). Idempotente. Se llama en el
+    arranque DESPUÉS de crear la cuenta personal (init_db corre antes de que exista)."""
+    if not username:
+        return
+    conn = get_conn()
+    conn.execute("UPDATE users SET role='root', is_admin=1, is_translator=0, status='active' "
+                 "WHERE username=?", (username,))
+    conn.commit(); conn.close()
+
+
+def set_user_hidden(uid: int, val: bool) -> None:
+    """Cuenta de sistema: oculta del descubrimiento público (buscador/comunidad), pero
+    sigue visible para los administradores en el panel."""
+    conn = get_conn()
+    conn.execute("UPDATE users SET hidden=? WHERE id=?", (1 if val else 0, uid))
     conn.commit(); conn.close()
 
 

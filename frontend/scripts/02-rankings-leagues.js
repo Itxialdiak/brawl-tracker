@@ -351,13 +351,34 @@ async function confirmImport() {
 }
 
 /* ---------- Secciones de nivel superior ---------- */
+// Secciones que un INVITADO (sin cuenta) puede ver.
+const GUEST_SECTIONS = ["community", "tierlists", "guide", "actualizaciones"];
 function showSection(name) {
   // Guardia de permisos (defensa en profundidad): nadie sin rol admin ve el panel de
   // administración aunque llegue aquí. Los datos ya están protegidos en el servidor (403).
   if (name === "admin" && !(typeof currentUser !== "undefined" && currentUser && (currentUser.is_admin || currentUser.is_translator))) name = "brawlytics";
+  const guest = document.body.classList.contains("guest");
+  if (guest) {
+    // Invitado: solo secciones públicas; cualquier otra cae en "Comunidad".
+    if (!GUEST_SECTIONS.includes(name)) name = "community";
+    const gv = $("guest-view");
+    if (name === "community") {
+      document.querySelectorAll(".app-section").forEach((s) => s.classList.remove("active", "guest-open"));
+      if (gv) gv.style.display = "block";
+    } else {
+      if (gv) gv.style.display = "none";
+      document.querySelectorAll(".app-section").forEach((s) => {
+        const on = s.id === "section-" + name;
+        s.classList.toggle("active", on); s.classList.toggle("guest-open", on);
+      });
+    }
+    document.querySelectorAll(".snav").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else {
   document.querySelectorAll(".app-section").forEach((s) => s.classList.toggle("active", s.id === "section-" + name));
   document.querySelectorAll(".snav").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  }
   if (name === "guide") loadWikiTree();
   if (name === "admin") {
     if (currentUser && !currentUser.is_admin && currentUser.is_translator) showAdminTab("i18n");

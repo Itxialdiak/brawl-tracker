@@ -276,6 +276,7 @@ async def lifespan(app: FastAPI):
         db.create_user("tester", auth.hash_password("betatest"))
         print("Cuenta beta creada: tester / betatest")
     tester_id = db.get_user_by_username("tester")["id"]
+    db.set_user_hidden(tester_id, True)  # cuenta de sistema: fuera del descubrimiento público
 
     # Tu cuenta personal con tu hash existente (desde el .env). No se borra nunca.
     personal_id = None
@@ -294,6 +295,10 @@ async def lifespan(app: FastAPI):
         db.add_player(SEED_TAG)
         if personal_id:
             db.follow_player(personal_id, SEED_TAG)
+
+    # Garantiza el rol root del usuario designado (ROOT_USERNAME; por defecto tu cuenta
+    # personal). init_db corre antes de crear la cuenta personal, así que se re-aplica aquí.
+    db.ensure_root(os.environ.get("ROOT_USERNAME", "itxialdiak"))
 
     # Cualquier jugador sin dueño -> tu cuenta (o tester si no hay cuenta personal).
     db.link_orphan_players_to(personal_id or tester_id)
@@ -383,9 +388,10 @@ def api_server_status(user: dict = Depends(auth.require_user)):
 
 
 @app.get("/api/changelog")
-async def api_changelog(user: dict = Depends(auth.require_user)):
+async def api_changelog(user: dict = Depends(auth.optional_user)):
     """Historial COMPLETO de cambios de balance del juego (todas las fechas, todos los brawlers),
-    derivado del dataset de la wiki ya traducido (`brawler_changes.json`). + próximos brawlers."""
+    derivado del dataset de la wiki ya traducido (`brawler_changes.json`). + próximos brawlers.
+    PÚBLICO (solo lectura)."""
     from . import changes, upcoming, updates_extra
     extra = updates_extra.get()
     return {"updates": await asyncio.to_thread(changes.timeline),
@@ -395,8 +401,9 @@ async def api_changelog(user: dict = Depends(auth.require_user)):
 
 
 @app.get("/api/meta-global")
-async def api_meta_global(user: dict = Depends(auth.require_user)):
-    """Top del meta global por win rate (de brawltime.ninja; complementa nuestras tier lists)."""
+async def api_meta_global(user: dict = Depends(auth.optional_user)):
+    """Top del meta global por win rate (de brawltime.ninja; complementa nuestras tier lists).
+    PÚBLICO (solo lectura)."""
     from . import brawltime
     return {"brawlers": await asyncio.to_thread(brawltime.top_brawlers), "source": "brawltime.ninja"}
 

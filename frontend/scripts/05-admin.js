@@ -13,6 +13,7 @@ function showAdminTab(name) {
   document.querySelectorAll(".admin-panel").forEach((p) => p.classList.toggle("active", p.id === "admin-" + name));
   if (name === "pending") loadAdminPending();
   if (name === "users") loadAdminUsers();
+  if (name === "roles") loadAdminRoles();
   if (name === "players") loadAdminPlayers();
   if (name === "metrics") loadAdminMetrics();
   if (name === "history") loadAdminHistory();
@@ -199,32 +200,124 @@ async function approveAll() {
 }
 
 /* ---------- Usuarios ---------- */
+// Etiquetas de rol (coinciden con app/rbac.py). El color se define en CSS por data-role.
+const ROLE_LABELS = { root: "Root", admin: "Administrador", collaborator: "Colaborador", translator: "Traductor", user: "Usuario" };
+function roleBadge(role) {
+  const r = ROLE_LABELS[role] ? role : "user";
+  return `<span class="role-badge" data-role="${r}">${esc(ROLE_LABELS[r])}</span>`;
+}
+
 async function loadAdminUsers() {
   const wrap = $("users-list");
   try {
     const d = await getJSON("/api/admin/users");
-    wrap.innerHTML = (d.users || []).map((u) => {
+    const users = d.users || [];
+    const pending = users.filter((u) => (u.status || "active") === "pending");
+    const active = users.filter((u) => (u.status || "active") !== "pending");
+    updateUsersBadge(pending.length);
+    const userRow = (u) => {
       const me = currentUser && u.id === currentUser.id;
+      const sys = !!u.hidden;                                 // cuenta de sistema (tester)
+      const disabledAcc = (u.status === "disabled");
+      const badges = roleBadge(u.role)
+        + (u.is_croker ? '<span class="role-badge" data-role="croker">Croker</span>' : "")
+        + (sys ? '<span class="badge-admin" style="background:rgba(148,141,196,.2);color:#b8b3ff">sistema</span>' : "")
+        + (disabledAcc ? '<span class="off-badge">deshabilitada</span>' : "")
+        + (me ? '<span class="you">(tú)</span>' : "");
       return `<div class="user-row">
-        <div class="user-name">${esc(u.username)}${u.is_admin ? '<span class="badge-admin">admin</span>' : ""}${u.is_translator ? '<span class="badge-admin" style="background:rgba(91,84,255,.2);color:#b8b3ff">traductor</span>' : ""}${me ? '<span class="you">(tú)</span>' : ""}</div>
+        <div class="user-name">${esc(u.username)}${badges}${u.email ? `<span class="pl-tag">${esc(u.email)}</span>` : ""}</div>
         <div class="user-actions">
-          <button onclick="toggleUserAdmin(${u.id}, ${u.is_admin ? 0 : 1})" ${me && u.is_admin ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>${u.is_admin ? "Quitar admin" : "Hacer admin"}</button>
-          <button onclick="toggleUserTranslator(${u.id}, ${u.is_translator ? 0 : 1})">${u.is_translator ? "Quitar traductor" : "Hacer traductor"}</button>
-          <button onclick="openUserPw(${u.id}, '${esc(u.username)}')">Resetear contraseña</button>
-          <button class="danger" onclick="deleteUser(${u.id}, '${esc(u.username)}')" ${me ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>Borrar</button>
+          <button onclick="openUserPw(${u.id}, ${esc(JSON.stringify(u.username))})">Resetear contraseña</button>
+          <button class="danger" onclick="deleteUser(${u.id}, ${esc(JSON.stringify(u.username))})" ${me ? "disabled style='opacity:.4;cursor:not-allowed'" : ""}>Borrar</button>
         </div></div>`;
-    }).join("");
+    };
+    const pendingRow = (u) => `<div class="user-row is-pending">
+        <div class="user-name">${esc(u.username)}<span class="pending-badge">pendiente</span>${u.email ? `<span class="pl-tag">${esc(u.email)}</span>` : ""}</div>
+        <div class="user-actions">
+          <button class="ok" onclick="approveUser(${u.id}, ${esc(JSON.stringify(u.username))})">✓ Aprobar</button>
+          <button class="danger" onclick="rejectUser(${u.id}, ${esc(JSON.stringify(u.username))})">Rechazar</button>
+        </div></div>`;
+    let html = "";
+    if (pending.length) {
+      html += `<div class="admin-subhead">Pendientes de aprobación <span class="admin-badge">${pending.length}</span></div>`
+        + pending.map(pendingRow).join("");
+    }
+    html += `<div class="admin-subhead">Cuentas${pending.length ? " activas" : ""}</div>`
+      + active.map(userRow).join("");
+    html += `<p class="admin-hint" style="margin-top:14px">Para cambiar el <b>rol</b> de un usuario usa la pestaña <b>Roles</b> (arrastrar y soltar).</p>`;
+    wrap.innerHTML = html;
   } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
 }
-async function toggleUserAdmin(uid, val) {
-  const { ok, d } = await apiSend("/api/admin/users/" + uid + "/admin", "POST", { is_admin: !!val });
-  if (!ok) { wikiToast(d.error || "No se pudo cambiar", "err"); return; }
+function updateUsersBadge(n) {
+  const b = $("admin-users-badge");
+  if (b) { b.textContent = n; b.style.display = n > 0 ? "" : "none"; }
+}
+async function approveUser(uid, name) {
+  const { ok, d } = await apiSend("/api/admin/users/" + uid + "/approve", "POST", {});
+  if (!ok) { wikiToast(d.error || "No se pudo aprobar", "err"); return; }
+  wikiToast("Cuenta «" + name + "» aprobada ✓", "ok");
   loadAdminUsers();
 }
-async function toggleUserTranslator(uid, val) {
-  const { ok, d } = await apiSend("/api/admin/users/" + uid + "/translator", "POST", { is_translator: !!val });
-  if (!ok) { wikiToast(d.error || "No se pudo cambiar", "err"); return; }
+async function rejectUser(uid, name) {
+  if (!confirm("¿Rechazar la solicitud de «" + name + "»? Se eliminará la cuenta pendiente.")) return;
+  const { ok, d } = await apiSend("/api/admin/users/" + uid, "DELETE");
+  if (!ok) { wikiToast(d.error || "No se pudo rechazar", "err"); return; }
+  wikiToast("Solicitud rechazada", "ok");
   loadAdminUsers();
+}
+
+/* ---------- Roles y permisos (arrastrar y soltar) ---------- */
+let _rolesData = null, _dragUid = null;
+async function loadAdminRoles() {
+  const board = $("roles-board");
+  try {
+    const [rbac, ud] = await Promise.all([getJSON("/api/admin/rbac"), getJSON("/api/admin/users")]);
+    _rolesData = rbac;
+    const assignable = new Set(rbac.assignable || []);
+    // Cuentas de sistema (tester) fuera del tablero; el resto se agrupan por rol.
+    const users = (ud.users || []).filter((u) => !u.hidden);
+    const byRole = {};
+    (rbac.roles || []).forEach((r) => (byRole[r.id] = []));
+    users.forEach((u) => { const r = ROLE_LABELS[u.role] ? u.role : "user"; (byRole[r] = byRole[r] || []).push(u); });
+    // Mostramos de mayor a menor autoridad.
+    const order = [...(rbac.roles || [])].sort((a, b) => b.level - a.level);
+    board.innerHTML = order.map((r) => {
+      const canDrop = assignable.has(r.id);
+      const chips = (byRole[r.id] || []).map((u) => {
+        const me = currentUser && u.id === currentUser.id;
+        const draggable = !me;                    // no puedes moverte a ti mismo
+        return `<div class="role-chip${me ? " is-me" : ""}" ${draggable ? `draggable="true" ondragstart="roleDragStart(event, ${u.id})" ondragend="roleDragEnd(event)"` : ""}>
+          ${esc(u.username)}${u.is_croker ? ' <span class="mini-croker" title="Croker">◆</span>' : ""}${me ? ' <span class="you">(tú)</span>' : ""}</div>`;
+      }).join("") || '<div class="role-empty">— vacío —</div>';
+      return `<div class="role-col${canDrop ? " droppable" : " locked"}" data-role="${r.id}"
+          ondragover="roleDragOver(event)" ondragleave="roleDragLeave(event)" ondrop="roleDrop(event, '${r.id}')">
+        <div class="role-col-head" data-role="${r.id}">${esc(r.label_plural || r.label)}
+          ${canDrop ? "" : '<span class="role-lock" title="No puedes asignar este rol">🔒</span>'}</div>
+        <div class="role-col-body">${chips}</div>
+      </div>`;
+    }).join("");
+  } catch (e) { if (String(e.message) !== "401") board.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
+}
+function roleDragStart(ev, uid) { _dragUid = uid; ev.dataTransfer.effectAllowed = "move"; try { ev.dataTransfer.setData("text/plain", String(uid)); } catch (_) {} }
+function roleDragEnd(ev) { _dragUid = null; document.querySelectorAll(".role-col.drag-over").forEach((c) => c.classList.remove("drag-over")); }
+function roleDragOver(ev) {
+  const col = ev.currentTarget;
+  if (!col.classList.contains("droppable")) return;   // no permitir soltar en columnas bloqueadas
+  ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; col.classList.add("drag-over");
+}
+function roleDragLeave(ev) { ev.currentTarget.classList.remove("drag-over"); }
+async function roleDrop(ev, role) {
+  const col = ev.currentTarget; col.classList.remove("drag-over");
+  if (!col.classList.contains("droppable")) return;
+  ev.preventDefault();
+  let uid = _dragUid;
+  if (uid == null) { const t = ev.dataTransfer.getData("text/plain"); uid = t ? parseInt(t, 10) : null; }
+  _dragUid = null;
+  if (uid == null) return;
+  const { ok, d } = await apiSend("/api/admin/users/" + uid + "/role", "POST", { role });
+  if (!ok) { wikiToast(d.error || "No se pudo cambiar el rol", "err"); return; }
+  wikiToast("Rol actualizado: " + (d.role_label || role) + " ✓", "ok");
+  loadAdminRoles(); loadAdminUsers();
 }
 async function deleteUser(uid, name) {
   if (!confirm("¿Borrar al usuario «" + name + "»? Esta acción es permanente.")) return;
@@ -275,20 +368,29 @@ async function loadAdminPlayers() {
     const d = await getJSON("/api/admin/players");
     const players = d.players || [];
     if (!players.length) { wrap.innerHTML = '<div class="admin-empty">No hay jugadores trackeados.</div>'; return; }
-    wrap.innerHTML = players.map((p) => {
-      const review = !!p.last_error, orphan = (p.followers || 0) === 0, name = p.name || p.tag;
-      const cls = review ? "needs-review" : (orphan ? "orphan" : "");
+    // El color rojo (needs-review) SOLO para los que tienen error; huérfano ya no es color, es sección.
+    const playerRow = (p) => {
+      const review = !!p.last_error, name = p.name || p.tag;
       const badges = (review ? '<span class="review-badge" title="Revísalo o bórralo">necesita revisión</span>' : "")
-        + (orphan ? '<span class="orphan-badge">huérfano</span>' : "")
         + (p.active ? "" : '<span class="off-badge">inactivo</span>');
       const meta = `${(p.battles || 0).toLocaleString("es-ES")} partidas · ${p.followers} seguidor${p.followers === 1 ? "" : "es"}`
         + (review ? ` · <span class="pl-err">⚠ ${esc(p.last_error)}</span>` : "");
-      return `<div class="user-row ${cls}">
+      return `<div class="user-row ${review ? "needs-review" : ""}">
         <div class="user-name">${esc(name)}<span class="pl-tag">${esc(p.tag)}</span>${badges}</div>
         <div class="pl-meta">${meta}</div>
-        <div class="user-actions"><button class="danger" onclick="delAdminPlayer('${esc(p.tag)}', '${esc(name)}')">Borrar</button></div>
+        <div class="user-actions"><button class="danger" onclick="delAdminPlayer(${esc(JSON.stringify(p.tag))}, ${esc(JSON.stringify(name))})">Borrar</button></div>
       </div>`;
-    }).join("");
+    };
+    // Orden dentro de cada grupo: primero los que necesitan revisión.
+    const bySeverity = (a, b) => (b.last_error ? 1 : 0) - (a.last_error ? 1 : 0);
+    const followed = players.filter((p) => (p.followers || 0) > 0).sort(bySeverity);
+    const orphans = players.filter((p) => (p.followers || 0) === 0).sort(bySeverity);
+    let html = `<div class="admin-subhead">Con seguidores <span class="admin-badge">${followed.length}</span></div>`
+      + (followed.map(playerRow).join("") || '<div class="admin-empty">Ninguno.</div>');
+    html += `<div class="admin-subhead">Huérfanos <span class="admin-badge">${orphans.length}</span>`
+      + `<span class="admin-hint" style="margin:0 0 0 8px;display:inline">no los sigue ningún usuario</span></div>`
+      + (orphans.map(playerRow).join("") || '<div class="admin-empty">Ninguno.</div>');
+    wrap.innerHTML = html;
   } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
 }
 async function openAddPlayers() {

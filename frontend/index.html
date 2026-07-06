@@ -426,11 +426,12 @@
 
   <header>
     <nav class="section-nav">
+      <button class="snav snav-community" data-section="community" onclick="showSection('community')">Comunidad</button>
       <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawl Sensei</button>
-      <button class="snav" data-section="tierlists" onclick="showSection('tierlists')">Tier Lists</button>
+      <button class="snav snav-public" data-section="tierlists" onclick="showSection('tierlists')">Tier Lists</button>
       <button class="snav" data-section="leagues" onclick="showSection('leagues')">Eventos</button>
-      <button class="snav" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
-      <button class="snav" data-section="actualizaciones" onclick="showSection('actualizaciones')">Actualizaciones</button>
+      <button class="snav snav-public" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
+      <button class="snav snav-public" data-section="actualizaciones" onclick="showSection('actualizaciones')">Actualizaciones</button>
       <button class="snav" data-section="servers" onclick="showSection('servers')">Estado servidores</button>
       <button class="snav snav-admin" data-section="admin" id="nav-admin" onclick="showSection('admin')" style="display:none">Administración <span class="admin-badge" id="admin-pending-badge" style="display:none">0</span></button>
     </nav>
@@ -455,13 +456,36 @@
   <section id="guest-view" style="display:none">
     <div class="guest-hero">
       <h2>Comunidad Brawl Sensei</h2>
-      <p>Explora los perfiles públicos de la comunidad. <b>Inicia sesión</b> para añadir tus jugadores, ver tus analíticas completas y participar en eventos y retos.</p>
-      <button class="btn" onclick="showLogin()">Iniciar sesión / Registrarse</button>
+      <p>Consulta cualquier jugador por su tag y explora los perfiles públicos de la comunidad. También puedes ver las <b>Tier Lists</b>, la <b>Guía de Estrategia</b> y las <b>Actualizaciones</b> sin cuenta.</p>
+      <div class="guest-why">
+        <div class="guest-why-title">¿Por qué crear una cuenta?</div>
+        <p>Buscar por tag te da un resumen público puntual. Con una cuenta, además:</p>
+        <ul>
+          <li><b>📊 Seguimiento continuo:</b> registramos tus partidas y acumulamos tus métricas en el tiempo (no solo una foto puntual).</li>
+          <li><b>🥷 El Sensei:</b> asistente con IA que analiza tu juego y te aconseja.</li>
+          <li><b>🎯 Retos y eventos:</b> participa en los retos de la comunidad y en ligas/torneos.</li>
+        </ul>
+      </div>
+      <button class="btn" onclick="showLogin()">Iniciar sesión / Crear cuenta</button>
     </div>
-    <div class="guest-search-wrap">
-      <input type="text" id="guest-search" placeholder="Buscar usuario de la comunidad por su nombre…" oninput="guestSearch()" autocomplete="off" />
+
+    <div class="guest-block">
+      <h3 class="guest-sub">Buscar jugador por tag</h3>
+      <p class="guest-sub-note">Introduce el tag del jugador (lo encuentras en su perfil de Brawl Stars). Empezaremos a seguir sus partidas: al reconsultarlo, verás más datos.</p>
+      <div class="guest-tag-row">
+        <input type="text" id="guest-tag" placeholder="#TAG del jugador (ej. #2P0LYQQRJ)" onkeydown="if(event.key==='Enter')guestPlayerLookup()" autocomplete="off" />
+        <button class="btn" id="guest-tag-btn" onclick="guestPlayerLookup()">Buscar</button>
+      </div>
+      <div id="guest-player-result"></div>
     </div>
-    <div id="guest-list" class="guest-list"></div>
+
+    <div class="guest-block">
+      <h3 class="guest-sub">Explorar la comunidad</h3>
+      <div class="guest-search-wrap">
+        <input type="text" id="guest-search" placeholder="Buscar usuario de la comunidad por su nombre…" oninput="guestSearch()" autocomplete="off" />
+      </div>
+      <div id="guest-list" class="guest-list"></div>
+    </div>
   </section>
 
   <!-- ===================== SECCIÓN: BRAWLYTICS (el tracker) ===================== -->
@@ -1217,7 +1241,8 @@
   <section class="app-section" id="section-admin">
     <div class="admin-tabs">
       <button class="atab active" data-atab="pending" onclick="showAdminTab('pending')">Cambios pendientes <span class="admin-badge" id="admin-tab-badge" style="display:none">0</span></button>
-      <button class="atab" data-atab="users" onclick="showAdminTab('users')">Usuarios</button>
+      <button class="atab" data-atab="users" onclick="showAdminTab('users')">Usuarios <span class="admin-badge" id="admin-users-badge" style="display:none">0</span></button>
+      <button class="atab" data-atab="roles" onclick="showAdminTab('roles')">Roles</button>
       <button class="atab" data-atab="players" onclick="showAdminTab('players')">Jugadores</button>
       <button class="atab" data-atab="metrics" onclick="showAdminTab('metrics')">Métricas</button>
       <button class="atab" data-atab="history" onclick="showAdminTab('history')">Historial</button>
@@ -1240,12 +1265,18 @@
       <div id="users-list"><div class="wk-loading">Cargando…</div></div>
     </div>
 
+    <div class="admin-panel" id="admin-roles">
+      <div class="admin-panel-head"><h3>Roles y permisos</h3></div>
+      <p class="admin-hint">Arrastra un usuario de una columna a otra para cambiar su rol (se le retiran los privilegios del rol anterior y se le asignan los del nuevo). Solo puedes asignar roles por debajo del tuyo; <b>solo el root</b> reparte administradores. No puedes cambiar tu propio rol.</p>
+      <div id="roles-board" class="roles-board"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
     <div class="admin-panel" id="admin-players">
       <div class="admin-panel-head">
         <h3>Jugadores trackeados</h3>
         <button class="btn" onclick="openAddPlayers()">＋ Añadir jugador(es)</button>
       </div>
-      <p class="admin-hint">Los <span style="color:var(--loss)">marcados en rojo</span> no los sigue ningún usuario (huérfanos, añadidos a mano). Borrar deja de recopilar sus partidas; te preguntará si conservar o no su historial.</p>
+      <p class="admin-hint">Separados en dos grupos: <b>con seguidores</b> y <b>huérfanos</b> (sin ningún usuario que los siga, añadidos a mano). El color <span style="color:var(--loss)">rojo</span> se reserva para los que <b>necesitan revisión</b> (con error). Borrar deja de recopilar sus partidas; te preguntará si conservar o no su historial.</p>
       <div id="players-list"><div class="wk-loading">Cargando…</div></div>
     </div>
 

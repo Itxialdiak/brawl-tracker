@@ -746,4 +746,9 @@ function startReportPolling() { if (!reportPollTimer) reportPollTimer = setInter
 function stopReportPolling() { if (reportPollTimer) { clearInterval(reportPollTimer); reportPollTimer = null; } }
 
 async function loadAssets() { try { ASSETS = await getJSON("/api/assets"); } catch (e) { /* sin imágenes, se muestran solo nombres */ } }
+// Carga perezosa de recursos si aún no están (p. ej. invitados, que no arrancan bootApp).
+async function ensureAssets() {
+  if (ASSETS && ASSETS.brawlers && Object.keys(ASSETS.brawlers).length) return;
+  await loadAssets();
+}
 

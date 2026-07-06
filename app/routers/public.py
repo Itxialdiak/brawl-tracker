@@ -2,12 +2,56 @@
 
 Un visitante sin cuenta puede ver la comunidad: la lista de usuarios (ordenada por relevancia) y sus
 perfiles públicos de solo lectura (datos agregados; nunca privados). Solo lectura, sin escritura."""
+import asyncio
+
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
-from .. import db
+from .. import db, brawl_api
 
 router = APIRouter()
+
+_ICON_CDN = "https://cdn.brawlify.com/profile-icons/regular/{id}.png"
+
+
+@router.get("/api/public/player/{tag}")
+async def api_public_player_lookup(tag: str):
+    """Búsqueda PÚBLICA por tag (para invitados sin cuenta): da de alta al jugador en el
+    tracking (huérfano, sin dueño), lo sondea y devuelve un RESUMEN público. Al reconsultar,
+    los datos se actualizan (el poller ya lo tiene fichado). No requiere cuenta."""
+    if not brawl_api.TOKEN:
+        return JSONResponse({"error": "La búsqueda no está disponible ahora mismo."}, status_code=503)
+    ntag = db.normalize_tag(tag)
+    if len(ntag) < 4:
+        return JSONResponse({"error": "Tag inválido. Ejemplo: #2P0LYQQRJ"}, status_code=400)
+    try:
+        profile = await brawl_api.get_player(ntag)
+    except Exception as e:  # noqa: BLE001
+        msg = str(e)
+        if "404" in msg or "notfound" in msg.lower():
+            return JSONResponse({"error": f"No existe ningún jugador con el tag {ntag}."}, status_code=404)
+        return JSONResponse({"error": "No se pudo validar el tag ahora mismo."}, status_code=502)
+    name = profile.get("name")
+    icon_id = (profile.get("icon") or {}).get("id")
+    club_name = (profile.get("club") or {}).get("name")
+    await asyncio.to_thread(db.add_player, ntag, name, icon_id, club_name)     # alta huérfana (idempotente)
+    await asyncio.to_thread(db.snapshot_brawlers, ntag, profile.get("brawlers"))
+    try:
+        from ..main import _poll_player
+        await _poll_player(ntag)     # sondeo inmediato: recoge sus partidas recientes
+    except Exception as e:  # noqa: BLE001
+        print(f"[public lookup] sondeo de {ntag} falló: {e}")
+    f = {"player": ntag}
+    report = await asyncio.to_thread(db.report_analytics, f)
+    return {
+        "tag": ntag, "name": name, "icon_id": icon_id, "club_name": club_name,
+        "icon_url": (_ICON_CDN.format(id=icon_id) if icon_id else None),
+        "report": report,
+        "rating": await asyncio.to_thread(db.account_rating, ntag),
+        "roles": await asyncio.to_thread(db.winrate_by_role, f),
+        "brawlers": await asyncio.to_thread(db.winrate_by, "brawler", f),
+        "guest": True,
+    }
 
 
 @router.get("/api/public/users")
@@ -20,7 +64,8 @@ def api_public_users(q: str = Query(None)):
 def api_public_profile(uid: int):
     """Perfil público de un usuario (sus jugadores, agregado). Accesible sin cuenta."""
     target = db.get_user_by_id(uid)
-    if not target:
+    if not target or target.get("hidden"):
+        # Cuentas de sistema (tester) no son visibles públicamente.
         return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
     players = [{"tag": p["tag"], "name": p["name"], "icon_id": p.get("icon_id"),
                 "club_name": p.get("club_name"), "battles": p.get("battles") or 0}
@@ -39,4 +84,4 @@ def api_public_summary(uid: int, tag: str):
         return JSONResponse({"error": "Ese jugador no pertenece a este usuario."}, status_code=404)
     f = {"player": ntag}
     return {"report": db.report_analytics(f), "rating": db.account_rating(ntag),
-            "roles": db.winrate_by_role(f)}
+            "roles": db.winrate_by_role(f), "brawlers": db.winrate_by("brawler", f)}

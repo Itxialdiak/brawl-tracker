@@ -217,9 +217,9 @@ async def api_versatile(player: str = Query(None), mode: str = Query(None), map:
 
 
 @router.get("/api/tierlist")
-async def api_tierlist(kind: str = Query("community"), user: dict = Depends(auth.require_user)):
+async def api_tierlist(kind: str = Query("community"), user: dict = Depends(auth.optional_user)):
     """Tier List del meta: 'community' (generada con los datos de BrawlSensei) o
-    'global' (consenso del meta externo, vía IA con respaldo)."""
+    'global' (consenso del meta externo, vía IA con respaldo). PÚBLICO (solo lectura)."""
     from .. import tierlist
     if kind == "global":
         return await tierlist.global_tierlist()
@@ -246,8 +246,9 @@ async def api_recommendations(player: str = Query(None), kind: str = Query("comm
 
 
 @router.get("/api/buffs")
-async def api_buffs(user: dict = Depends(auth.require_user)):
-    """Buffs/nerfs recientes por brawler (de las notas de parche, vía IA, no bloqueante)."""
+async def api_buffs(user: dict = Depends(auth.optional_user)):
+    """Buffs/nerfs recientes por brawler (de las notas de parche, vía IA, no bloqueante).
+    PÚBLICO (solo lectura)."""
     return await buffs.get_buffs()
 
 

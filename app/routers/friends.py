@@ -119,6 +119,9 @@ def api_user_profile(uid: int, user: dict = Depends(auth.require_user)):
     target = db.get_user_by_id(uid)
     if not target:
         return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    # Cuentas de sistema (tester) solo son visibles para administradores.
+    if target.get("hidden") and not user.get("is_admin"):
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
     players = [{"tag": p["tag"], "name": p["name"], "icon_id": p.get("icon_id"),
                 "club_name": p.get("club_name"), "battles": p.get("battles") or 0}
                for p in db.list_players_for_user(uid)]
@@ -136,4 +139,4 @@ def api_user_player_summary(uid: int, tag: str, user: dict = Depends(auth.requir
         return JSONResponse({"error": "Ese jugador no pertenece a este usuario."}, status_code=404)
     f = {"player": ntag}
     return {"report": db.report_analytics(f), "rating": db.account_rating(ntag),
-            "roles": db.winrate_by_role(f)}
+            "roles": db.winrate_by_role(f), "brawlers": db.winrate_by("brawler", f)}

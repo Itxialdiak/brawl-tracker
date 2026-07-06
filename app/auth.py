@@ -79,6 +79,15 @@ def current_user(request: Request) -> dict | None:
     return db.get_user_by_id(uid)
 
 
+def optional_user(request: Request) -> dict | None:
+    """Para endpoints PÚBLICOS que además quieren adaptarse si hay sesión (p. ej. mostrar
+    controles de admin). Devuelve el usuario si hay sesión con cuenta activa, o None (sin 401)."""
+    user = current_user(request)
+    if user and (user.get("status") or "active") == "active":
+        return user
+    return None
+
+
 def require_user(request: Request) -> dict:
     """Dependencia: exige sesión válida y cuenta activa; si no, 401/403."""
     user = current_user(request)

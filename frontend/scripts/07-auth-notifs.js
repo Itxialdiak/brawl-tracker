@@ -104,7 +104,36 @@ function enterGuestMode() {
   hideLogin();                 // el login solo se abre al pulsar «Iniciar sesión»
   setUser(null);               // cabecera en modo invitado (botón de login, sin campana)
   const gv = $("guest-view"); if (gv) gv.style.display = "block";
+  // Marca "Comunidad" como sección activa en el nav (sin tocar el historial).
+  document.querySelectorAll(".snav").forEach((b) => b.classList.toggle("active", b.dataset.section === "community"));
   loadGuestUsers();
+}
+
+/* Búsqueda por tag (invitado): da de alta al jugador (huérfano) y muestra su resumen público. */
+async function guestPlayerLookup() {
+  const inp = $("guest-tag"), box = $("guest-player-result"), btn = $("guest-tag-btn");
+  if (!inp || !box) return;
+  const tag = inp.value.trim();
+  if (tag.length < 4) { box.innerHTML = `<p class="guest-err">Introduce un tag válido (ej. #2P0LYQQRJ).</p>`; return; }
+  if (btn) { btn.disabled = true; btn.textContent = "Buscando…"; }
+  box.innerHTML = `<p class="evd-muted" style="padding:14px">Consultando y empezando a seguir a este jugador…</p>`;
+  if (typeof ensureAssets === "function") { try { await ensureAssets(); } catch (_) {} }
+  let s;
+  try { s = await getJSON("/api/public/player/" + encodeURIComponent(tag.replace(/^#/, ""))); }
+  catch (e) { box.innerHTML = `<p class="guest-err">No se pudo completar la búsqueda. Inténtalo de nuevo.</p>`; if (btn) { btn.disabled = false; btn.textContent = "Buscar"; } return; }
+  if (btn) { btn.disabled = false; btn.textContent = "Buscar"; }
+  if (s.error) { box.innerHTML = `<p class="guest-err">${esc(s.error)}</p>`; return; }
+  const hasData = ((s.report || {}).overview || {}).total > 0;
+  const head = `<div class="guest-pl-head">
+      ${s.icon_url ? `<img class="guest-pl-icon" src="${esc(s.icon_url)}" alt="" onerror="this.style.display='none'">` : ""}
+      <div><div class="guest-pl-name">${esc(s.name || tag)}</div>
+        <div class="guest-pl-tag">${esc(s.tag)}${s.club_name ? " · " + esc(s.club_name) : ""}</div></div>
+    </div>`;
+  const cta = `<div class="guest-pl-cta">🔒 Este es un resumen público. <button class="link-btn" onclick="showLogin()">Crea una cuenta</button> para seguir a este jugador, ver su histórico completo y consultar al Sensei.</div>`;
+  box.innerHTML = head + `<div id="guest-pl-summary" class="pub-summary-box"></div>` + cta;
+  const sumBox = $("guest-pl-summary");
+  if (hasData) { renderPlayerSummary(sumBox, s); }
+  else { sumBox.innerHTML = `<p class="evd-muted" style="padding:14px">Aún no tenemos partidas recientes de este jugador. Ya lo estamos siguiendo: vuelve a buscarlo en un rato y verás sus estadísticas.</p>`; }
 }
 function exitGuestMode() {
   document.body.classList.remove("guest");
@@ -606,10 +635,16 @@ async function loadPubSummary(tag) {
   const box = $("pub-summary");
   if (!box) return;
   box.innerHTML = `<p class="evd-muted" style="padding:14px">Cargando analíticas…</p>`;
+  if (typeof ensureAssets === "function") { try { await ensureAssets(); } catch (_) {} }  // retratos (también para invitados)
   let s;
   try { s = await getJSON(`${pubBase()}/${_pubProfile.id}/players/${encodeURIComponent(tag)}/summary`); }
   catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:14px">Sin datos de este jugador.</p>`; return; }
   if (s.error) { box.innerHTML = `<p class="evd-muted" style="padding:14px">${esc(s.error)}</p>`; return; }
+  renderPlayerSummary(box, s);
+}
+// Pinta el resumen de un jugador (3 líneas + 6 gráficas + Top 13). Reutilizado por el modal
+// de perfil público y por la búsqueda por tag de invitados.
+function renderPlayerSummary(box, s) {
   const r = s.report || {}, ov = r.overview || {}, hl = r.highlights || {}, rt = s.rating || {};
   const stat = (k, v, sub) => `<div class="pub-stat"><div class="k">${esc(k)}</div><div class="v">${v}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>`;
   const line1 = `<div class="pub-line pub-overview">
@@ -651,7 +686,19 @@ async function loadPubSummary(tag) {
     ${card("Mejores modos", byWr.length ? donutChart(byWr, "win rate") : noData)}
     ${card("Evolución de trofeos", trophyChart(r.trophy_series || []))}
     ${card("Forma reciente", winrateChart(r.winrate_evolution || []))}</div>`;
-  box.innerHTML = line1 + line2 + line3 + charts;
+  // Top 13 Brawlers: mismo ranking (con retratos + "Ver más") que las Analíticas reales,
+  // ordenado por rendimiento ajustado y recortado a 13.
+  const top13 = (s.brawlers || []).filter((d) => d.total >= 1)
+    .sort((a, b) => (b.adj_score == null ? -1 : b.adj_score) - (a.adj_score == null ? -1 : a.adj_score))
+    .slice(0, 13);
+  const top13Html = top13.length
+    ? `<div class="pub-brawlers"><h4>Top 13 Brawlers</h4><div class="pub-brawlers-rows ranking"></div></div>`
+    : "";
+  box.innerHTML = line1 + line2 + line3 + charts + top13Html;
+  const rowsEl = box.querySelector(".pub-brawlers-rows");
+  if (top13.length && rowsEl && typeof render === "function") {
+    render(rowsEl, top13, "brawler", { perf: true });
+  }
 }
 
 /* ----- Notificaciones (Fase 6) ----- */

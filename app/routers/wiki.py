@@ -17,14 +17,17 @@ _PROP_KINDS = {"edit", "create_section", "create_subsection", "create_separator"
 
 
 @router.get("/api/wiki/tree")
-def api_wiki_tree(lang: str | None = Query(None), user: dict = Depends(auth.require_user)):
-    return {"tree": db.get_wiki_tree(lang), "is_admin": bool(user.get("is_admin")),
-            "pending": db.count_pending_proposals() if user.get("is_admin") else 0}
+def api_wiki_tree(lang: str | None = Query(None), user: dict = Depends(auth.optional_user)):
+    # PÚBLICO (solo lectura): los invitados ven la guía, pero sin controles de admin.
+    is_admin = bool(user and user.get("is_admin"))
+    return {"tree": db.get_wiki_tree(lang), "is_admin": is_admin,
+            "is_guest": user is None, "can_edit": user is not None,
+            "pending": db.count_pending_proposals() if is_admin else 0}
 
 
 @router.get("/api/wiki/node/{nid}")
 def api_wiki_node(nid: int, lang: str | None = Query(None), view: str | None = Query(None),
-                  user: dict = Depends(auth.require_user)):
+                  user: dict = Depends(auth.optional_user)):
     node = db.wiki_node_localized(nid, lang, view)
     if not node:
         return JSONResponse({"error": "No encontrado."}, status_code=404)

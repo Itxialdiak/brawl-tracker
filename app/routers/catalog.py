@@ -8,8 +8,10 @@ router = APIRouter()
 
 
 @router.get("/api/assets")
-async def api_assets(user: dict = Depends(auth.require_user)):
-    """Retratos de brawlers, iconos de modo (con color) e imágenes de mapas (Brawlify)."""
+async def api_assets():
+    """Retratos de brawlers, iconos de modo (con color) e imágenes de mapas (Brawlify).
+    PÚBLICO: son solo URLs de imágenes (dato no sensible), así los invitados también ven
+    los retratos en el perfil público. Cacheado en servidor."""
     return await assets.get_assets()
 
 

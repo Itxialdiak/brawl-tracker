@@ -74,8 +74,14 @@ def api_admin_user_create(payload: dict = Body(...), admin: dict = Depends(auth.
     uid = db.create_user(username, auth.hash_password(password))
     if uid is None:
         return JSONResponse({"error": "Ese usuario ya existe."}, status_code=409)
+    # Asignar rol admin al crear solo si el actor tiene autoridad para otorgarlo (solo root).
     if (payload or {}).get("is_admin"):
-        db.set_user_admin(uid, True)
+        target = db.get_user_by_id(uid)
+        if rbac.can_assign_role(admin, target, "admin"):
+            db.set_user_role(uid, "admin")
+        else:
+            return {"ok": True, "id": uid,
+                    "warning": "Cuenta creada como usuario normal: no tienes autoridad para crear administradores."}
     return {"ok": True, "id": uid}
 
 
@@ -85,6 +91,13 @@ def api_admin_user_delete(uid: int, delete_players: bool = Query(False), admin: 
     `?delete_players=true` elimina también los que queden huérfanos (sin otro usuario que los siga)."""
     if uid == admin["id"]:
         return JSONResponse({"error": "No puedes borrarte a ti mismo."}, status_code=400)
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    if not rbac.can_manage_user(admin, target):
+        return JSONResponse(
+            {"error": "No tienes autoridad sobre ese usuario (no puedes borrar a root ni a otros administradores)."},
+            status_code=403)
     db.delete_user(uid, delete_players=delete_players)
     return {"ok": True}
 
@@ -177,6 +190,12 @@ def api_admin_user_password(uid: int, payload: dict = Body(...), admin: dict = D
     pw = (payload or {}).get("password") or ""
     if len(pw) < 6:
         return JSONResponse({"error": "Mínimo 6 caracteres."}, status_code=400)
+    target = db.get_user_by_id(uid)
+    if not target:
+        return JSONResponse({"error": "No existe ese usuario."}, status_code=404)
+    # Un admin no puede resetear la contraseña de root ni de otros admins (solo root, o uno mismo).
+    if uid != admin["id"] and not rbac.can_manage_user(admin, target):
+        return JSONResponse({"error": "No tienes autoridad sobre ese usuario."}, status_code=403)
     db.set_user_password(uid, auth.hash_password(pw))
     return {"ok": True}
 
