@@ -258,7 +258,9 @@ async def generate_report(player: str, filters: dict, model_key: str | None = No
     except ImportError:
         raise RuntimeError("Falta el paquete 'anthropic'. Ejecuta: pip install -r requirements.txt")
 
-    client = AsyncAnthropic(api_key=API_KEY)
+    # timeout + reintentos acotados: si la API se cuelga o el modelo no existe, falla rápido
+    # (lo captura _run_report y marca el informe como error) en vez de quedarse colgado.
+    client = AsyncAnthropic(api_key=API_KEY, timeout=240.0, max_retries=1)
     msg = await client.messages.create(
         model=model["id"], max_tokens=model["max_tokens"], system=_system_for(filters.get("lang")),
         messages=[{

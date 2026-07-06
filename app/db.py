@@ -2740,6 +2740,26 @@ def set_report_error(report_id: int, error: str) -> None:
     conn.commit(); conn.close()
 
 
+def fail_stale_reports(player_tag: str | None = None, older_than_minutes: int | None = None,
+                       reason: str = "El informe se canceló (el servidor se reinició o se agotó el tiempo).") -> int:
+    """Marca como 'error' los informes ATASCADOS en 'generating'. Sin `older_than_minutes`
+    marca TODOS los que sigan generándose (uso en el ARRANQUE: sus tareas murieron con el
+    proceso anterior). Con `older_than_minutes` solo los más viejos que ese margen (uso al
+    LISTAR: limpia cuelgues). Devuelve cuántos se han limpiado."""
+    q = "UPDATE reports SET status='error', error=?, completed_at=? WHERE status='generating'"
+    params: list = [reason, datetime.now(timezone.utc).isoformat()]
+    if player_tag:
+        q += " AND player_tag=?"; params.append(normalize_tag(player_tag))
+    if older_than_minutes is not None:
+        cutoff = (datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)).isoformat()
+        q += " AND created_at < ?"; params.append(cutoff)
+    conn = get_conn(); cur = conn.cursor()
+    cur.execute(q, params)
+    n = cur.rowcount
+    conn.commit(); conn.close()
+    return n
+
+
 def has_generating_report(player_tag: str) -> bool:
     conn = get_conn()
     row = conn.execute(

@@ -270,6 +270,14 @@ async def _wiki_updater():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    # Informes que quedaron "generándose" al reiniciar: su tarea murió con el proceso anterior,
+    # así que se marcan como error (si no, quedarían colgados para siempre).
+    try:
+        n = db.fail_stale_reports(reason="El informe se canceló porque el servidor se reinició. Vuelve a pedirlo.")
+        if n:
+            print(f"[reports] {n} informe(s) atascado(s) marcados como error tras el reinicio.")
+    except Exception as e:  # noqa: BLE001
+        print(f"[reports] no se pudieron limpiar informes atascados: {e}")
 
     # tester / betatest: cuenta VACÍA, la que se reparte a los testers.
     if not db.get_user_by_username("tester"):

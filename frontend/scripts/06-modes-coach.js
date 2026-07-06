@@ -708,7 +708,10 @@ function renderReportList(reports) {
 function reportItem(r) {
   const date = fmtDateTime(r.created_at);
   if (r.status === "generating")
-    return `<div class="report-item generating"><div class="report-item-main"><span class="report-date">${date}</span><span class="report-name gen">El Sensei medita<span class="dots"></span></span></div></div>`;
+    return `<div class="report-item generating">
+      <div class="report-item-main"><span class="report-date">${date}</span><span class="report-name gen">El Sensei medita<span class="dots"></span></span></div>
+      <div class="report-item-actions"><button class="ri-btn del" title="Cancelar este informe" onclick="event.stopPropagation();askDeleteReport(${r.id})">🗑</button></div>
+    </div>`;
   const isErr = r.status === "error";
   const name = isErr
     ? `<span class="report-name err">Error al generar · ver detalle</span>`

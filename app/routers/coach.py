@@ -94,6 +94,10 @@ async def api_create_report(payload: dict = Body(...), user: dict = Depends(auth
 @router.get("/api/reports")
 async def api_list_reports(player: str = Query(...), user: dict = Depends(auth.require_user)):
     _require_follow(user, player)
+    # Auto-saneado: un informe que lleve >15 min "generándose" está atascado (cuelgue o
+    # reinicio); se marca como error para que no bloquee y el usuario pueda reintentar.
+    await asyncio.to_thread(db.fail_stale_reports, player, 15,
+                            "El informe tardó demasiado y se canceló. Vuelve a pedirlo.")
     rows = await asyncio.to_thread(db.list_reports, player)
     return [_public_report(r, with_content=False) for r in rows]
 
