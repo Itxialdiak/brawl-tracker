@@ -23,15 +23,27 @@ MIN_BATTLES = 3  # por debajo de esto no merece la pena analizar
 # esté activo) y de momento están RESTRINGIDOS a administradores. `tokens_cost` = coste en Pergaminos.
 MODELS = {
     "standard": {"id": MODEL, "label": "Sensei", "sub": "análisis estándar",
-                 "tokens_cost": 1, "admin_only": False, "max_tokens": 3200},
+                 "tokens_cost": 1, "admin_only": False, "max_tokens": 3200, "depth": "normal"},
     "opus-4-6": {"id": "claude-opus-4-6", "label": "Gran Sensei · Opus 4.6", "sub": "análisis profundo",
-                 "tokens_cost": 5, "admin_only": True, "max_tokens": 5000},
+                 "tokens_cost": 5, "admin_only": True, "max_tokens": 7000, "depth": "deep"},
     "opus-4-7": {"id": "claude-opus-4-7", "label": "Gran Sensei · Opus 4.7", "sub": "análisis profundo",
-                 "tokens_cost": 6, "admin_only": True, "max_tokens": 5000},
+                 "tokens_cost": 6, "admin_only": True, "max_tokens": 7000, "depth": "deep"},
     "opus-4-8": {"id": "claude-opus-4-8", "label": "Gran Sensei · Opus 4.8", "sub": "análisis profundo (máximo)",
-                 "tokens_cost": 7, "admin_only": True, "max_tokens": 5500},
+                 "tokens_cost": 7, "admin_only": True, "max_tokens": 8000, "depth": "deep"},
 }
 DEFAULT_MODEL_KEY = "standard"
+
+# Directiva extra para los modelos PREMIUM (Opus): los modelos nuevos tienden a ser concisos y a
+# copiar la notación abreviada de los datos; esto fuerza un análisis realmente más profundo y en
+# prosa natural, para que el informe premium se note frente al estándar.
+_DEEP_DIRECTIVE = (
+    "MODO ANÁLISIS PROFUNDO (informe premium). Desarrolla CADA apartado con amplitud y en PROSA "
+    "NATURAL: explica el PORQUÉ de cada patrón, aporta ejemplos concretos y matices, y conecta los "
+    "datos entre sí (roles ↔ modos ↔ brawlers ↔ rivales). NO uses en tu texto abreviaturas como "
+    "'rend' o 'fiab': escribe 'rendimiento ajustado' y 'fiabilidad' e integra las cifras dentro de "
+    "frases completas. Este informe DEBE ser claramente más extenso, detallado y razonado que uno "
+    "estándar (aprovecha el espacio); no lo resumas ni lo esquematices."
+)
 
 
 def resolve_model(key: str | None, is_admin: bool) -> dict:
@@ -74,7 +86,8 @@ SYSTEM = (
     "(4) **Fiabilidad y sesgo** — qué conclusiones son sólidas y cuáles provisionales por poca muestra o sesgo; "
     "(5) **Qué practicar** — pasos accionables y medibles; "
     "(6) **Análisis final** — una síntesis clara con la prioridad nº1 y el rumbo a seguir. "
-    "No uses tablas. Extiéndete donde los datos lo justifiquen y sé breve donde no.\n"
+    "No uses tablas. Desarrolla cada apartado con la profundidad que merezca y explica el PORQUÉ de "
+    "cada patrón; no te limites a enumerar cifras y escribe las métricas con naturalidad en prosa.\n"
     "Entre los retos, incluye SIEMPRE alguna MISIÓN DE CALIDAD DE DATOS (métrica \"games\": "
     "'juega N partidas más con <brawler> o en <modo>') allí donde la muestra sea escasa o la fiabilidad "
     "baja, para que los próximos análisis sean más fiables."
@@ -261,11 +274,13 @@ async def generate_report(player: str, filters: dict, model_key: str | None = No
     # timeout + reintentos acotados: si la API se cuelga o el modelo no existe, falla rápido
     # (lo captura _run_report y marca el informe como error) en vez de quedarse colgado.
     client = AsyncAnthropic(api_key=API_KEY, timeout=240.0, max_retries=1)
+    deep_prefix = (_DEEP_DIRECTIVE + "\n\n") if model.get("depth") == "deep" else ""
     msg = await client.messages.create(
         model=model["id"], max_tokens=model["max_tokens"], system=_system_for(filters.get("lang")),
         messages=[{
             "role": "user",
             "content": (
+                deep_prefix +
                 f"Ámbito del informe: {label}.\n"
                 "En la PRIMERA línea escribe exactamente 'TÍTULO: ' seguido de un nombre corto, temático y "
                 "evocador (NO uses 'Informe general'; por ejemplo 'La senda de Shelly', 'Maestría en "
