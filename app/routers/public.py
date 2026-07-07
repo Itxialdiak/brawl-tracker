@@ -60,7 +60,7 @@ async def api_public_player_lookup(tag: str, request: Request):
     await asyncio.to_thread(db.snapshot_brawlers, ntag, profile.get("brawlers"))
     if is_new:  # solo sondeamos al ALTA; en reconsultas ya lo actualiza el poller de fondo
         try:
-            from ..main import _poll_player
+            from ..poller import _poll_player
             await _poll_player(ntag)
         except Exception as e:  # noqa: BLE001
             print(f"[public lookup] sondeo de {ntag} falló: {e}")

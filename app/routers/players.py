@@ -51,7 +51,7 @@ async def api_add_player(payload: dict = Body(...), user: dict = Depends(auth.re
     # Sondeo inmediato para que aparezcan datos al momento. El poller vive en main
     # (depende de su estado vivo); import perezoso para no crear un ciclo de imports.
     try:
-        from ..main import _poll_player
+        from ..poller import _poll_player
         await _poll_player(tag)
     except Exception as e:  # noqa: BLE001
         print(f"[add] aviso: sondeo inicial de {tag} falló: {e}")

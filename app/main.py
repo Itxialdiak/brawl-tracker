@@ -45,95 +45,8 @@ from .config import REGISTRATION_OPEN, REPORT_QUOTA_ENABLED, MONTHLY_REPORT_LIMI
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
-_last_poll = {"new": None, "players": None, "error": None, "not_found": None,
-              "maintenance": None, "at": None}
-
-
-def _is_maintenance(exc) -> bool:
-    # 503 "API is currently in maintenance": estado de Supercell, NO un error nuestro.
-    return "maintenance" in str(exc).lower()
-
-
-_last_profile_refresh: dict = {}  # tag -> timestamp del último refresco de perfil
-
-
-async def _poll_player(tag: str) -> int:
-    """Sondea un jugador y guarda sus partidas nuevas. Devuelve cuántas."""
-    # Refresca el perfil (nombre + icono + club) si falta el icono o cada hora,
-    # para que el club aparezca también en jugadores añadidos antes de esta función.
-    need = await asyncio.to_thread(db.player_needs_profile, tag)
-    stale = (time.time() - _last_profile_refresh.get(tag, 0)) > 3600
-    if need or stale:
-        try:
-            prof = await brawl_api.get_player(tag)
-            _club = prof.get("club") or {}
-            await asyncio.to_thread(db.update_player_profile, tag,
-                                    prof.get("name"), (prof.get("icon") or {}).get("id"),
-                                    _club.get("name"), _club.get("tag"))
-            await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
-            _last_profile_refresh[tag] = time.time()
-        except Exception as e:  # noqa: BLE001
-            print(f"[perfil] no se pudo refrescar {tag}: {e}")
-    items = await brawl_api.get_battlelog(tag)
-    new = await asyncio.to_thread(db.ingest_battles, items, tag)
-    await asyncio.to_thread(db.mark_polled, tag)
-    return new
-
-
-async def _poll_all() -> dict:
-    tags = await asyncio.to_thread(db.active_player_tags)
-    total_new, errors, dead = 0, [], []
-    any_ok = maint = False
-    for tag in tags:
-        try:
-            total_new += await _poll_player(tag)
-            await asyncio.to_thread(db.clear_player_error, tag)
-            any_ok = True
-        except brawl_api.NotFound:
-            dead.append(tag)  # tag inexistente en la API: se omite, no es un error real
-            await asyncio.to_thread(db.set_player_error, tag, "El tag no existe en la API de Brawl Stars (404).")
-        except Exception as e:  # noqa: BLE001
-            if _is_maintenance(e):      # 503 mantenimiento: estado de Supercell, no error nuestro
-                maint = True
-            else:
-                errors.append(f"{tag}: {e}")
-    now = datetime.now(timezone.utc).isoformat()
-    if maint:
-        state = "maintenance"
-    elif any_ok or (dead and not errors):     # 200, o solo 404 (el servidor responde) = online
-        state = "online"
-    elif errors:                              # ninguna 200 y errores no-mantenimiento = caído
-        state = "down"
-    else:
-        state = None                          # sin jugadores que sondear: nada que afirmar
-    if state:
-        await asyncio.to_thread(db.set_server_state, state, now)
-    cur = await asyncio.to_thread(db.current_incident)
-    _last_poll.update(new=total_new, players=len(tags),
-                      error="; ".join(errors) if errors else None,
-                      not_found=dead or None,
-                      maintenance=(cur["started_at"] if cur and cur["kind"] == "maintenance" else None),
-                      at=now)
-    msg = f"[poll] {len(tags)} jugador(es), {total_new} partidas nuevas"
-    if cur:
-        msg += f" | servidor Supercell: {cur['kind']} desde {cur['started_at']}"
-    if dead:
-        msg += f" | tags inexistentes (omitidos): {', '.join(dead)}"
-    if errors:
-        msg += f" | errores: {'; '.join(errors)}"
-    print(msg)
-    return _last_poll
-
-
-async def _poller():
-    while True:
-        try:
-            await _poll_all()
-        except Exception as e:  # noqa: BLE001
-            _last_poll["error"] = str(e)
-            _last_poll["at"] = datetime.now(timezone.utc).isoformat()
-            print(f"[poll] error: {e}")
-        await asyncio.sleep(POLL_INTERVAL)
+# El poller de jugadores vive en app/poller.py (estado _last_poll + _poll_player/_poll_all/_poller).
+from . import poller
 
 
 EVENT_NOTIFY_INTERVAL = 300  # cada 5 min
@@ -316,7 +229,7 @@ async def lifespan(app: FastAPI):
     print(f"Endpoint de la API: {brawl_api.BASE}  ({via})")
     task = None
     if brawl_api.TOKEN:
-        task = asyncio.create_task(_poller())
+        task = asyncio.create_task(poller._poller())
         print(f"Poller activo cada {POLL_INTERVAL}s. Jugadores: {db.active_player_tags() or 'ninguno (añádelos en la web)'}")
     else:
         print("⚠️  Falta BRAWL_API_TOKEN en .env; el poller está parado.")
@@ -367,34 +280,12 @@ from .routers.messages import router as _r_messages
 from .routers.social import router as _r_social
 from .routers.public import router as _r_public
 from .routers.share import router as _r_share
-for _r in (_r_players, _r_analytics, _r_modes, _r_rankings, _r_brawlers, _r_battles, _r_coach, _r_events, _r_retos, _r_friends, _r_messages, _r_social, _r_public, _r_share):
+from .routers.status import router as _r_status
+for _r in (_r_players, _r_analytics, _r_modes, _r_rankings, _r_brawlers, _r_battles, _r_coach, _r_events, _r_retos, _r_friends, _r_messages, _r_social, _r_public, _r_share, _r_status):
     app.include_router(_r)
 
 
-# --------------------------- Sondeo (estado y disparo manual) ---------------------------
-# Se quedan en main: dependen del estado vivo del poller (_last_poll y _poll_player).
-
-@app.get("/api/status")
-def api_status(user: dict = Depends(auth.require_user)):
-    return {
-        "configured": bool(brawl_api.TOKEN),
-        "players": [p["tag"] for p in db.list_players_for_user(user["id"])],
-        "poll_interval": POLL_INTERVAL,
-        "api_base": brawl_api.BASE,
-        "via_proxy": brawl_api.using_proxy(),
-        "coach_configured": coach.configured(),
-        "last_poll": _last_poll,
-    }
-
-
-@app.get("/api/server-status")
-def api_server_status(user: dict = Depends(auth.require_user)):
-    """Estado actual del servidor de Supercell + histórico de incidencias (con duración)."""
-    cur = db.current_incident()
-    return {"status": cur["kind"] if cur else "online",
-            "since": cur["started_at"] if cur else None,
-            "history": db.incident_history(60)}
-
+# /api/status, /api/server-status y /api/poll viven en routers/status.py (dependen del poller).
 
 @app.get("/api/changelog")
 async def api_changelog(user: dict = Depends(auth.optional_user)):
@@ -415,41 +306,6 @@ async def api_meta_global(user: dict = Depends(auth.optional_user)):
     PÚBLICO (solo lectura)."""
     from . import brawltime
     return {"brawlers": await asyncio.to_thread(brawltime.top_brawlers), "source": "brawltime.ninja"}
-
-
-@app.post("/api/poll")
-async def api_poll(player: str = Query(None), user: dict = Depends(auth.require_user)):
-    if not brawl_api.TOKEN:
-        return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
-    tag = _require_follow(user, player) if player else None
-    try:
-        if tag:
-            new = await _poll_player(tag)
-            await asyncio.to_thread(db.set_server_state, "online",
-                                    datetime.now(timezone.utc).isoformat())  # 200: cierra incidencia
-            _last_poll["maintenance"] = None
-            return {"new": new, "players": 1, "at": datetime.now(timezone.utc).isoformat()}
-        # Sin jugador: sondea solo los jugadores de este usuario.
-        tags = [p["tag"] for p in await asyncio.to_thread(db.list_players_for_user, user["id"])]
-        total = 0
-        for t in tags:
-            try:
-                total += await _poll_player(t)
-            except Exception as e:  # noqa: BLE001
-                print(f"[poll usuario {user['id']}] {t}: {e}")
-        return {"new": total, "players": len(tags), "at": datetime.now(timezone.utc).isoformat()}
-    except Exception as e:  # noqa: BLE001
-        if _is_maintenance(e):     # mantenimiento de Supercell: estado, no error nuestro
-            now = datetime.now(timezone.utc).isoformat()
-            await asyncio.to_thread(db.set_server_state, "maintenance", now)
-            cur = await asyncio.to_thread(db.current_incident)
-            since = cur["started_at"] if cur else now
-            _last_poll["maintenance"] = since
-            return JSONResponse({"error": "El servidor de Supercell está en mantenimiento. "
-                                          "El tracker reanudará el sondeo cuando termine.",
-                                 "maintenance": since}, status_code=503)
-        _last_poll["error"] = str(e)
-        return JSONResponse({"error": str(e)}, status_code=502)
 
 
 @app.get("/")
