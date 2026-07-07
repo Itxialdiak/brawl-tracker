@@ -1845,9 +1845,10 @@ def community_ranking(limit: int = 200) -> list[dict]:
     rows = conn.execute(
         """SELECT p.tag, p.name, p.icon_id, p.club_name,
                   (SELECT COALESCE(SUM(bc.trophies),0) FROM brawler_collection bc WHERE bc.player_tag=p.tag) AS trophies,
-                  EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
+                  EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag AND COALESCE(u.hidden,0)=0) AS is_main
            FROM players p
-           WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)""").fetchall()
+           WHERE EXISTS(SELECT 1 FROM user_players up JOIN users u ON u.id=up.user_id
+                        WHERE up.player_tag=p.tag AND COALESCE(u.hidden,0)=0)""").fetchall()
     conn.close()
     return _community_out(_rank_community([dict(r) for r in rows], limit))
 
@@ -1858,10 +1859,11 @@ def community_brawler_ranking(brawler_id: int, limit: int = 200) -> list[dict]:
     conn = get_conn()
     rows = conn.execute(
         """SELECT p.tag, p.name, p.icon_id, p.club_name, bc.trophies AS trophies,
-                  EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
+                  EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag AND COALESCE(u.hidden,0)=0) AS is_main
            FROM players p JOIN brawler_collection bc ON bc.player_tag=p.tag
            WHERE bc.brawler_id=? AND bc.trophies>0
-             AND EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)""",
+             AND EXISTS(SELECT 1 FROM user_players up JOIN users u ON u.id=up.user_id
+                        WHERE up.player_tag=p.tag AND COALESCE(u.hidden,0)=0)""",
         (brawler_id,)).fetchall()
     conn.close()
     return _community_out(_rank_community([dict(r) for r in rows], limit))
@@ -1876,7 +1878,8 @@ def community_clubs_ranking(limit: int = 200) -> list[dict]:
              SELECT p.club_name, p.club_tag,
                     (SELECT COALESCE(SUM(bc.trophies),0) FROM brawler_collection bc WHERE bc.player_tag=p.tag) AS trophies
              FROM players p
-             WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
+             WHERE EXISTS(SELECT 1 FROM user_players up JOIN users u ON u.id=up.user_id
+                          WHERE up.player_tag=p.tag AND COALESCE(u.hidden,0)=0)
                AND p.club_name IS NOT NULL AND p.club_name<>''
            ) WHERE trophies > 0
            GROUP BY name ORDER BY trophies DESC LIMIT ?""", (limit,)).fetchall()
@@ -1992,6 +1995,17 @@ def link_orphan_players_to(user_id: int) -> None:
             "INSERT OR IGNORE INTO user_players (user_id, player_tag, added_at) VALUES (?,?,?)",
             (user_id, r[0], now))
     conn.commit(); conn.close()
+
+
+def clear_user_players(user_id: int) -> int:
+    """Deja a un usuario SIN jugadores seguidos y devuelve cuántos vínculos borró. Se usa con
+    la cuenta de sistema `tester`: no debe 'adoptar' jugadores huérfanos (los que crea la
+    búsqueda pública de invitados), porque entonces saldrían en el ranking de la comunidad."""
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM user_players WHERE user_id=?", (user_id,))
+    n = cur.rowcount
+    conn.commit(); conn.close()
+    return n
 
 
 def reassign_players_for_personal_account(personal_id: int, tester_id: int) -> None:

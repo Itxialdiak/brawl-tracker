@@ -222,8 +222,12 @@ async def lifespan(app: FastAPI):
     # personal). init_db corre antes de crear la cuenta personal, así que se re-aplica aquí.
     db.ensure_root(os.environ.get("ROOT_USERNAME", "itxialdiak"))
 
-    # Cualquier jugador sin dueño -> tu cuenta (o tester si no hay cuenta personal).
-    db.link_orphan_players_to(personal_id or tester_id)
+    # La cuenta de sistema `tester` NO debe adoptar jugadores: los huérfanos (p. ej. los que
+    # crea la búsqueda pública de invitados) tienen que quedarse sin dueño y NO aparecer en la
+    # comunidad. La vaciamos por si arrastra vínculos de versiones anteriores.
+    freed = db.clear_user_players(tester_id)
+    if freed:
+        print(f"[tester] {freed} jugador(es) desvinculado(s) de la cuenta de sistema (no adopta huérfanos).")
 
     via = "proxy RoyaleAPI" if brawl_api.using_proxy() else "API oficial"
     print(f"Endpoint de la API: {brawl_api.BASE}  ({via})")
