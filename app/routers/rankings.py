@@ -13,10 +13,12 @@ router = APIRouter()
 
 # --------------------------- Rankings ---------------------------
 
-def _ranking_country(user: dict, scope: str) -> str:
-    """'global' o el código de país del usuario, según el scope pedido."""
-    if scope == "national" and user.get("country"):
-        return user["country"].lower()
+def _ranking_country(scope: str, country: str | None) -> str:
+    """'global' o el código de país ELEGIDO (el top nacional se selecciona con un desplegable)."""
+    if scope == "national" and country:
+        c = country.strip().lower()
+        if len(c) == 2 and c.isalpha():
+            return c
     return "global"
 
 
@@ -48,7 +50,8 @@ async def api_player_profile(player: str = Query(None), user: dict = Depends(aut
 
 @router.get("/api/rankings")
 async def api_rankings(kind: str = Query("players"), scope: str = Query("global"),
-                       brawler_id: int = Query(None), user: dict = Depends(auth.require_user)):
+                       brawler_id: int = Query(None), country: str = Query(None),
+                       user: dict = Depends(auth.require_user)):
     if kind not in ("players", "clubs", "brawlers"):
         return JSONResponse({"error": "Tipo de ranking no válido."}, status_code=400)
     # Ranking COMUNITARIO: datos propios de la plataforma (jugadores principales/secundarios,
@@ -67,7 +70,7 @@ async def api_rankings(kind: str = Query("players"), scope: str = Query("global"
         return JSONResponse({"error": "Falta BRAWL_API_TOKEN en .env"}, status_code=400)
     if kind == "brawlers" and not brawler_id:
         return JSONResponse({"error": "Falta el brawler."}, status_code=400)
-    country = _ranking_country(user, scope)
+    country = _ranking_country(scope, country)
     try:
         items = await brawl_api.get_rankings(kind, country=country, brawler_id=brawler_id)
     except Exception as e:  # noqa: BLE001

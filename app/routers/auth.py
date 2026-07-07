@@ -118,6 +118,8 @@ def api_auth_password(payload: dict = Body(...), user: dict = Depends(auth.requi
 
 @router.post("/api/auth/country")
 def api_auth_country(payload: dict = Body(...), user: dict = Depends(auth.require_user)):
+    """País declarado del usuario (para priorización social: sugerir jugadores/eventos de tu
+    país). NO afecta a los rankings nacionales (esos se eligen con un desplegable)."""
     country = ((payload or {}).get("country") or "").strip().lower()
     if country and (len(country) != 2 or not country.isalpha()):
         return JSONResponse({"error": "El país debe ser un código de 2 letras (p. ej. ES)."}, status_code=400)

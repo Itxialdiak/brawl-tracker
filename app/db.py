@@ -243,7 +243,7 @@ def init_db():
     _ensure_column(cur, "players", "club_name", "TEXT")
     _ensure_column(cur, "players", "club_tag", "TEXT")    # tag del club (para páginas de club y descubrimiento)
     _ensure_column(cur, "players", "last_error", "TEXT")  # último fallo de sondeo (404 / tag inexistente)
-    _ensure_column(cur, "users", "country", "TEXT")
+    _ensure_column(cur, "users", "country", "TEXT")   # país declarado (priorización social; NO afecta a rankings)
     _ensure_column(cur, "users", "ranking_order", "TEXT")
     _ensure_column(cur, "users", "is_admin", "INTEGER DEFAULT 0")
     _ensure_column(cur, "battles", "my_trophies", "INTEGER")
@@ -666,8 +666,8 @@ def search_users(query: str, exclude_id: int, limit: int = 12) -> list[dict]:
 
 def suggested_users(uid: int, limit: int = 40) -> list[dict]:
     """Usuarios ordenados por relevancia social (estilo red social): 1) amigos de tus amigos,
-    2) cercanía por club (algún jugador tuyo comparte club con alguno suyo), 3) mismo país,
-    4) por contribución a la comunidad (partidas aportadas). Excluye a ti y a tus amigos actuales."""
+    2) cercanía por club (algún jugador tuyo comparte club con alguno suyo), 3) mismo país
+    declarado, 4) por contribución a la comunidad (partidas aportadas). Excluye a ti y a tus amigos."""
     conn = get_conn()
     row = conn.execute("SELECT country FROM users WHERE id=?", (uid,)).fetchone()
     me_country = row["country"] if row else None
@@ -717,7 +717,7 @@ def suggested_users(uid: int, limit: int = 40) -> list[dict]:
         if r["id"] in club_users:
             score += 400
         if me_country and r["country"] and r["country"] == me_country:
-            score += 120
+            score += 120                        # mismo país declarado: prioriza jugadores de tu país
         score += min(n_battles / 50.0, 100)   # contribución (tope 100)
         out.append({"id": r["id"], "username": r["username"], "country": r["country"],
                     "mutual_friends": common, "same_club": r["id"] in club_users,
@@ -1799,7 +1799,7 @@ def list_players_for_user(user_id: int) -> list[dict]:
     main = conn.execute("SELECT main_player_tag FROM users WHERE id=?", (user_id,)).fetchone()
     main_tag = main["main_player_tag"] if main else None
     rows = conn.execute(
-        """SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name,
+        """SELECT p.tag, p.name, p.added_at, p.last_polled, p.active, p.icon_id, p.club_name, p.club_tag,
                   (SELECT COUNT(*) FROM battles b WHERE b.player_tag = p.tag) AS battles
            FROM players p JOIN user_players up ON up.player_tag = p.tag
            WHERE up.user_id = ? ORDER BY up.added_at""",
@@ -1816,41 +1816,55 @@ def list_players_for_user(user_id: int) -> list[dict]:
     return out
 
 
+def _rank_community(players: list, limit: int) -> list:
+    """Selección + orden del ranking comunitario en DOS fases:
+    1) INCLUSIÓN: entran TODOS los jugadores principales; si no llenan el tope, se rellenan los
+       huecos con los MEJORES secundarios (por trofeos). Con principales de sobra, no entran
+       secundarios aunque tengan más trofeos.
+    2) ORDEN: los incluidos se ordenan TODOS por trofeos (NO en bloques principal/secundario:
+       un secundario con más trofeos que un principal aparece por encima)."""
+    players = [p for p in players if (p.get("trophies") or 0) > 0]
+    mains = sorted([p for p in players if p["is_main"]], key=lambda x: -x["trophies"])
+    secs = sorted([p for p in players if not p["is_main"]], key=lambda x: -x["trophies"])
+    pop = mains[:limit] if len(mains) >= limit else mains + secs[:max(0, limit - len(mains))]
+    pop.sort(key=lambda x: -x["trophies"])
+    return pop
+
+
+def _community_out(pop: list) -> list[dict]:
+    return [{"rank": i + 1, "tag": p["tag"], "name": p["name"], "icon_id": p["icon_id"],
+             "trophies": p["trophies"], "club": p["club_name"],
+             "is_secondary": not bool(p["is_main"])} for i, p in enumerate(pop)]
+
+
 def community_ranking(limit: int = 200) -> list[dict]:
-    """Ranking COMUNITARIO: los jugadores PRINCIPALES de las cuentas, por trofeos totales
-    (suma de su colección). Si no llegan al tope, se rellena con los jugadores SECUNDARIOS
-    seguidos. NUNCA incluye huérfanos (jugadores que no sigue ningún usuario)."""
+    """Ranking COMUNITARIO por trofeos totales (suma de la colección). Los principales llenan
+    la lista; los huecos se rellenan con los mejores secundarios. NUNCA huérfanos. El orden
+    final es por trofeos (cada uno en su sitio, no en bloques)."""
     conn = get_conn()
     rows = conn.execute(
-        """SELECT * FROM (
-             SELECT p.tag, p.name, p.icon_id, p.club_name,
-                    (SELECT COALESCE(SUM(bc.trophies),0) FROM brawler_collection bc WHERE bc.player_tag=p.tag) AS trophies,
-                    EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
-             FROM players p
-             WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
-           ) WHERE trophies > 0
-           ORDER BY is_main DESC, trophies DESC
-           LIMIT ?""", (limit,)).fetchall()
-    return [{"rank": i + 1, "tag": r["tag"], "name": r["name"], "icon_id": r["icon_id"],
-             "trophies": r["trophies"], "club": r["club_name"],
-             "is_secondary": not bool(r["is_main"])} for i, r in enumerate(rows)]
+        """SELECT p.tag, p.name, p.icon_id, p.club_name,
+                  (SELECT COALESCE(SUM(bc.trophies),0) FROM brawler_collection bc WHERE bc.player_tag=p.tag) AS trophies,
+                  EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
+           FROM players p
+           WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)""").fetchall()
+    conn.close()
+    return _community_out(_rank_community([dict(r) for r in rows], limit))
 
 
 def community_brawler_ranking(brawler_id: int, limit: int = 200) -> list[dict]:
-    """Ranking COMUNITARIO de un brawler concreto: jugadores de la comunidad (principales
-    primero, luego secundarios; nunca huérfanos) por sus trofeos EN ESE brawler."""
+    """Ranking COMUNITARIO de un brawler concreto por sus trofeos EN ESE brawler. Misma regla:
+    principales llenan la lista, huecos con los mejores secundarios, y orden final por trofeos."""
     conn = get_conn()
     rows = conn.execute(
-        """SELECT * FROM (
-             SELECT p.tag, p.name, p.icon_id, p.club_name, bc.trophies AS trophies,
-                    EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
-             FROM players p JOIN brawler_collection bc ON bc.player_tag=p.tag
-             WHERE bc.brawler_id=? AND bc.trophies>0
-               AND EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
-           ) ORDER BY is_main DESC, trophies DESC LIMIT ?""", (brawler_id, limit)).fetchall()
-    return [{"rank": i + 1, "tag": r["tag"], "name": r["name"], "icon_id": r["icon_id"],
-             "trophies": r["trophies"], "club": r["club_name"],
-             "is_secondary": not bool(r["is_main"])} for i, r in enumerate(rows)]
+        """SELECT p.tag, p.name, p.icon_id, p.club_name, bc.trophies AS trophies,
+                  EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
+           FROM players p JOIN brawler_collection bc ON bc.player_tag=p.tag
+           WHERE bc.brawler_id=? AND bc.trophies>0
+             AND EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)""",
+        (brawler_id,)).fetchall()
+    conn.close()
+    return _community_out(_rank_community([dict(r) for r in rows], limit))
 
 
 def community_clubs_ranking(limit: int = 200) -> list[dict]:

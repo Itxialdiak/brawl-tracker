@@ -713,6 +713,21 @@
   .rvs-btn:hover { color: var(--text); }
   .rvs-btn.active { color: #0a0d13; background: var(--gold); }
   .rk-club.rk-sec { color: var(--cyan); }
+  /* Desplegable "País" para el top nacional */
+  .rscope-country { position: relative; display: inline-flex; }
+  #rscope-national { display: inline-flex; align-items: center; gap: 6px; }
+  .rsc-flag { width: 18px; height: 13px; object-fit: cover; border-radius: 2px; vertical-align: middle; }
+  #rscope-country-flag:empty { display: none; }
+  .rsc-caret { font-size: 9px; opacity: .8; }
+  .country-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 300; display: none;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 6px;
+    max-height: 340px; overflow-y: auto; width: 230px; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  .country-menu.open { display: block; }
+  .country-opt { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; background: none;
+    border: none; border-radius: 8px; padding: 7px 10px; color: var(--text); font-family: var(--body); font-size: 13.5px; cursor: pointer; }
+  .country-opt:hover { background: var(--bg-elev); }
+  .country-opt.active { background: rgba(245,184,42,.15); color: var(--gold); }
+  .country-mine { color: var(--cyan); font-size: 11px; }
   .rank-country-hint { font-size: 12px; color: var(--muted); }
   .rank-pick { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
   .rank-pick .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
@@ -2570,6 +2585,9 @@ body.tr-only .atab:not([data-atab="i18n"]) { display: none; }
 #clubs-modal.modal-overlay { z-index: 1180; }
 .rk-clickable { cursor: pointer; }
 .rk-clickable:hover { border-color: var(--cyan); }
+.club-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.club-link:hover { color: var(--cyan); text-decoration: underline; }
+.club-link b { font-weight: inherit; }
 .club-card { max-width: 780px; width: 96vw; max-height: 88vh; overflow-y: auto; }
 .club-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
 .club-name { font-family: var(--display); font-weight: 700; font-size: 22px; color: var(--gold); }

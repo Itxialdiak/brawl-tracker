@@ -429,8 +429,14 @@ function updatePlayerHeader() {
     tagEl.onclick = () => copyToClipboard(currentPlayer, tagEl);
   } else { tagEl.classList.remove("copyable"); tagEl.onclick = null; }
   const club = $("player-club");
-  if (p && p.club_name) { club.innerHTML = `Club · <b>${esc(p.club_name)}</b>`; club.style.display = ""; }
-  else { club.style.display = "none"; }
+  if (p && p.club_name) {
+    const nm = `<b>${esc(p.club_name)}</b>`;
+    // Si conocemos el tag del club, el nombre abre la página del club.
+    club.innerHTML = p.club_tag
+      ? `Club · <button class="club-link" onclick="openClub(${esc(JSON.stringify(p.club_tag))})" title="Ver el club">${nm}</button>`
+      : `Club · ${nm}`;
+    club.style.display = "";
+  } else { club.style.display = "none"; }
   const img = $("player-icon");
   if (p && p.icon_url) { img.src = p.icon_url; img.style.display = ""; img.onerror = () => { img.style.display = "none"; }; }
   else { img.style.display = "none"; }
@@ -602,6 +608,7 @@ function openAccount() {
 }
 function closeAccount() { $("account-modal").classList.remove("open"); }
 let _countrySavedTimer = null;
+// País declarado: solo para priorización social (sugerir jugadores/eventos de tu país). NO afecta rankings.
 async function changeCountry() {
   const c = $("um-country").value;
   const saved = $("country-saved"); if (saved) { saved.textContent = ""; saved.style.color = ""; }
@@ -611,12 +618,12 @@ async function changeCountry() {
     if (r.ok) {
       if (currentUser) currentUser.country = d.country;
       if (saved) {
-        saved.textContent = d.country ? "✓ País guardado (" + d.country.toUpperCase() + ")" : "✓ Sin país (solo global)";
+        saved.textContent = d.country ? "✓ País guardado (" + d.country.toUpperCase() + ")" : "✓ Sin país declarado";
         if (_countrySavedTimer) clearTimeout(_countrySavedTimer);
         _countrySavedTimer = setTimeout(() => { saved.textContent = ""; }, 4000);
       }
-      updateScopeUI();
-      if (activeTab === "rankings") loadRankings();
+      // Refresca el desplegable de país del ranking (tu país declarado sale primero).
+      const cm = $("country-menu"); if (cm && cm.dataset.built && typeof buildCountryMenu === "function") buildCountryMenu();
     } else if (saved) { saved.textContent = d.error || "No se pudo guardar."; saved.style.color = "var(--loss)"; }
   } catch (e) { if (saved) { saved.textContent = "Error de red."; saved.style.color = "var(--loss)"; } }
 }

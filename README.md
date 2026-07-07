@@ -101,3 +101,50 @@ Filtros en las rutas de estadísticas: `player`, `mode`, `map`, `brawler`, `vs`.
 La capa de **coaching con Claude** (consejos por brawler y detección de
 patrones: matchups malos, mapas flojos, picks a evitar) se monta encima de
 estos endpoints, por jugador.
+
+## Propiedad de terceros, marcas y atribución
+
+Brawl Sensei / Brawl Tracker es **contenido de fans no oficial**. No está afiliado ni
+avalado por Supercell.
+
+> This material is unofficial and is not endorsed by Supercell. For more information see
+> Supercell's Fan Content Policy: www.supercell.com/fan-content-policy.
+
+- **Brawl Stars, Supercell y sus marcas, logotipos, personajes (brawlers), imágenes,
+  nombres y datos del juego** son propiedad de **Supercell Oy** y se usan según los
+  [Términos de la API de Brawl Stars](https://developer.brawlstars.com/) y la
+  [Fan Content Policy de Supercell](https://supercell.com/en/fan-content-policy/).
+- Los **datos del juego** se obtienen de la **API oficial de Supercell**
+  (developer.brawlstars.com), servida a través del **proxy de RoyaleAPI**
+  (https://docs.royaleapi.com/proxy), sujeto a sus términos. El token de la API es
+  **secreto y vive solo en el servidor** (`.env`), nunca en el cliente.
+- Las **imágenes** (retratos de brawlers, iconos de modo, mapas, iconos de perfil/club…)
+  provienen de **Brawlify** (`cdn.brawlify.com`) y **BrawlAPI** (`brawlapi.com`), de uso
+  libre y sin necesidad de crédito, pero igualmente **sujetas a los términos de Supercell**.
+  No se modifican los recursos de Supercell.
+- El **asistente de IA ("el Sensei")** usa modelos de **Anthropic (Claude)** vía su API,
+  sujeto a los términos de Anthropic.
+
+Toda esa propiedad intelectual pertenece a sus respectivos titulares. Este proyecto solo
+la referencia/consume con fines de análisis para fans, sin reclamar derecho alguno sobre ella.
+
+### Cumplimiento (revisar antes de abrir al público o monetizar)
+
+- **Aviso obligatorio**: el descargo de Supercell (recuadro de arriba, texto literal) debe
+  mostrarse de forma **legible** allá donde se presente el contenido. Ya está en el **pie de
+  la web** y en los **Términos de uso** de la app.
+- **Monetización** (Fan Content Policy): permite ingresos por **publicidad**, **donaciones
+  puras** y **coaching**, pero **prohíbe cobrar tarifas de cualquier tipo sin aprobación
+  expresa de Supercell**. ⚠️ El **modelo de suscripción** previsto para limitar/cobrar el uso
+  de la IA encaja en "cobrar tarifas": antes de activarlo hay que **obtener aprobación de
+  Supercell** o replantearlo (p. ej. donaciones sin funciones de pago).
+- **Prohibido**: NFT/blockchain/cripto, cheats/hacks/mods e **información filtrada o no
+  publicada**. ⚠️ La sección de **"próximos brawlers"** debe alimentarse solo de **anuncios
+  oficiales**, nunca de filtraciones.
+- **Nombre/marca**: no usar marcas de Supercell (p. ej. "Brawl Stars") en dominios o handles.
+  "Brawl Sensei" usa "Brawl" (palabra común): zona gris de bajo riesgo; revísalo si se comercializa.
+- **Datos personales**: solo se guarda nombre de usuario, email de contacto y hash de
+  contraseña; los datos de juego son públicos vía la API oficial.
+
+Las políticas cambian: **conviene releer la Fan Content Policy y los términos de la API tal y
+como estén vigentes** antes de cada apertura/cambio de modelo de negocio.

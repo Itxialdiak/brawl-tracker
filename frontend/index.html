@@ -176,9 +176,10 @@
       <button class="modal-close" onclick="closeAccount()" title="Cerrar" aria-label="Cerrar">✕</button>
       <div class="modal-title">Cuenta</div>
       <div class="modal-sub" id="account-username"></div>
-      <div class="field-label">País (para rankings nacionales)</div>
+      <div class="field-label">Tu país</div>
+      <div class="hint" style="margin:-4px 0 8px;font-size:12px">Ayuda a sugerirte jugadores y eventos de tu país. No afecta a los rankings.</div>
       <select id="um-country" onchange="changeCountry()">
-        <option value="">Sin país (solo global)</option>
+        <option value="">Sin país declarado</option>
         <option value="es">España</option>
         <option value="pt">Portugal</option>
         <option value="fr">Francia</option>
@@ -750,9 +751,11 @@
       <div class="rank-topbar">
         <div class="rank-scope">
           <button class="rscope active" data-scope="global">Global</button>
-          <button class="rscope" data-scope="national" id="rscope-national">Mi país</button>
+          <div class="rscope-country" id="rscope-country-wrap">
+            <button class="rscope" id="rscope-national" onclick="toggleCountryMenu(event)">País<span id="rscope-country-flag" class="rsc-flag"></span><span class="rsc-caret">▾</span></button>
+            <div class="country-menu" id="country-menu"></div>
+          </div>
           <button class="rscope" data-scope="community">Comunitaria</button>
-          <span class="rank-country-hint" id="rank-country-hint"></span>
         </div>
         <button class="btn rank-create-btn" onclick="openLigilla()">+ Crear liguilla</button>
       </div>
@@ -1497,7 +1500,7 @@
       <button class="link-btn" onclick="openTerms()">Términos de uso</button>
       <span class="foot-sep">·</span>
       <button class="link-btn" onclick="openTerms('en')">Terms (English)</button>
-      <p class="foot-disclaimer">Contenido no oficial, no avalado por Supercell. Brawl Stars es una marca de Supercell. Ver la <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Política de Contenido para Fans</a>.</p>
+      <p class="foot-disclaimer">This material is unofficial and is not endorsed by Supercell. For more information see Supercell's <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Fan Content Policy</a>. Brawl Stars y sus recursos son propiedad de Supercell; imágenes vía <a href="https://brawlify.com" target="_blank" rel="noopener">Brawlify</a>.</p>
     </div>
   </footer>
 

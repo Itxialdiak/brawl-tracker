@@ -5,21 +5,66 @@
 /* ---------- Rankings ---------- */
 function rankNorm(t) { return (t || "").toUpperCase(); }
 function toggleCollapse(headEl) { const p = headEl.closest(".panel"); if (p) p.classList.toggle("collapsed"); }
-function applyScopeButtons() { document.querySelectorAll(".rscope").forEach((b) => b.classList.toggle("active", b.dataset.scope === rankScope)); }
-function updateScopeUI() {
-  const hasCountry = !!(currentUser && currentUser.country);
-  $("rscope-national").disabled = !hasCountry;
-  $("rank-country-hint").textContent = hasCountry
-    ? "Tu país: " + currentUser.country.toUpperCase()
-    : "Elige tu país en el menú de usuario (arriba a la derecha) para ver rankings nacionales.";
-  if (!hasCountry && rankScope === "national") { rankScope = "global"; applyScopeButtons(); }
+function applyScopeButtons() {
+  document.querySelectorAll(".rscope[data-scope]").forEach((b) => b.classList.toggle("active", b.dataset.scope === rankScope));
+  const nat = $("rscope-national"); if (nat) nat.classList.toggle("active", rankScope === "national");
 }
-document.querySelectorAll(".rscope").forEach((b) => b.addEventListener("click", () => {
-  if (b.disabled) return;
+function updateScopeUI() { /* el país nacional se elige con el desplegable; nada que preparar */ }
+// Global/Comunitaria: botones con data-scope. Nacional: se activa al elegir país en el desplegable.
+document.querySelectorAll(".rscope[data-scope]").forEach((b) => b.addEventListener("click", () => {
   rankScope = b.dataset.scope; applyScopeButtons();
   loadMainRanking(); loadBrawlerRanking();
 }));
 $("rank-brawler-sel").addEventListener("change", loadBrawlerRanking);
+
+/* --- País del ranking nacional (desplegable "País") --- */
+var RANK_COUNTRIES = [
+  { code: "es", name: "España" }, { code: "pt", name: "Portugal" }, { code: "fr", name: "Francia" },
+  { code: "gb", name: "Reino Unido" }, { code: "ie", name: "Irlanda" }, { code: "de", name: "Alemania" },
+  { code: "it", name: "Italia" }, { code: "nl", name: "Países Bajos" }, { code: "be", name: "Bélgica" },
+  { code: "ch", name: "Suiza" }, { code: "at", name: "Austria" }, { code: "pl", name: "Polonia" },
+  { code: "cz", name: "Chequia" }, { code: "se", name: "Suecia" }, { code: "no", name: "Noruega" },
+  { code: "dk", name: "Dinamarca" }, { code: "fi", name: "Finlandia" }, { code: "gr", name: "Grecia" },
+  { code: "ro", name: "Rumanía" }, { code: "hu", name: "Hungría" }, { code: "tr", name: "Turquía" },
+  { code: "ru", name: "Rusia" }, { code: "ua", name: "Ucrania" }, { code: "us", name: "Estados Unidos" },
+  { code: "ca", name: "Canadá" }, { code: "mx", name: "México" }, { code: "br", name: "Brasil" },
+  { code: "ar", name: "Argentina" }, { code: "cl", name: "Chile" }, { code: "co", name: "Colombia" },
+  { code: "pe", name: "Perú" }, { code: "ve", name: "Venezuela" }, { code: "ec", name: "Ecuador" },
+  { code: "uy", name: "Uruguay" }, { code: "jp", name: "Japón" }, { code: "kr", name: "Corea del Sur" },
+  { code: "cn", name: "China" }, { code: "in", name: "India" }, { code: "id", name: "Indonesia" },
+  { code: "ph", name: "Filipinas" }, { code: "th", name: "Tailandia" }, { code: "vn", name: "Vietnam" },
+  { code: "au", name: "Australia" }, { code: "nz", name: "Nueva Zelanda" }, { code: "sa", name: "Arabia Saudí" },
+  { code: "ae", name: "Emiratos Árabes Unidos" }, { code: "eg", name: "Egipto" }, { code: "ma", name: "Marruecos" },
+  { code: "za", name: "Sudáfrica" },
+];
+let rankCountry = null;
+function rankCountryName(code) { const c = RANK_COUNTRIES.find((x) => x.code === (code || "").toLowerCase()); return c ? c.name : (code || "").toUpperCase(); }
+function toggleCountryMenu(e) {
+  e.stopPropagation();
+  const m = $("country-menu"); if (!m) return;
+  if (!m.dataset.built) { buildCountryMenu(); m.dataset.built = "1"; }
+  m.classList.toggle("open");
+}
+function buildCountryMenu() {
+  const list = RANK_COUNTRIES.slice();
+  const mine = (typeof currentUser !== "undefined" && currentUser && currentUser.country) ? currentUser.country.toLowerCase() : null;
+  if (mine) { const i = list.findIndex((c) => c.code === mine); if (i > 0) { const [m] = list.splice(i, 1); list.unshift(m); } }
+  $("country-menu").innerHTML = list.map((c) =>
+    `<button class="country-opt ${rankCountry === c.code ? "active" : ""}" onclick="selectRankCountry('${c.code}')">
+      <img class="rsc-flag" src="https://flagcdn.com/w40/${c.code}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(c.name)}${c.code === mine ? ' <span class="country-mine">· tu país</span>' : ''}</span></button>`).join("");
+}
+function selectRankCountry(code) {
+  rankCountry = code; rankScope = "national";
+  $("rscope-country-flag").innerHTML = `<img class="rsc-flag" src="https://flagcdn.com/w40/${code}.png" alt="" onerror="this.style.display='none'">`;
+  $("country-menu").classList.remove("open");
+  buildCountryMenu();
+  applyScopeButtons();
+  loadMainRanking(); loadBrawlerRanking();
+}
+document.addEventListener("click", (e) => {
+  const w = $("rscope-country-wrap");
+  if (w && !w.contains(e.target)) { const m = $("country-menu"); if (m) m.classList.remove("open"); }
+});
 
 let rankView = "players";   // "players" | "clubs" (switch del panel unificado de rankings)
 function setRankView(v) {
@@ -49,7 +94,8 @@ async function loadRankings() {
 async function loadMainRanking() {
   const el = $("rank-main"); if (!el) return;
   el.innerHTML = '<div class="rk-loading">Cargando…</div>';
-  let d; try { d = await getJSON(`/api/rankings?kind=${rankView}&scope=${rankScope}`); }
+  const cq = (rankScope === "national" && rankCountry) ? "&country=" + rankCountry : "";
+  let d; try { d = await getJSON(`/api/rankings?kind=${rankView}&scope=${rankScope}${cq}`); }
   catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
   let highlight = null;
   if (rankView === "clubs") {
@@ -64,7 +110,8 @@ async function loadBrawlerRanking() {
   const el = $("rank-brawler"), hint = $("rank-brawler-hint"); const bid = $("rank-brawler-sel").value;
   if (!bid) { el.innerHTML = '<div class="rk-empty">No hay brawler seleccionado.</div>'; hint.textContent = ""; return; }
   el.innerHTML = '<div class="rk-loading">Cargando…</div>';
-  let d; try { d = await getJSON(`/api/rankings?kind=brawlers&brawler_id=${encodeURIComponent(bid)}&scope=${rankScope}`); }
+  const cq = (rankScope === "national" && rankCountry) ? "&country=" + rankCountry : "";
+  let d; try { d = await getJSON(`/api/rankings?kind=brawlers&brawler_id=${encodeURIComponent(bid)}&scope=${rankScope}${cq}`); }
   catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
   renderRanking(el, hint, d, currentPlayer, "brawlers");
 }
@@ -75,7 +122,7 @@ function renderRanking(el, hint, d, highlight, kind) {
   const meIdx = highlight ? items.findIndex((it) => key(it) === rankNorm(highlight)) : -1;
   const community = d.scope === "community";
   const scopeTxt = community ? "de la comunidad"
-    : d.scope === "national" ? "de tu país (" + (d.country || "").toUpperCase() + ")" : "mundial";
+    : d.scope === "national" ? "de " + rankCountryName(d.country) : "mundial";
   if (hint) {
     const where = community ? `ranking ${scopeTxt}` : `top 200 ${scopeTxt}`;
     if (meIdx >= 0) hint.innerHTML = `Estás en el puesto <b>#${items[meIdx].rank}</b> del ${where}.`;

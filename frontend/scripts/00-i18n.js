@@ -28,10 +28,13 @@
   // de bandera (los muestra como letras), así que usamos imágenes reales (flagcdn).
   var LANGS = [
     { code: "es", label: "Español", cc: "es" },
+    { code: "eu", label: "Euskera", cc: "es-pv", flag: "https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_the_Basque_Country.svg?width=40" },
+    { code: "ca", label: "Català", cc: "es-ct", flag: "https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Catalonia.svg?width=40" },
+    { code: "gl", label: "Galego", cc: "es-ga", flag: "https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Galicia.svg?width=40" },
     { code: "en", label: "English", cc: "gb" },
-    { code: "fr", label: "Français", cc: "fr", soon: true },
-    { code: "de", label: "Deutsch", cc: "de", soon: true },
-    { code: "it", label: "Italiano", cc: "it", soon: true },
+    { code: "fr", label: "Français", cc: "fr" },
+    { code: "de", label: "Deutsch", cc: "de" },
+    { code: "it", label: "Italiano", cc: "it" },
     { code: "fi", label: "Suomi", cc: "fi", soon: true },
     { code: "nl", label: "Nederlands", cc: "nl", soon: true },
     { code: "ru", label: "Русский", cc: "ru", soon: true },
@@ -47,14 +50,12 @@
     { code: "bn", label: "বাংলা", cc: "bd", soon: true },
     { code: "vi", label: "Tiếng Việt", cc: "vn", soon: true },
     { code: "pa", label: "ਪੰਜਾਬੀ", cc: "in", soon: true },
-    { code: "eu", label: "Euskera", cc: "es-pv", soon: true },
-    { code: "ca", label: "Català", cc: "es-ct", soon: true },
-    { code: "gl", label: "Galego", cc: "es-ga", soon: true },
   ];
 
   /* Icono de bandera (imagen). Si la imagen falla, muestra el código como texto. */
   function flagImg(l, cls) {
-    return '<img class="' + cls + '" src="https://flagcdn.com/w40/' + l.cc + '.png" alt="" ' +
+    var src = l.flag || ('https://flagcdn.com/w40/' + l.cc + '.png');   // override para banderas regionales (Ikurriña, Senyera, Galicia)
+    return '<img class="' + cls + '" src="' + src + '" alt="" ' +
       'loading="lazy" onerror="this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'inline-flex\'">' +
       '<span class="lang-code-fb" style="display:none">' + l.code.toUpperCase() + '</span>';
   }
