@@ -81,17 +81,18 @@ function renderVersatileTop13(top) {
       <div class="podium-img">${img}</div>
       <div class="podium-base"><span class="podium-pos">${b.pos}</span>
         <span class="podium-name">${esc(b.name)}</span>
-        <span class="podium-tro" style="color:${pctColor(b.avg_winrate)}">Rend. ${b.avg_winrate}</span></div></div>`;
+        <span class="podium-tro" style="color:${pctColor(b.avg_winrate)}">${b.avg_winrate}%</span></div></div>`;
   }).join("");
+  const modesTxt = (b) => `${b.modes_played}/${b.n_modes || b.modes_played} ${(b.n_modes || b.modes_played) === 1 ? "modo" : "modos"}`;
   const winnersMini = podium.map((b) => {
     const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
     return `<div class="winner-row" onclick="gotoBrawler(${b.id})" title="Ver ficha">
       <span class="wm-pos">${b.pos}</span>${img}
       <div class="wm-tx"><span class="wm-name">${esc(b.name)}</span>
-        <span class="wm-sub"><b style="color:${pctColor(b.avg_winrate)}">Rend. ${b.avg_winrate}</b> · ${b.modes_played} modos</span></div></div>`;
+        <span class="wm-sub"><b style="color:${pctColor(b.avg_winrate)}">${b.avg_winrate}%</b> · ${modesTxt(b)}</span></div></div>`;
   }).join("");
   const effRows = podium.map((b) => {
-    const wr = b.avg_winrate, w = Math.max(3, wr);
+    const wr = b.avg_raw != null ? b.avg_raw : b.avg_winrate, w = Math.max(3, wr);
     return `<div class="eff-row"><span class="eff-name">${esc(b.name)}</span>
       <div class="eff-bar-wrap"><div class="eff-bar" style="width:${w}%;background:${pctColor(wr)}"></div></div>
       <span class="eff-val" style="color:${pctColor(wr)}">${wr}%</span></div>`;
@@ -101,15 +102,15 @@ function renderVersatileTop13(top) {
     return `<div class="top-mini" onclick="gotoBrawler(${b.id})" title="Ver ficha">
       <span class="top-mini-pos">${i + 4}</span>${img}
       <div class="top-mini-tx"><span class="top-mini-name">${esc(b.name)}</span>
-        <span class="top-mini-tro" style="color:${pctColor(b.avg_winrate)}">Rend. ${b.avg_winrate}</span></div></div>`;
+        <span class="top-mini-tro" style="color:${pctColor(b.avg_winrate)}">${b.avg_winrate}%</span></div></div>`;
   }).join("");
   el.innerHTML = `<div class="top10-panel">
     <h2><span class="dot"></span>Top 13 Brawlers más versátiles</h2>
-    <p class="hint" style="margin:-4px 0 14px">Tus brawlers con mejor <b>rendimiento medio</b> entre los modos que juegas — ajustado a la dificultad del entorno (trofeos), no solo win rate.</p>
+    <p class="hint" style="margin:-4px 0 14px">Tu <b>versatilidad</b> por brawler: el rendimiento (ajustado a la dificultad) repartido entre <b>todos los modos que juegas</b>. Los modos que no juegas cuentan como 0, así que puntúa alto quien rinde en varios modos, no quien arrasa en uno solo.</p>
     <div class="top13-main">
       <div class="podium-extra extra-left"><div class="extra-title">Versatilidad</div>${winnersMini}</div>
       <div class="podium">${podiumHtml}</div>
-      <div class="podium-extra extra-right"><div class="extra-title">Win rate medio</div>${effRows}</div>
+      <div class="podium-extra extra-right"><div class="extra-title">Versatilidad (WR puro)</div>${effRows}</div>
     </div>
     ${collapsibleRest(restHtml, top.slice(3, 13).length)}</div>`;
 }
@@ -554,10 +555,16 @@ function renderRoleRadars(roles) {
 function heatBg(wr) { if (wr >= 55) return "rgba(65,224,138,0.14)"; if (wr < 45) return "rgba(255,93,108,0.14)"; return "rgba(255,200,61,0.12)"; }
 function heatmap(ct) {
   if (!ct.brawlers.length || !ct.modes.length) return `<div class="empty">Sin datos para la tabla cruzada todavía.</div>`;
-  // Orden por win rate medio entre los modos que ha jugado (mayor a menor), aunque ese valor no se muestre.
+  // Orden por win rate PURO repartido entre TODOS los modos de la tabla: los modos que el
+  // brawler no juega cuentan como 0 en la media (mismo criterio de versatilidad que el podio,
+  // pero con win rate puro). Así arriba salen los que rinden en varios modos, no en uno solo.
+  const nModes = ct.modes.length || 1;
   const avgWr = (b) => {
-    const vs = ct.modes.map((m) => ct.cells[`${b}|${m}`]).filter((c) => c && c.winrate != null).map((c) => c.winrate);
-    return vs.length ? vs.reduce((a, x) => a + x, 0) / vs.length : -1;
+    const sum = ct.modes.reduce((acc, m) => {
+      const c = ct.cells[`${b}|${m}`];
+      return acc + (c && c.winrate != null ? c.winrate : 0);
+    }, 0);
+    return sum / nModes;
   };
   const brawlers = ct.brawlers.slice().sort((a, b) => avgWr(b) - avgWr(a));
   let h = `<table class="heat"><thead><tr><th></th>`;

@@ -14,6 +14,7 @@ simplemente muestra los nombres sin imagen.
 from __future__ import annotations
 
 import os
+import re
 import json
 import time
 import httpx
@@ -41,6 +42,21 @@ def _load_map_names_es() -> dict:
         except Exception:  # noqa: BLE001
             _mapes_cache["data"] = _mapes_cache["data"] or {}
     return _mapes_cache["data"] or {}
+
+
+def _mnorm(s: str) -> str:
+    """Clave de modo normalizada: minúsculas, solo alfanumérico (sin espacios/guiones)."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+# Códigos de modo del battlelog/rotación oficial de Supercell -> clave (normalizada) del modo
+# equivalente en Brawlify, para reutilizar su icono. Todo en forma ya normalizada.
+_MODE_ALIASES = {
+    "siege": "brawlarena",            # nombre interno antiguo = la nueva Brawl Arena
+    "deathmatch": "wipeout", "deathmatch5v5": "wipeout5v5",   # Destrucción
+    "airhockey": "brawlhockey", "hockey": "brawlhockey",       # Brawl Hockey
+    "tagteam": "duels",               # Tag Team se presenta como Duelos
+}
 
 
 def _extract_list(data):
@@ -71,14 +87,22 @@ def _build(brawlers, gamemodes, maps) -> dict:
         for k in (g.get("scHash"), g.get("hash"), g.get("name")):  # también por nombre
             if k:
                 mmap[str(k).lower()] = info
+    # Clave NORMALIZADA (solo alfanumérico) para cada entrada: así el icono casa aunque el modo
+    # llegue con espacios/guiones (Brawlify) o en camelCase (battlelog): "Brawl Hockey",
+    # "Brawl-Hockey" y "brawlHockey" resuelven todos a la misma imagen.
+    for k in list(mmap.keys()):
+        nk = _mnorm(k)
+        if nk:
+            mmap.setdefault(nk, mmap[k])
     # Alias para showdown solo/dúo si la API solo trae "showdown".
     if "showdown" in mmap:
         for k in ("soloshowdown", "duoshowdown"):
             mmap.setdefault(k, mmap["showdown"])
-    # "Siege" (nombre interno antiguo con el que llegan las partidas) = la nueva "Brawl
-    # Arena" (Arena en español): reutiliza su icono oficial.
-    if "brawl arena" in mmap:
-        mmap.setdefault("siege", mmap["brawl arena"])
+    # Alias: códigos con los que llegan las partidas/rotación oficial de Supercell que NO
+    # coinciden con el scHash de Brawlify. Cada alias (ya normalizado) apunta al icono real.
+    for alias, target in _MODE_ALIASES.items():
+        if target in mmap:
+            mmap.setdefault(alias, mmap[target])
 
     pmap = {}
     maps_by_mode = {}

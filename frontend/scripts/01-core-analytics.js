@@ -37,7 +37,14 @@ function goBrawlerByName(name) {
   if (typeof switchTab === "function") switchTab("brawlers");
   if (typeof showBrawlerDetail === "function") showBrawlerDetail(id);
 }
-function modeAsset(mode) { return mode ? ASSETS.modes[mode.toLowerCase()] || null : null; }
+function modeAsset(mode) {
+  if (!mode) return null;
+  const M = ASSETS.modes || {};
+  const low = String(mode).toLowerCase();
+  // Prueba la clave tal cual y luego normalizada (sin símbolos): así casan los códigos de la
+  // rotación oficial (deathmatch, airHockey, tagTeam…) con los scHash de Brawlify.
+  return M[low] || M[low.replace(/[^a-z0-9]/g, "")] || null;
+}
 function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
 /* Nombre de mapa para MOSTRAR: en español si el idioma activo es español (y lo tenemos);
    en otros idiomas se muestra el nombre original en inglés. El id interno sigue en inglés. */
@@ -544,11 +551,23 @@ const MODE_ES = {
   heist: "Atraco", hotZone: "Zona Restringida", knockout: "Noqueo", duels: "Duelos",
   soloShowdown: "Supervivencia (solo)", duoShowdown: "Supervivencia (dúo)",
   trioShowdown: "Supervivencia (trío)", brawlHockey: "Brawl Hockey", wipeout: "Destrucción",
-  siege: "Arena", Siege: "Arena",
+  siege: "Arena", Siege: "Arena", brawlArena: "Arena",
   // Códigos crudos de la API (rotación) que difieren del canónico que guardamos:
-  airHockey: "Brawl Hockey", deathmatch5v5: "Destrucción",
+  airHockey: "Brawl Hockey", deathmatch: "Destrucción", deathmatch5v5: "Destrucción",
+  tagTeam: "Duelos",
 };
-function modeName(key) { return key ? (MODE_ES[key] || prettyMode(key)) : ""; }
+/* Índice normalizado (minúsculas, solo alfanumérico) para tolerar cómo llega cada modo:
+   camelCase del battlelog, con espacios/guiones de Brawlify o los códigos de la rotación. */
+const _MODE_ES_NORM = (function () {
+  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const idx = {};
+  for (const k in MODE_ES) idx[norm(k)] = MODE_ES[k];
+  return idx;
+})();
+function modeName(key) {
+  if (!key) return "";
+  return MODE_ES[key] || _MODE_ES_NORM[String(key).toLowerCase().replace(/[^a-z0-9]/g, "")] || prettyMode(key);
+}
 async function loadRotation() {
   const block = $("rotation-block"), grid = $("rotation-grid");
   if (!currentPlayer) { block.style.display = "none"; return; }

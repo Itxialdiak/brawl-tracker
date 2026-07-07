@@ -1,0 +1,9 @@
+{
+  "_help": "Pool de mapas COMPETITIVO (Ranked) por modo. Clave = código de modo del juego (gemGrab, brawlBall, heist, knockout, hotZone, bounty). Valores = nombres de mapa EN INGLÉS, tal cual llegan del battlelog/rotación (p. ej. 'Hard Rock Mine'). Se muestran traducidos por map_names_es.json. Si TODAS las listas están vacías, el Competitivo se deriva del feed oficial en vivo (respaldo). Rellénalas para fijar el pool de forma estable y actualízalas cuando rote la temporada.",
+  "gemGrab": [],
+  "brawlBall": [],
+  "heist": [],
+  "knockout": [],
+  "hotZone": [],
+  "bounty": []
+}

@@ -4026,9 +4026,11 @@ def delete_report(report_id: int) -> None:
 
 
 def versatile_brawlers(filters, limit=13):
-    """Top brawlers por win rate MEDIO entre los modos jugados (versatilidad): el mismo
-    criterio con el que se ordena la tabla Brawler x Modo. Solo nombre + media (el router
-    lo enriquece con retrato/cuerpo entero)."""
+    """Top brawlers por VERSATILIDAD: rendimiento medio repartido entre TODOS los modos que
+    juega la cuenta, contando los modos NO jugados como 0. Así un brawler que solo se usa en
+    un modo (aunque sea al 100%) puntúa bajo (100/nº_modos), y suben los que rinden en varios.
+    `avg_winrate` = versatilidad ajustada a dificultad; `avg_raw` = igual pero con win rate
+    puro. El router lo enriquece con retrato/cuerpo entero."""
     where_sql, params = _build_filters(filters or {})
     extra = "AND" if where_sql else "WHERE"
     conn = get_conn()
@@ -4047,6 +4049,10 @@ def versatile_brawlers(filters, limit=13):
         f"{where_sql} {extra} my_brawler IS NOT NULL AND mode IS NOT NULL "
         f"GROUP BY my_brawler, mode", params).fetchall()
     conn.close()
+    # Denominador de la versatilidad = nº de modos DISTINTOS que juega la cuenta (las columnas
+    # de la tabla Brawler x Modo). Los modos que un brawler no juega cuentan como 0 en su media.
+    all_modes = {r["mode"] for r in rows if r["mode"]}
+    n_modes = len(all_modes) or 1
     agg = {}
     for r in rows:
         wr = _winrate(r["wins"], r["losses"])
@@ -4057,9 +4063,9 @@ def versatile_brawlers(filters, limit=13):
         d["adjs"].append(adj if adj is not None else wr)
         d["wrs"].append(wr)
         d["total"] += r["total"]
-    out = [{"name": b, "avg_winrate": round(sum(d["adjs"]) / len(d["adjs"]), 1),
-            "avg_raw": round(sum(d["wrs"]) / len(d["wrs"]), 1),
-            "modes_played": len(d["adjs"]), "total": d["total"]}
+    out = [{"name": b, "avg_winrate": round(sum(d["adjs"]) / n_modes, 1),
+            "avg_raw": round(sum(d["wrs"]) / n_modes, 1),
+            "modes_played": len(d["adjs"]), "n_modes": n_modes, "total": d["total"]}
            for b, d in agg.items() if d["adjs"]]
     out.sort(key=lambda x: (-x["avg_winrate"], -x["modes_played"], -x["total"], x["name"]))
     return out[:limit]

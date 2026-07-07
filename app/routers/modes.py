@@ -2,6 +2,7 @@
 
 Extraído de main.py; se incluye con app.include_router()."""
 import os
+import re
 import json
 import time
 import asyncio
@@ -17,6 +18,11 @@ router = APIRouter()
 _RANKED_MODES = {"gemGrab", "brawlBall", "heist", "knockout", "hotZone", "bounty"}
 
 
+def _mnorm(s: str) -> str:
+    """Clave de modo/mapa normalizada: minúsculas, solo alfanumérico."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
 def _slot_hours(start: str | None, end: str | None) -> float:
     try:
         f = "%Y%m%dT%H%M%S"
@@ -26,6 +32,33 @@ def _slot_hours(start: str | None, end: str | None) -> float:
 
 
 _rotation_cache = {"at": 0.0, "data": None}
+_ranked_pool_cache = {"data": None, "mtime": None}
+
+
+def _ranked_pool() -> dict:
+    """Pool COMPETITIVO curado (data/ranked_maps.json): {modo_norm: {mapa_norm: 'Mapa EN'}}.
+    Editable a mano; cacheado por mtime. Si está vacío, el llamador cae al feed en vivo."""
+    path = os.path.join(os.path.dirname(__file__), "..", "data", "ranked_maps.json")
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return {}
+    if _ranked_pool_cache["data"] is None or mtime != _ranked_pool_cache["mtime"]:
+        pool = {}
+        try:
+            with open(path, encoding="utf-8") as f:
+                raw = json.load(f)
+            for mode, maps in raw.items():
+                if mode.startswith("_") or not isinstance(maps, list):
+                    continue
+                for mp in maps:
+                    if mp:
+                        pool.setdefault(_mnorm(mode), {})[_mnorm(mp)] = mp
+        except Exception:  # noqa: BLE001
+            pool = _ranked_pool_cache["data"] or {}
+        _ranked_pool_cache["data"] = pool
+        _ranked_pool_cache["mtime"] = mtime
+    return _ranked_pool_cache["data"] or {}
 _mode_guide_cache = {"data": None, "mtime": None}
 
 
@@ -147,11 +180,19 @@ def _map_tips(draft: list, guide: dict) -> list:
 
 
 async def _get_rotation() -> list:
-    """Rotación actual cacheada (10 min) con categoría copas/competitivo por evento."""
+    """Rotación actual cacheada (10 min) con categoría copas/competitivo por evento.
+
+    El pool COMPETITIVO se decide así (estable):
+      1) Si `data/ranked_maps.json` tiene mapas (pool curado), MANDA: un evento es 'ranked'
+         solo si su (modo, mapa) está en el pool. Además se inyectan los mapas del pool que
+         hoy NO están en la rotación de trofeos, para mostrar el pool completo.
+      2) Si el pool está vacío, se cae al FEED en vivo: 'ranked' = modo competitivo con un
+         slot claramente largo (heurística de respaldo)."""
     now = time.time()
     if _rotation_cache["data"] is None or now - _rotation_cache["at"] > 600:
         raw = await brawl_api.get_events_rotation()
-        events = []
+        pool = _ranked_pool()
+        events, seen_ranked = [], set()
         for it in (raw or []):
             evt = it.get("event") or {}
             map_ = evt.get("map") or it.get("map")
@@ -159,9 +200,20 @@ async def _get_rotation() -> list:
                 continue
             mode = evt.get("mode") or it.get("mode")
             start, end = it.get("startTime"), it.get("endTime")
-            ranked = mode in _RANKED_MODES and _slot_hours(start, end) >= 36
+            if pool:  # pool curado manda
+                ranked = _mnorm(map_) in pool.get(_mnorm(mode), {})
+            else:      # respaldo: heurística del feed en vivo
+                ranked = mode in _RANKED_MODES and _slot_hours(start, end) >= 36
+            if ranked:
+                seen_ranked.add((_mnorm(mode), _mnorm(map_)))
             events.append({"mode": mode, "map": map_, "startTime": start, "endTime": end,
                            "category": "ranked" if ranked else "trophy"})
+        # Inyecta el resto del pool curado que hoy no da trofeos (para ver el pool completo).
+        for mode_norm, maps in pool.items():
+            for map_norm, map_en in maps.items():
+                if (mode_norm, map_norm) not in seen_ranked:
+                    events.append({"mode": mode_norm, "map": map_en, "startTime": None,
+                                   "endTime": None, "category": "ranked"})
         _rotation_cache.update(at=now, data=events)
     return _rotation_cache["data"]
 
