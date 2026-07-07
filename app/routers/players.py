@@ -43,8 +43,9 @@ async def api_add_player(payload: dict = Body(...), user: dict = Depends(auth.re
         return JSONResponse({"error": f"No se pudo validar el tag: {msg}"}, status_code=502)
     name = profile.get("name")
     icon_id = (profile.get("icon") or {}).get("id")
-    club_name = (profile.get("club") or {}).get("name")
-    is_new = await asyncio.to_thread(db.add_player, tag, name, icon_id, club_name)
+    _club = profile.get("club") or {}
+    club_name, club_tag = _club.get("name"), _club.get("tag")
+    is_new = await asyncio.to_thread(db.add_player, tag, name, icon_id, club_name, club_tag)
     await asyncio.to_thread(db.follow_player, user["id"], tag)  # lo asocia a este usuario
     await asyncio.to_thread(db.snapshot_brawlers, tag, profile.get("brawlers"))  # colección inicial
     # Sondeo inmediato para que aparezcan datos al momento. El poller vive en main

@@ -197,6 +197,7 @@ function renderUserSwitch() {
       <button class="user-menu-opt" onclick="userMenu('cuenta')">⚙️ Cuenta</button>
       <button class="user-menu-opt" onclick="userMenu('jugadores')">🎮 Jugadores</button>
       <button class="user-menu-opt" onclick="userMenu('amigos')">👥 Amigos <span class="user-menu-badge" id="user-fr-badge" style="display:none"></span></button>
+      <button class="user-menu-opt" onclick="userMenu('clubs')">🛡️ Clubs</button>
       <button class="user-menu-opt" onclick="userMenu('buscar')">🔎 Buscar usuarios</button>
       <button class="user-menu-opt" onclick="userMenu('mensajes')">✉️ Mensajes <span class="user-menu-badge" id="user-msg-badge" style="display:none"></span></button>
       <button class="user-menu-opt danger" onclick="userMenu('salir')">🚪 Cerrar sesión</button>
@@ -223,6 +224,7 @@ function userMenu(which) {
   if (which === "cuenta") openAccount();
   else if (which === "jugadores") openPlayersManager();
   else if (which === "amigos") openFriends();
+  else if (which === "clubs") openClubsDiscover();
   else if (which === "buscar") openUsers();
   else if (which === "mensajes") openMessages();
   else if (which === "salir") doLogout();
@@ -288,6 +290,27 @@ async function addManagedPlayer() {
   await refreshMainStatus();
   if (typeof refreshAll === "function") refreshAll();
 }
+
+/* ---------- Descubrir Clubs de la comunidad ---------- */
+let _clubsSearchT = null;
+function openClubsDiscover() { $("clubs-modal").classList.add("open"); clubsDiscoverSearch(); }
+function closeClubsDiscover() { $("clubs-modal").classList.remove("open"); }
+function clubsSearchInput() { clearTimeout(_clubsSearchT); _clubsSearchT = setTimeout(clubsDiscoverSearch, 220); }
+async function clubsDiscoverSearch() {
+  const q = $("clubs-search") ? $("clubs-search").value.trim() : "";
+  const box = $("clubs-list");
+  box.innerHTML = `<p class="evd-muted" style="padding:16px">Cargando clubs…</p>`;
+  let r;
+  try { r = await getJSON("/api/clubs/discover" + (q ? "?q=" + encodeURIComponent(q) : "")); }
+  catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No se pudo cargar.</p>`; return; }
+  const clubs = r.clubs || [];
+  if (!clubs.length) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No hay clubs que mostrar todavía.</p>`; return; }
+  box.innerHTML = clubs.map((c) => `<button class="club-card-item ${c.has_description ? "featured" : ""}" onclick="openClubFromDiscover(${esc(JSON.stringify(c.tag))})">
+      <div class="cci-head"><span class="cci-name">${esc(c.name)}</span><span class="cci-members">${c.members} miembro${c.members === 1 ? "" : "s"} en la plataforma</span></div>
+      <div class="cci-desc ${c.description ? "" : "evd-muted"}">${c.description ? esc(c.description) : "Sin descripción todavía."}</div>
+    </button>`).join("");
+}
+function openClubFromDiscover(tag) { closeClubsDiscover(); if (typeof openClub === "function") openClub(tag); }
 
 let _frCount = 0, _msgCount = 0;
 function updateUserDot() {

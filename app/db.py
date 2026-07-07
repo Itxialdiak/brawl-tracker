@@ -86,6 +86,14 @@ def init_db():
             user_id INTEGER NOT NULL, player_tag TEXT NOT NULL, added_at TEXT,
             PRIMARY KEY (user_id, player_tag)
         );
+        CREATE TABLE IF NOT EXISTS club_pages (
+            club_tag TEXT PRIMARY KEY, name TEXT, description TEXT,
+            edit_policy TEXT DEFAULT 'members', updated_at TEXT, updated_by INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS club_editors (
+            club_tag TEXT NOT NULL, player_tag TEXT NOT NULL,
+            PRIMARY KEY (club_tag, player_tag)
+        );
         CREATE TABLE IF NOT EXISTS custom_rankings (
             id INTEGER PRIMARY KEY AUTOINCREMENT, owner_user_id INTEGER NOT NULL,
             name TEXT NOT NULL, share_token TEXT UNIQUE NOT NULL,
@@ -233,6 +241,7 @@ def init_db():
     # Migración de bases antiguas: añade columnas nuevas si faltan.
     _ensure_column(cur, "players", "icon_id", "INTEGER")
     _ensure_column(cur, "players", "club_name", "TEXT")
+    _ensure_column(cur, "players", "club_tag", "TEXT")    # tag del club (para páginas de club y descubrimiento)
     _ensure_column(cur, "players", "last_error", "TEXT")  # último fallo de sondeo (404 / tag inexistente)
     _ensure_column(cur, "users", "country", "TEXT")
     _ensure_column(cur, "users", "ranking_order", "TEXT")
@@ -291,29 +300,33 @@ def normalize_tag(tag: str) -> str:
 
 
 def add_player(tag: str, name: str | None = None, icon_id: int | None = None,
-               club_name: str | None = None) -> bool:
+               club_name: str | None = None, club_tag: str | None = None) -> bool:
     tag = normalize_tag(tag)
     conn = get_conn(); cur = conn.cursor()
     now = datetime.now(timezone.utc).isoformat()
-    cur.execute("INSERT OR IGNORE INTO players (tag, name, added_at, active, icon_id, club_name) VALUES (?,?,?,1,?,?)",
-                (tag, name, now, icon_id, club_name))
+    cur.execute("INSERT OR IGNORE INTO players (tag, name, added_at, active, icon_id, club_name, club_tag) VALUES (?,?,?,1,?,?,?)",
+                (tag, name, now, icon_id, club_name, club_tag))
     added = cur.rowcount == 1
-    if not added and (name or icon_id is not None or club_name is not None):
-        cur.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), club_name=COALESCE(?,club_name) WHERE tag=?",
-                    (name, icon_id, club_name, tag))
+    if not added and (name or icon_id is not None or club_name is not None or club_tag is not None):
+        cur.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), "
+                    "club_name=COALESCE(?,club_name), club_tag=COALESCE(?,club_tag) WHERE tag=?",
+                    (name, icon_id, club_name, club_tag, tag))
     conn.commit(); conn.close()
     return added
 
 
 def update_player_profile(tag: str, name: str | None, icon_id: int | None,
-                          club_name: str | None = None) -> None:
+                          club_name: str | None = None, club_tag: str | None = None) -> None:
     ntag = normalize_tag(tag)
     conn = get_conn()
-    conn.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), club_name=COALESCE(?,club_name) WHERE tag=?",
-                 (name, icon_id, club_name, ntag))
+    # club_name/club_tag: si el jugador SALE del club la API los da como None; para reflejar la
+    # salida (no solo entradas) los escribimos siempre que se refresca el perfil (club_name is not None
+    # marca "hubo refresco de club"): usamos el valor tal cual (puede ser None) en esos dos campos.
+    conn.execute("UPDATE players SET name=COALESCE(?,name), icon_id=COALESCE(?,icon_id), "
+                 "club_name=?, club_tag=? WHERE tag=?",
+                 (name, icon_id, club_name, club_tag, ntag))
     conn.commit(); conn.close()
-    if club_name is not None:  # el club puede haber cambiado → recalcula Croker de quien lo tenga de principal
-        refresh_croker_for_player(ntag)
+    refresh_croker_for_player(ntag)   # el club puede haber cambiado → recalcula Croker del principal
 
 
 def player_needs_profile(tag: str) -> bool:
@@ -1801,6 +1814,155 @@ def list_players_for_user(user_id: int) -> list[dict]:
     # El jugador principal primero (es la identidad; el perfil público lo muestra por defecto).
     out.sort(key=lambda x: (not x["is_main"],))
     return out
+
+
+def community_ranking(limit: int = 200) -> list[dict]:
+    """Ranking COMUNITARIO: los jugadores PRINCIPALES de las cuentas, por trofeos totales
+    (suma de su colección). Si no llegan al tope, se rellena con los jugadores SECUNDARIOS
+    seguidos. NUNCA incluye huérfanos (jugadores que no sigue ningún usuario)."""
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT * FROM (
+             SELECT p.tag, p.name, p.icon_id, p.club_name,
+                    (SELECT COALESCE(SUM(bc.trophies),0) FROM brawler_collection bc WHERE bc.player_tag=p.tag) AS trophies,
+                    EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
+             FROM players p
+             WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
+           ) WHERE trophies > 0
+           ORDER BY is_main DESC, trophies DESC
+           LIMIT ?""", (limit,)).fetchall()
+    return [{"rank": i + 1, "tag": r["tag"], "name": r["name"], "icon_id": r["icon_id"],
+             "trophies": r["trophies"], "club": r["club_name"],
+             "is_secondary": not bool(r["is_main"])} for i, r in enumerate(rows)]
+
+
+def community_brawler_ranking(brawler_id: int, limit: int = 200) -> list[dict]:
+    """Ranking COMUNITARIO de un brawler concreto: jugadores de la comunidad (principales
+    primero, luego secundarios; nunca huérfanos) por sus trofeos EN ESE brawler."""
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT * FROM (
+             SELECT p.tag, p.name, p.icon_id, p.club_name, bc.trophies AS trophies,
+                    EXISTS(SELECT 1 FROM users u WHERE u.main_player_tag=p.tag) AS is_main
+             FROM players p JOIN brawler_collection bc ON bc.player_tag=p.tag
+             WHERE bc.brawler_id=? AND bc.trophies>0
+               AND EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
+           ) ORDER BY is_main DESC, trophies DESC LIMIT ?""", (brawler_id, limit)).fetchall()
+    return [{"rank": i + 1, "tag": r["tag"], "name": r["name"], "icon_id": r["icon_id"],
+             "trophies": r["trophies"], "club": r["club_name"],
+             "is_secondary": not bool(r["is_main"])} for i, r in enumerate(rows)]
+
+
+def community_clubs_ranking(limit: int = 200) -> list[dict]:
+    """Ranking COMUNITARIO de clubs: agrupa por club a los jugadores de la comunidad (no
+    huérfanos) y los ordena por trofeos totales de sus miembros de la plataforma."""
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT club_name AS name, MAX(club_tag) AS tag, COUNT(*) AS members, SUM(trophies) AS trophies FROM (
+             SELECT p.club_name, p.club_tag,
+                    (SELECT COALESCE(SUM(bc.trophies),0) FROM brawler_collection bc WHERE bc.player_tag=p.tag) AS trophies
+             FROM players p
+             WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
+               AND p.club_name IS NOT NULL AND p.club_name<>''
+           ) WHERE trophies > 0
+           GROUP BY name ORDER BY trophies DESC LIMIT ?""", (limit,)).fetchall()
+    return [{"rank": i + 1, "name": r["name"], "tag": r["tag"], "members": r["members"],
+             "trophies": r["trophies"]} for i, r in enumerate(rows)]
+
+
+# --- Páginas de club (descripción editable por miembros) + descubrimiento ---------------
+
+def _is_meaningful_description(text) -> bool:
+    """Heurística: una descripción 'de verdad' (no vacía ni una cadena sin sentido)."""
+    t = (text or "").strip()
+    if len(t) < 20:
+        return False
+    if len([w for w in t.split() if w]) < 3:
+        return False
+    return len(set(t.replace(" ", "").lower())) >= 5   # variedad de caracteres
+
+
+def player_club_tag(tag: str) -> str | None:
+    conn = get_conn()
+    row = conn.execute("SELECT club_tag FROM players WHERE tag=?", (normalize_tag(tag),)).fetchone()
+    conn.close()
+    return row["club_tag"] if row and row["club_tag"] else None
+
+
+def get_club_page(club_tag: str) -> dict:
+    ctag = normalize_tag(club_tag)
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM club_pages WHERE club_tag=?", (ctag,)).fetchone()
+    editors = [r["player_tag"] for r in conn.execute(
+        "SELECT player_tag FROM club_editors WHERE club_tag=?", (ctag,)).fetchall()]
+    conn.close()
+    if not row:
+        return {"club_tag": ctag, "name": None, "description": "", "edit_policy": "members",
+                "updated_at": None, "editors": editors}
+    d = dict(row); d["editors"] = editors; d["description"] = d.get("description") or ""
+    return d
+
+
+def set_club_description(club_tag: str, name: str | None, description: str, user_id: int) -> None:
+    ctag = normalize_tag(club_tag)
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO club_pages (club_tag, name, description, updated_at, updated_by) VALUES (?,?,?,?,?) "
+        "ON CONFLICT(club_tag) DO UPDATE SET description=excluded.description, "
+        "name=COALESCE(excluded.name, club_pages.name), updated_at=excluded.updated_at, updated_by=excluded.updated_by",
+        (ctag, name, (description or "").strip(), datetime.now(timezone.utc).isoformat(), user_id))
+    conn.commit(); conn.close()
+
+
+def set_club_edit_policy(club_tag: str, name: str | None, policy: str) -> None:
+    if policy not in ("members", "managers"):
+        policy = "members"
+    ctag = normalize_tag(club_tag)
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO club_pages (club_tag, name, edit_policy, updated_at) VALUES (?,?,?,?) "
+        "ON CONFLICT(club_tag) DO UPDATE SET edit_policy=excluded.edit_policy, "
+        "name=COALESCE(excluded.name, club_pages.name)",
+        (ctag, name, policy, datetime.now(timezone.utc).isoformat()))
+    conn.commit(); conn.close()
+
+
+def set_club_editor(club_tag: str, player_tag: str, granted: bool) -> None:
+    ctag, ptag = normalize_tag(club_tag), normalize_tag(player_tag)
+    conn = get_conn()
+    if granted:
+        conn.execute("INSERT OR IGNORE INTO club_editors (club_tag, player_tag) VALUES (?,?)", (ctag, ptag))
+    else:
+        conn.execute("DELETE FROM club_editors WHERE club_tag=? AND player_tag=?", (ctag, ptag))
+    conn.commit(); conn.close()
+
+
+def list_community_clubs(q: str | None = None, limit: int = 60) -> list[dict]:
+    """Clubs de los usuarios de la plataforma (por club de sus jugadores no huérfanos),
+    con prioridad a los que tienen una descripción REAL editada."""
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT p.club_tag AS tag, MAX(p.club_name) AS name, COUNT(DISTINCT p.tag) AS members
+           FROM players p
+           WHERE EXISTS(SELECT 1 FROM user_players up WHERE up.player_tag=p.tag)
+             AND p.club_tag IS NOT NULL AND p.club_tag<>''
+           GROUP BY p.club_tag""").fetchall()
+    pages = {r["club_tag"]: r["description"] for r in conn.execute(
+        "SELECT club_tag, description FROM club_pages").fetchall()}
+    conn.close()
+    qq = (q or "").strip().lower()
+    out = []
+    for r in rows:
+        name = r["name"] or ""
+        if qq and qq not in name.lower():
+            continue
+        desc = pages.get(r["tag"])
+        meaningful = _is_meaningful_description(desc)
+        out.append({"tag": r["tag"], "name": name, "members": r["members"],
+                    "has_description": meaningful,
+                    "description": (desc.strip()[:160] if meaningful else "")})
+    out.sort(key=lambda c: (not c["has_description"], -c["members"], c["name"].lower()))
+    return out[:limit]
 
 
 def link_orphan_players_to(user_id: int) -> None:

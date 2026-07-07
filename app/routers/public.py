@@ -54,8 +54,9 @@ async def api_public_player_lookup(tag: str, request: Request):
         return JSONResponse({"error": "No se pudo validar el tag ahora mismo."}, status_code=502)
     name = profile.get("name")
     icon_id = (profile.get("icon") or {}).get("id")
-    club_name = (profile.get("club") or {}).get("name")
-    is_new = await asyncio.to_thread(db.add_player, ntag, name, icon_id, club_name)  # alta huérfana (idempotente)
+    _club = profile.get("club") or {}
+    club_name, club_tag = _club.get("name"), _club.get("tag")
+    is_new = await asyncio.to_thread(db.add_player, ntag, name, icon_id, club_name, club_tag)  # alta huérfana
     await asyncio.to_thread(db.snapshot_brawlers, ntag, profile.get("brawlers"))
     if is_new:  # solo sondeamos al ALTA; en reconsultas ya lo actualiza el poller de fondo
         try:

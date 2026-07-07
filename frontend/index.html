@@ -251,6 +251,25 @@
     </div>
   </div>
 
+  <!-- Ventana: página de un club (descripción editable + ranking interno) -->
+  <div id="club-modal" class="modal-overlay" onclick="if(event.target===this)closeClub()">
+    <div class="modal-card has-close club-card">
+      <button class="modal-close" onclick="closeClub()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <div id="club-body"><div class="wk-loading">Cargando…</div></div>
+    </div>
+  </div>
+
+  <!-- Ventana: descubrir clubs de la comunidad -->
+  <div id="clubs-modal" class="modal-overlay" onclick="if(event.target===this)closeClubsDiscover()">
+    <div class="modal-card has-close">
+      <button class="modal-close" onclick="closeClubsDiscover()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title">Clubs de la comunidad</h3>
+      <p class="modal-sub">Descubre los clubs de los jugadores de la plataforma. Los que se han presentado (con descripción) aparecen primero. Si tu jugador principal es de un club, puedes editar su página desde aquí.</p>
+      <input type="text" id="clubs-search" placeholder="Buscar club por nombre…" oninput="clubsSearchInput()" autocomplete="off" />
+      <div id="clubs-list" class="clubs-list"></div>
+    </div>
+  </div>
+
   <!-- Ventana: vincular redes sociales (OAuth) -->
   <div id="social-modal" class="modal-overlay" onclick="if(event.target===this)closeSocialLink()">
     <div class="modal-card has-close social-link-card">
@@ -732,39 +751,32 @@
         <div class="rank-scope">
           <button class="rscope active" data-scope="global">Global</button>
           <button class="rscope" data-scope="national" id="rscope-national">Mi país</button>
+          <button class="rscope" data-scope="community">Comunitaria</button>
           <span class="rank-country-hint" id="rank-country-hint"></span>
         </div>
         <button class="btn rank-create-btn" onclick="openLigilla()">+ Crear liguilla</button>
       </div>
       <p class="hint" style="margin-bottom:16px">Clic en la cabecera de una categoría para plegarla/desplegarla. Arrástrala por la cabecera para cambiar su orden (se recoge al arrastrar).</p>
       <div class="grid" id="rankings-grid">
-        <div class="panel collapsible" data-cat="player" style="grid-column:1/-1">
-          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de jugador<span class="caret">▸</span></h2>
+        <div class="panel collapsible" data-cat="ranking">
+          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>
+            <span id="rank-main-title">Ranking de jugador</span>
+            <span class="rank-view-switch" onclick="event.stopPropagation()">
+              <button class="rvs-btn active" data-view="players" onclick="setRankView('players')">Jugadores</button>
+              <button class="rvs-btn" data-view="clubs" onclick="setRankView('clubs')">Clubs</button>
+            </span>
+            <span class="caret">▸</span></h2>
           <div class="collapse-body">
-            <div class="hint" id="rank-player-hint">Top 200 de jugadores por trofeos. Si estás dentro, te resalto.</div>
-            <div id="rank-player"></div>
+            <div class="hint" id="rank-main-hint"></div>
+            <div id="rank-main"></div>
           </div>
         </div>
-        <div class="panel collapsible" data-cat="brawler" style="grid-column:1/-1">
+        <div class="panel collapsible" data-cat="brawler">
           <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de un brawler<span class="caret">▸</span></h2>
           <div class="collapse-body">
             <div class="rank-pick"><span class="lbl">Brawler</span><select id="rank-brawler-sel"></select></div>
             <div class="hint" id="rank-brawler-hint"></div>
             <div id="rank-brawler"></div>
-          </div>
-        </div>
-        <div class="panel collapsible" data-cat="clubs" style="grid-column:1/-1">
-          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking de clubs<span class="caret">▸</span></h2>
-          <div class="collapse-body">
-            <div class="hint" id="rank-clubs-hint">Top 200 de clubs. Resalto el tuyo si aparece.</div>
-            <div id="rank-clubs"></div>
-          </div>
-        </div>
-        <div class="panel collapsible" data-cat="internal" style="grid-column:1/-1">
-          <h2 class="collapse-head" draggable="true" onclick="toggleCollapse(this)"><span class="dot"></span>Ranking interno de tu club<span class="caret">▸</span></h2>
-          <div class="collapse-body">
-            <div class="hint" id="rank-internal-hint"></div>
-            <div id="rank-internal"></div>
           </div>
         </div>
       </div>

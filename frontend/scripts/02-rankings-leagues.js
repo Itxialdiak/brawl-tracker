@@ -17,9 +17,17 @@ function updateScopeUI() {
 document.querySelectorAll(".rscope").forEach((b) => b.addEventListener("click", () => {
   if (b.disabled) return;
   rankScope = b.dataset.scope; applyScopeButtons();
-  loadPlayerRanking(); loadClubRanking(); loadBrawlerRanking();
+  loadMainRanking(); loadBrawlerRanking();
 }));
 $("rank-brawler-sel").addEventListener("change", loadBrawlerRanking);
+
+let rankView = "players";   // "players" | "clubs" (switch del panel unificado de rankings)
+function setRankView(v) {
+  rankView = (v === "clubs") ? "clubs" : "players";
+  document.querySelectorAll(".rvs-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === rankView));
+  const t = $("rank-main-title"); if (t) t.textContent = rankView === "clubs" ? "Ranking de clubs" : "Ranking de jugador";
+  loadMainRanking();
+}
 
 async function loadRankings() {
   if (!currentPlayer) return;
@@ -32,16 +40,25 @@ async function loadRankings() {
     if (prev && myProfile.brawlers.some((b) => String(b.id) === prev)) sel.value = prev;
   } else { sel.innerHTML = `<option value="">—</option>`; }
   updateScopeUI();
-  loadPlayerRanking(); loadClubRanking(); loadBrawlerRanking(); loadClubInternal();
+  loadMainRanking(); loadBrawlerRanking();
   await renderCustomRankings();
   await applySavedOrder();
   setupRankingsDnD();
 }
-async function loadPlayerRanking() {
-  const el = $("rank-player"); el.innerHTML = '<div class="rk-loading">Cargando…</div>';
-  let d; try { d = await getJSON(`/api/rankings?kind=players&scope=${rankScope}`); }
+// Panel unificado: jugadores o clubs según el switch, con el scope activo (incl. Comunitaria).
+async function loadMainRanking() {
+  const el = $("rank-main"); if (!el) return;
+  el.innerHTML = '<div class="rk-loading">Cargando…</div>';
+  let d; try { d = await getJSON(`/api/rankings?kind=${rankView}&scope=${rankScope}`); }
   catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
-  renderRanking(el, $("rank-player-hint"), d, currentPlayer, "players");
+  let highlight = null;
+  if (rankView === "clubs") {
+    // El ranking global/nacional de clubs resalta por tag; el comunitario agrupa por nombre.
+    highlight = myProfile && myProfile.club ? (rankScope === "community" ? myProfile.club.name : myProfile.club.tag) : null;
+  } else {
+    highlight = currentPlayer;
+  }
+  renderRanking(el, $("rank-main-hint"), d, highlight, rankView);
 }
 async function loadBrawlerRanking() {
   const el = $("rank-brawler"), hint = $("rank-brawler-hint"); const bid = $("rank-brawler-sel").value;
@@ -51,36 +68,25 @@ async function loadBrawlerRanking() {
   catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
   renderRanking(el, hint, d, currentPlayer, "brawlers");
 }
-async function loadClubRanking() {
-  const el = $("rank-clubs"); el.innerHTML = '<div class="rk-loading">Cargando…</div>';
-  let d; try { d = await getJSON(`/api/rankings?kind=clubs&scope=${rankScope}`); }
-  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el ranking.</div>'; return; }
-  const myClubTag = myProfile && myProfile.club ? myProfile.club.tag : null;
-  renderRanking(el, $("rank-clubs-hint"), d, myClubTag, "clubs");
-}
-async function loadClubInternal() {
-  const el = $("rank-internal"), hint = $("rank-internal-hint");
-  const clubTag = myProfile && myProfile.club ? myProfile.club.tag : null;
-  if (!clubTag) { el.innerHTML = '<div class="rk-empty">Este jugador no está en ningún club.</div>'; hint.textContent = ""; return; }
-  el.innerHTML = '<div class="rk-loading">Cargando…</div>';
-  let d; try { d = await getJSON("/api/club?tag=" + encodeURIComponent(clubTag.replace("#", ""))); }
-  catch (e) { el.innerHTML = '<div class="rk-empty">No se pudo cargar el club.</div>'; return; }
-  const members = (d.members || []).map((m, i) => ({ ...m, rank: i + 1 }));
-  const mePos = members.findIndex((m) => rankNorm(m.tag) === rankNorm(currentPlayer));
-  hint.innerHTML = `${esc(d.name || "Club")} · ${d.member_count} miembros` + (mePos >= 0 ? ` · vas <b>#${mePos + 1}</b>` : "");
-  el.innerHTML = `<div class="rk-list">${members.map((m) => rankRow(m, rankNorm(m.tag) === rankNorm(currentPlayer), "members")).join("")}</div>`;
-}
-function renderRanking(el, hint, d, highlightTag, kind) {
+function renderRanking(el, hint, d, highlight, kind) {
   const items = (d && d.items) || [];
-  if (!items.length) { el.innerHTML = '<div class="rk-empty">Sin datos.</div>'; if (hint) hint.textContent = ""; return; }
-  const meIdx = highlightTag ? items.findIndex((it) => rankNorm(it.tag) === rankNorm(highlightTag)) : -1;
-  const scopeTxt = d.scope === "national" ? "de tu país (" + (d.country || "").toUpperCase() + ")" : "mundial";
+  if (!items.length) { el.innerHTML = '<div class="rk-empty">Sin datos todavía.</div>'; if (hint) hint.textContent = ""; return; }
+  const key = (it) => rankNorm(it.tag || it.name);   // clubs comunitarios no tienen tag: se emparejan por nombre
+  const meIdx = highlight ? items.findIndex((it) => key(it) === rankNorm(highlight)) : -1;
+  const community = d.scope === "community";
+  const scopeTxt = community ? "de la comunidad"
+    : d.scope === "national" ? "de tu país (" + (d.country || "").toUpperCase() + ")" : "mundial";
   if (hint) {
-    if (meIdx >= 0) hint.innerHTML = `Estás en el puesto <b>#${items[meIdx].rank}</b> del top 200 ${scopeTxt}.`;
-    else hint.innerHTML = highlightTag ? `Fuera del top 200 ${scopeTxt}.` : `Top 200 ${scopeTxt}.`;
+    const where = community ? `ranking ${scopeTxt}` : `top 200 ${scopeTxt}`;
+    if (meIdx >= 0) hint.innerHTML = `Estás en el puesto <b>#${items[meIdx].rank}</b> del ${where}.`;
+    else if (highlight) hint.innerHTML = `No apareces en el ${where}.`;
+    else hint.innerHTML = community
+      ? (kind === "clubs" ? "Clubs de la comunidad, por trofeos de sus miembros en la plataforma."
+                          : "Jugadores principales de las cuentas de la plataforma (se rellena con secundarios).")
+      : `Top 200 ${scopeTxt}.`;
   }
   const TOP = 25;
-  let rows = items.slice(0, TOP).map((it) => rankRow(it, rankNorm(it.tag) === rankNorm(highlightTag), kind)).join("");
+  let rows = items.slice(0, TOP).map((it) => rankRow(it, key(it) === rankNorm(highlight), kind)).join("");
   if (meIdx >= TOP) rows += '<div class="rk-sep">· · ·</div>' + rankRow(items[meIdx], true, kind);
   el.innerHTML = `<div class="rk-list">${rows}</div>`;
 }
@@ -92,8 +98,91 @@ function rankRow(item, isMe, kind) {
   const clubName = item.club && (typeof item.club === "string" ? item.club : item.club.name);
   const club = clubName ? `<span class="rk-club">${esc(clubName)}</span>` : "";
   const role = item.role ? `<span class="rk-club">${esc(prettyRole(item.role))}</span>` : "";
+  const membersN = (kind === "clubs" && (item.members != null || item.member_count != null))
+    ? `<span class="rk-club">${item.members != null ? item.members : item.member_count} miembros</span>` : "";
+  const sec = item.is_secondary ? `<span class="rk-club rk-sec">2.º jugador</span>` : "";
   const tro = item.trophies != null ? `${Number(item.trophies).toLocaleString("es-ES")}🏆` : "";
-  return `<div class="rk-row ${isMe ? "me" : ""}"><span class="rk-rank">${rank}</span>${icon}<span class="rk-name">${esc(item.name || "")}${club}${role}</span><span class="rk-tro">${tro}</span></div>`;
+  // Los clubs con tag abren su página al pulsarlos.
+  const clickable = kind === "clubs" && item.tag ? ` rk-clickable" onclick="openClub(${esc(JSON.stringify(item.tag))})"` : '"';
+  return `<div class="rk-row ${isMe ? "me" : ""}${clickable}><span class="rk-rank">${rank}</span>${icon}<span class="rk-name">${esc(item.name || "")}${club}${membersN}${role}${sec}</span><span class="rk-tro">${tro}</span></div>`;
+}
+
+/* ---------- Página de un club (descripción editable + ranking interno) ---------- */
+let _clubData = null;
+function closeClub() { $("club-modal").classList.remove("open"); }
+async function openClub(tag) {
+  const t = String(tag || "").replace(/^#/, "");
+  if (!t) return;
+  $("club-modal").classList.add("open");
+  const box = $("club-body"); box.innerHTML = '<div class="wk-loading">Cargando club…</div>';
+  let d; try { d = await getJSON("/api/club?tag=" + encodeURIComponent(t)); }
+  catch (e) { box.innerHTML = '<div class="rk-empty">No se pudo cargar el club.</div>'; return; }
+  if (d.error) { box.innerHTML = `<div class="rk-empty">${esc(d.error)}</div>`; return; }
+  _clubData = d; renderClub();
+}
+function renderClub() {
+  const d = _clubData, p = d.page || {};
+  const members = (d.members || []).map((m, i) => ({ ...m, rank: i + 1 }));
+  const meIdx = currentPlayer ? members.findIndex((m) => rankNorm(m.tag) === rankNorm(currentPlayer)) : -1;
+  const badge = (lbl, val) => `<div class="club-stat"><div class="cs-v">${val}</div><div class="cs-l">${esc(lbl)}</div></div>`;
+  const header = `<div class="club-head">
+      <div class="club-id"><div class="club-name">${esc(d.name || "Club")}</div><div class="club-tag">${esc(d.tag || "")}</div></div>
+      <div class="club-stats">
+        ${badge("Trofeos", Number(d.trophies || 0).toLocaleString("es-ES"))}
+        ${badge("Miembros", d.member_count || members.length)}
+        ${badge("Requisito", Number(d.required_trophies || 0).toLocaleString("es-ES"))}
+      </div></div>`;
+  const desc = p.description || "";
+  const descBlock = `<div class="club-section"><div class="club-sec-head"><h4>Descripción</h4>
+      ${p.can_edit ? `<button class="ghost mini-btn" onclick="editClubDesc()">✎ Editar</button>` : ""}</div>
+      <div id="club-desc" class="club-desc">${desc
+        ? esc(desc).replace(/\n/g, "<br>")
+        : `<span class="evd-muted">Este club aún no tiene descripción.${p.can_edit ? " Pulsa «Editar» para presentarlo a la comunidad." : ""}</span>`}</div></div>`;
+  let mgmt = "";
+  if (p.can_manage) {
+    const managed = members.filter((m) => m.role !== "president" && m.role !== "vicePresident");
+    const eds = (p.editors || []).map(rankNorm);
+    mgmt = `<div class="club-section"><div class="club-sec-head"><h4>Permisos de edición <span class="evd-muted">(presidente)</span></h4></div>
+      <div class="club-policy">
+        <label><input type="radio" name="clubpol" ${p.edit_policy !== "managers" ? "checked" : ""} onclick="setClubPolicy('members')"> Cualquier miembro puede editar</label>
+        <label><input type="radio" name="clubpol" ${p.edit_policy === "managers" ? "checked" : ""} onclick="setClubPolicy('managers')"> Solo cargos y editores designados</label>
+      </div>
+      ${p.edit_policy === "managers" ? `<div class="club-editors">${managed.map((m) => `<label class="club-editor-row"><input type="checkbox" ${eds.includes(rankNorm(m.tag)) ? "checked" : ""} onclick="setClubEditor(${esc(JSON.stringify(m.tag))}, this.checked)"> ${esc(m.name)}</label>`).join("") || '<span class="evd-muted">No hay más miembros.</span>'}</div>` : ""}
+    </div>`;
+  }
+  const ranking = `<div class="club-section"><div class="club-sec-head"><h4>Ranking del Club</h4>
+      ${meIdx >= 0 ? `<span class="evd-muted">Vas #${meIdx + 1}</span>` : ""}</div>
+      <div class="rk-list">${members.map((m) => rankRow(m, meIdx >= 0 && rankNorm(m.tag) === rankNorm(currentPlayer), "members")).join("")}</div></div>`;
+  $("club-body").innerHTML = header + descBlock + mgmt + ranking;
+}
+function editClubDesc() {
+  const box = $("club-desc"); if (!box) return;
+  const cur = (_clubData.page || {}).description || "";
+  box.innerHTML = `<textarea id="club-desc-ta" class="club-desc-ta" maxlength="2000" placeholder="Presenta tu club a la comunidad: estilo de juego, requisitos, ambiente, idioma…">${esc(cur)}</textarea>
+    <div class="club-desc-acts"><button class="btn mini-btn" onclick="saveClubDesc()">Guardar</button>
+    <button class="ghost mini-btn" onclick="renderClub()">Cancelar</button></div>`;
+  const ta = $("club-desc-ta"); if (ta) ta.focus();
+}
+async function saveClubDesc() {
+  const val = $("club-desc-ta").value;
+  const tag = (_clubData.tag || "").replace(/^#/, "");
+  const { ok, d } = await apiSend("/api/club/" + encodeURIComponent(tag) + "/description", "POST", { description: val });
+  if (!ok) { wikiToast(d.error || "No se pudo guardar", "err"); return; }
+  _clubData.page.description = d.description;
+  wikiToast("Descripción guardada ✓", "ok"); renderClub();
+}
+async function setClubPolicy(pol) {
+  const tag = (_clubData.tag || "").replace(/^#/, "");
+  const { ok, d } = await apiSend("/api/club/" + encodeURIComponent(tag) + "/policy", "POST", { policy: pol });
+  if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
+  _clubData.page.edit_policy = pol; renderClub();
+}
+async function setClubEditor(ptag, granted) {
+  const tag = (_clubData.tag || "").replace(/^#/, "");
+  const { ok, d } = await apiSend("/api/club/" + encodeURIComponent(tag) + "/editor", "POST", { player_tag: ptag, granted });
+  if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
+  const eds = _clubData.page.editors || [], n = rankNorm(ptag);
+  _clubData.page.editors = granted ? [...eds, ptag] : eds.filter((e) => rankNorm(e) !== n);
 }
 
 /* ---------- Liguillas (rankings personalizados) ---------- */
@@ -202,6 +291,11 @@ async function applySavedOrder() {
   const panels = [...grid.querySelectorAll(".panel")];
   const byCat = {};
   panels.forEach((p) => { byCat[p.dataset.cat] = p; });
+  // Si el orden guardado es de una maquetación antigua (menciona categorías fijas que ya no
+  // existen, p. ej. "player"/"clubs"/"internal"), se ignora y se mantiene el orden por defecto
+  // (Ranking primero). Al reordenar a mano se guarda un orden nuevo y válido.
+  const fixedSaved = order.filter((c) => c && !c.startsWith("custom:"));
+  if (fixedSaved.some((c) => !byCat[c])) return;
   const used = new Set();
   order.forEach((cat) => { if (byCat[cat]) { grid.appendChild(byCat[cat]); used.add(cat); } });
   panels.forEach((p) => { if (!used.has(p.dataset.cat)) grid.appendChild(p); });

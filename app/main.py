@@ -66,9 +66,10 @@ async def _poll_player(tag: str) -> int:
     if need or stale:
         try:
             prof = await brawl_api.get_player(tag)
+            _club = prof.get("club") or {}
             await asyncio.to_thread(db.update_player_profile, tag,
                                     prof.get("name"), (prof.get("icon") or {}).get("id"),
-                                    (prof.get("club") or {}).get("name"))
+                                    _club.get("name"), _club.get("tag"))
             await asyncio.to_thread(db.snapshot_brawlers, tag, prof.get("brawlers"))
             _last_profile_refresh[tag] = time.time()
         except Exception as e:  # noqa: BLE001
