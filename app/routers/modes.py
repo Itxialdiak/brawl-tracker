@@ -358,14 +358,17 @@ async def api_map_detail(player: str = Query(None), map: str = Query(...),
 
 @router.get("/api/map-image/{map_id}")
 async def api_map_image(map_id: int):
-    """Imagen (layout) de un mapa servida desde NUESTRO dominio: resuelve una cadena de
-    fallback en el backend (CDN de Brawlify → espejo de GitHub), cachea el PNG en disco y lo
-    sirve. Inmune a bloqueos de terceros en el cliente (Brave) y resiliente a caídas de la CDN.
-    Si el asset no existe en ninguna fuente (mapa muy nuevo aún sin render), devuelve 404 y el
-    frontend pinta un placeholder temático. Público (sin cuenta): son recursos estáticos."""
-    path = await asyncio.to_thread(map_assets.get_local_image, map_id)
-    if path:
-        return FileResponse(path, media_type="image/png",
-                            headers={"Cache-Control": "public, max-age=86400"})
+    """Imagen (layout) de un mapa servida desde NUESTRO dominio: resuelve una cadena de fallback
+    en el backend (CDN de Brawlify → espejo de GitHub) y sirve el PNG (cacheado en disco, o en
+    memoria si el disco no es escribible). Inmune a bloqueos de terceros en el cliente (Brave) y
+    resiliente a caídas de la CDN. Si el asset no existe en ninguna fuente (mapa muy nuevo aún
+    sin render), devuelve 404 y el frontend pinta un placeholder temático. Público."""
+    res = await asyncio.to_thread(map_assets.get_map_image, map_id)
+    hdrs = {"Cache-Control": "public, max-age=86400"}
+    if res:
+        kind, data = res
+        if kind == "path":
+            return FileResponse(data, media_type="image/png", headers=hdrs)
+        return Response(content=data, media_type="image/png", headers=hdrs)
     # Sin render en ninguna fuente: 404 corto (el navegador reintenta y el front usa placeholder).
     return Response(status_code=404, headers={"Cache-Control": "public, max-age=3600"})

@@ -845,7 +845,11 @@ async function loadNotifications() {
   try { r = await getJSON("/api/notifications"); } catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:10px">No se pudieron cargar.</p>`; return; }
   const items = (r && r.items) || [];
   if (!items.length) { box.innerHTML = `<p class="evd-muted" style="padding:18px;text-align:center">No tienes notificaciones.</p>`; refreshUnread(); return; }
-  box.innerHTML = items.map((n) => {
+  const anyUnread = items.some((n) => !n.read);
+  const toolbar = `<div class="notif-toolbar">
+    ${anyUnread ? `<button class="link-btn sm" onclick="markAllNotifs()">Marcar todas como leídas</button>` : ""}
+    <button class="link-btn sm danger" onclick="deleteAllNotifs()">Eliminar todas</button></div>`;
+  box.innerHTML = toolbar + items.map((n) => {
     const acts = [];
     if (n.type === "player_in_event" && n.event_id) acts.push(`<button class="ghost sm" onclick="notifFollow(${n.event_id}, ${n.id})">Seguir evento</button>`);
     if (n.event_id) acts.push(`<button class="ghost sm" onclick="notifOpenEvent(${n.event_id}, ${n.id})">Ver evento</button>`);

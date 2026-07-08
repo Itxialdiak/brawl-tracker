@@ -288,6 +288,7 @@ def init_db():
     seed_wiki_if_empty()
     seed_wiki_translations()
     seed_ui_translations()
+    seed_ui_translations_from_json()
 
 
 # ---------------------------------------------------------------------------
@@ -1150,6 +1151,81 @@ def seed_ui_translations() -> None:
                 conn.execute(
                     "INSERT INTO ui_translations (lang,source,kind,target,updated_by,updated_at) "
                     "VALUES (?,?,?,?,?,?)", (lang, src, kind, tgt, None, now))
+    conn.commit(); conn.close()
+
+
+UI_I18N_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "i18n")
+
+
+def _ui_pattern_template_map() -> dict:
+    """{regex_compilado: (plantilla_es, [orden de marcadores 'n'/'s'])} desde _sources.json.
+    El regex de un patrón se deriva del ESPAÑOL, así que es idéntico en todos los .json de
+    idioma; nos sirve para recuperar a qué plantilla española corresponde cada patrón."""
+    import re
+    from . import i18n_tools
+    try:
+        src = json.load(open(os.path.join(UI_I18N_DIR, "_sources.json"), encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    out = {}
+    for tpl in (src.get("patterns") or []):
+        rule = i18n_tools.compile_pattern(tpl, tpl)
+        if rule:
+            order = [p[1] for p in re.split(r"(\{[ns]\})", tpl) if p in ("{n}", "{s}")]
+            out[rule[0]] = (tpl, order)
+    return out
+
+
+def _ui_reverse_pattern(sub: str, order: list) -> str:
+    """Convierte la sustitución compilada ($1,$2…) de vuelta a plantilla con {n}/{s}, usando el
+    orden de marcadores del origen español (compile_pattern numera $i en orden de aparición)."""
+    import re
+    def rep(m):
+        i = int(m.group(1)) - 1
+        return "{" + order[i] + "}" if 0 <= i < len(order) else m.group(0)
+    return re.sub(r"\$(\d+)", rep, sub)
+
+
+def seed_ui_translations_from_json() -> None:
+    """Siembra en `ui_translations` las traducciones de los ficheros estáticos
+    `frontend/i18n/<lang>.json` para que TODOS los idiomas (no solo el inglés) sean editables y
+    mejorables desde Rosetta. Textos exactos directos; los patrones (guardados compilados en el
+    .json) se reconstruyen a plantilla {n}/{s}. NO pisa lo ya guardado (respeta mejoras previas)."""
+    import glob
+    pat_map = _ui_pattern_template_map()
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    have = {(r["lang"], r["source"]) for r in
+            conn.execute("SELECT lang, source FROM ui_translations").fetchall()}
+    for path in glob.glob(os.path.join(UI_I18N_DIR, "*.json")):
+        lang = os.path.splitext(os.path.basename(path))[0]
+        # 'en' ya viene de _seed.json; _seed/_sources y cualquier '_*' no son idiomas.
+        if lang.startswith("_") or lang == "en":
+            continue
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        for src, tgt in data.items():
+            if src == "__patterns__":
+                for rule in (tgt or []):
+                    if not (isinstance(rule, list) and len(rule) == 2):
+                        continue
+                    info = pat_map.get(rule[0])
+                    if not info or (lang, info[0]) in have:
+                        continue
+                    es_tpl, order = info
+                    conn.execute(
+                        "INSERT INTO ui_translations (lang,source,kind,target,updated_by,updated_at) "
+                        "VALUES (?,?,?,?,?,?)",
+                        (lang, es_tpl, "pattern", _ui_reverse_pattern(rule[1], order), None, now))
+                    have.add((lang, es_tpl))
+                continue
+            if isinstance(tgt, str) and (lang, src) not in have:
+                conn.execute(
+                    "INSERT INTO ui_translations (lang,source,kind,target,updated_by,updated_at) "
+                    "VALUES (?,?,?,?,?,?)", (lang, src, "exact", tgt, None, now))
+                have.add((lang, src))
     conn.commit(); conn.close()
 
 

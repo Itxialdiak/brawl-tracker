@@ -1235,6 +1235,7 @@
   .notif-card { max-width: 540px; width: 100%; }
   .notif-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
   .notif-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+  .notif-toolbar { display: flex; justify-content: flex-end; gap: 16px; padding: 0 2px 8px; border-bottom: 1px solid var(--border); margin-bottom: 2px; position: sticky; top: 0; background: var(--panel); z-index: 1; }
   .notif-item { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 11px; padding: 11px 13px; }
   .notif-item.unread { border-color: rgba(63,225,255,.45); background: rgba(63,225,255,.05); }
   .notif-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
