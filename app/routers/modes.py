@@ -6,7 +6,6 @@ import re
 import json
 import time
 import asyncio
-from datetime import datetime
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
 from .. import db, brawl_api, assets, brawler_extra, auth
@@ -15,50 +14,63 @@ from ..api_common import _require_follow
 router = APIRouter()
 
 
-_RANKED_MODES = {"gemGrab", "brawlBall", "heist", "knockout", "hotZone", "bounty"}
-
-
 def _mnorm(s: str) -> str:
     """Clave de modo/mapa normalizada: minúsculas, solo alfanumérico."""
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
-def _slot_hours(start: str | None, end: str | None) -> float:
-    try:
-        f = "%Y%m%dT%H%M%S"
-        return (datetime.strptime(end[:15], f) - datetime.strptime(start[:15], f)).total_seconds() / 3600
-    except Exception:  # noqa: BLE001
-        return 0.0
-
-
 _rotation_cache = {"at": 0.0, "data": None}
-_ranked_pool_cache = {"data": None, "mtime": None}
+_ranked_corr_cache = {"data": None, "mtime": None}
+_DEFAULT_RANKED_WINDOW = 30
 
 
-def _ranked_pool() -> dict:
-    """Pool COMPETITIVO curado (data/ranked_maps.json): {modo_norm: {mapa_norm: 'Mapa EN'}}.
-    Editable a mano; cacheado por mtime. Si está vacío, el llamador cae al feed en vivo."""
+def _ranked_corrections() -> dict:
+    """Correcciones MANUALES del pool competitivo (data/ranked_maps.json), cacheadas por mtime.
+    Devuelve {window_days:int, include:{modo_norm:{mapa_norm:'Mapa EN'}}, exclude:{modo_norm:set}}.
+    El pool base se detecta solo desde las partidas; esto solo añade/quita puntualmente."""
     path = os.path.join(os.path.dirname(__file__), "..", "data", "ranked_maps.json")
     try:
         mtime = os.path.getmtime(path)
     except OSError:
-        return {}
-    if _ranked_pool_cache["data"] is None or mtime != _ranked_pool_cache["mtime"]:
-        pool = {}
+        return {"window_days": _DEFAULT_RANKED_WINDOW, "include": {}, "exclude": {}}
+    if _ranked_corr_cache["data"] is None or mtime != _ranked_corr_cache["mtime"]:
+        corr = {"window_days": _DEFAULT_RANKED_WINDOW, "include": {}, "exclude": {}}
         try:
             with open(path, encoding="utf-8") as f:
                 raw = json.load(f)
-            for mode, maps in raw.items():
-                if mode.startswith("_") or not isinstance(maps, list):
-                    continue
-                for mp in maps:
+            wd = raw.get("window_days")
+            if isinstance(wd, int) and wd > 0:
+                corr["window_days"] = wd
+            for mode, maps in (raw.get("include") or {}).items():
+                for mp in (maps or []):
                     if mp:
-                        pool.setdefault(_mnorm(mode), {})[_mnorm(mp)] = mp
+                        corr["include"].setdefault(_mnorm(mode), {})[_mnorm(mp)] = mp
+            for mode, maps in (raw.get("exclude") or {}).items():
+                for mp in (maps or []):
+                    if mp:
+                        corr["exclude"].setdefault(_mnorm(mode), set()).add(_mnorm(mp))
         except Exception:  # noqa: BLE001
-            pool = _ranked_pool_cache["data"] or {}
-        _ranked_pool_cache["data"] = pool
-        _ranked_pool_cache["mtime"] = mtime
-    return _ranked_pool_cache["data"] or {}
+            corr = _ranked_corr_cache["data"] or corr
+        _ranked_corr_cache["data"] = corr
+        _ranked_corr_cache["mtime"] = mtime
+    return _ranked_corr_cache["data"]
+
+
+async def _ranked_pool() -> dict:
+    """Pool competitivo VIGENTE = auto (partidas Ranked, ventana móvil) + correcciones manuales.
+    Devuelve {modo_norm: {mapa_norm: {'map': 'Mapa EN', 'mode': 'modoEN'}}}."""
+    corr = _ranked_corrections()
+    auto = await asyncio.to_thread(db.competitive_pool, corr["window_days"])
+    pool: dict = {}
+    for r in auto:  # base automática
+        pool.setdefault(_mnorm(r["mode"]), {})[_mnorm(r["map"])] = {"map": r["map"], "mode": r["mode"]}
+    for mode_norm, maps in corr["include"].items():  # correcciones: añadir
+        for map_norm, map_en in maps.items():
+            pool.setdefault(mode_norm, {}).setdefault(map_norm, {"map": map_en, "mode": mode_norm})
+    for mode_norm, map_set in corr["exclude"].items():  # correcciones: quitar
+        for map_norm in map_set:
+            pool.get(mode_norm, {}).pop(map_norm, None)
+    return pool
 _mode_guide_cache = {"data": None, "mtime": None}
 
 
@@ -180,18 +192,18 @@ def _map_tips(draft: list, guide: dict) -> list:
 
 
 async def _get_rotation() -> list:
-    """Rotación actual cacheada (10 min) con categoría copas/competitivo por evento.
+    """Rotación actual cacheada (10 min): eventos de TROFEOS (del feed oficial) + el pool
+    COMPETITIVO (Ranked).
 
-    El pool COMPETITIVO se decide así (estable):
-      1) Si `data/ranked_maps.json` tiene mapas (pool curado), MANDA: un evento es 'ranked'
-         solo si su (modo, mapa) está en el pool. Además se inyectan los mapas del pool que
-         hoy NO están en la rotación de trofeos, para mostrar el pool completo.
-      2) Si el pool está vacío, se cae al FEED en vivo: 'ranked' = modo competitivo con un
-         slot claramente largo (heurística de respaldo)."""
+    El competitivo NO está en ningún feed público (la rotación oficial solo trae trofeos), así
+    que se DETECTA SOLO agregando las partidas de Ranked (soloRanked/teamRanked) que el poller
+    ya acumula — ver `db.competitive_pool`. `data/ranked_maps.json` solo aporta correcciones
+    manuales puntuales. Los mapas del pool que hoy no dan trofeos se inyectan igualmente para
+    ver el pool completo."""
     now = time.time()
     if _rotation_cache["data"] is None or now - _rotation_cache["at"] > 600:
         raw = await brawl_api.get_events_rotation()
-        pool = _ranked_pool()
+        pool = await _ranked_pool()
         events, seen_ranked = [], set()
         for it in (raw or []):
             evt = it.get("event") or {}
@@ -200,19 +212,16 @@ async def _get_rotation() -> list:
                 continue
             mode = evt.get("mode") or it.get("mode")
             start, end = it.get("startTime"), it.get("endTime")
-            if pool:  # pool curado manda
-                ranked = _mnorm(map_) in pool.get(_mnorm(mode), {})
-            else:      # respaldo: heurística del feed en vivo
-                ranked = mode in _RANKED_MODES and _slot_hours(start, end) >= 36
+            ranked = _mnorm(map_) in pool.get(_mnorm(mode), {})
             if ranked:
                 seen_ranked.add((_mnorm(mode), _mnorm(map_)))
             events.append({"mode": mode, "map": map_, "startTime": start, "endTime": end,
                            "category": "ranked" if ranked else "trophy"})
-        # Inyecta el resto del pool curado que hoy no da trofeos (para ver el pool completo).
+        # Inyecta el resto del pool competitivo que hoy no está en la rotación de trofeos.
         for mode_norm, maps in pool.items():
-            for map_norm, map_en in maps.items():
+            for map_norm, info in maps.items():
                 if (mode_norm, map_norm) not in seen_ranked:
-                    events.append({"mode": mode_norm, "map": map_en, "startTime": None,
+                    events.append({"mode": info["mode"], "map": info["map"], "startTime": None,
                                    "endTime": None, "category": "ranked"})
         _rotation_cache.update(at=now, data=events)
     return _rotation_cache["data"]

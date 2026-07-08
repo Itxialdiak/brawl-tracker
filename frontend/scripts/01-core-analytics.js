@@ -591,9 +591,10 @@ function renderRotCard(e) {
   const cls = wr == null ? "" : (wr >= 55 ? "good" : (wr < 45 ? "bad" : ""));
   const ma = mapAsset(e.map), mapImg = ma && ma.image ? ma.image : null;
   const md = modeAsset(e.mode), modeIc = md && md.icon ? md.icon : null;
-  const headStyle = mapImg
-    ? ` style="background-image:linear-gradient(90deg, var(--bg-elev) 38%, rgba(17,24,36,.55)), url('${mapImg}')"`
-    : "";
+  // Base con el color del modo: si la imagen del mapa falta o da 404 (mapas muy nuevos que
+  // Brawlify aún no ha renderizado), el cabecero queda temático en vez de vacío.
+  const mc = (typeof modeColor === "function" ? modeColor(e.mode, 0) : "");
+  const headStyle = ` style="background-color:${mc || "var(--bg-elev)"};background-image:linear-gradient(90deg, var(--bg-elev) 38%, rgba(17,24,36,.55))${mapImg ? `, url('${mapImg}')` : ""}"`;
   const wrHtml = wr == null
     ? `<div class="rot-wr none">sin datos<span>aún no juegas aquí</span></div>`
     : `<div class="rot-wr" style="color:${pctColor(wr)}">${wr}%<span>tu WR · ${e.games} part.</span></div>`;

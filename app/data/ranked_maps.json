@@ -1,9 +1,6 @@
 {
-  "_help": "Pool de mapas COMPETITIVO (Ranked) por modo. Clave = código de modo del juego (gemGrab, brawlBall, heist, knockout, hotZone, bounty). Valores = nombres de mapa EN INGLÉS, tal cual llegan del battlelog/rotación (p. ej. 'Hard Rock Mine'). Se muestran traducidos por map_names_es.json. Si TODAS las listas están vacías, el Competitivo se deriva del feed oficial en vivo (respaldo). Rellénalas para fijar el pool de forma estable y actualízalas cuando rote la temporada.",
-  "gemGrab": [],
-  "brawlBall": [],
-  "heist": [],
-  "knockout": [],
-  "hotZone": [],
-  "bounty": []
+  "_help": "El pool COMPETITIVO (Ranked) se detecta SOLO y de forma automatizada a partir de las partidas de Ranked (soloRanked/teamRanked) que el poller ya acumula de los jugadores seguidos, con una ventana móvil de 'window_days' días. Este fichero es únicamente para CORRECCIONES manuales puntuales: 'include' fuerza mapas que la detección aún no ha visto (se muestran ya), y 'exclude' quita falsos positivos o mapas de la temporada anterior que tarden en purgarse. Clave = código de modo del juego (gemGrab, brawlBall, heist, knockout, hotZone, bounty); mapas EN INGLÉS tal cual llegan del battlelog (p. ej. 'Center Stage'). Deja include/exclude vacíos para 100% automático.",
+  "window_days": 30,
+  "include": {},
+  "exclude": {}
 }

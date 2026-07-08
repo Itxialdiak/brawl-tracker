@@ -2930,6 +2930,34 @@ def rotation_analysis(player: str, events: list[dict], min_games: int = 1,
     return out
 
 
+def competitive_pool(window_days: int = 30, min_seen: int = 1) -> list[dict]:
+    """Pool de mapas del modo COMPETITIVO (Ranked), derivado de las partidas que el poller ya
+    acumula. En el battlelog oficial las partidas de Ranked llegan con `type` 'soloRanked' o
+    'teamRanked' (las de trofeos son 'ranked'), así que el pool vigente se COSECHA de ahí sin
+    ninguna fuente externa: es el mismo método que usan Brawlify/Brawl Time Ninja.
+
+    Ventana móvil (`window_days`): solo cuenta lo visto en los últimos N días, para reflejar el
+    pool de la temporada vigente y purgar el de la anterior. Cuantos más jugadores de Ranked
+    sigas, antes converge; con pocos, sube la ventana. `min_seen` filtra ruido (mapas vistos
+    una sola vez si se quisiera). Devuelve [{mode, map, games, last_time}]."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).strftime("%Y%m%dT%H%M%S.000Z")
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT mode, map, COUNT(*) AS games, MAX(battle_time) AS last_time
+           FROM battles
+           WHERE LOWER(battle_type) IN ('soloranked', 'teamranked')
+             AND map IS NOT NULL AND map != '' AND map != 'unknown'
+             AND mode IS NOT NULL AND mode != 'unknown'
+             AND battle_time >= ?
+           GROUP BY mode, map
+           HAVING COUNT(*) >= ?
+           ORDER BY mode ASC, games DESC, map ASC""",
+        (cutoff, min_seen)).fetchall()
+    conn.close()
+    return [{"mode": r["mode"], "map": r["map"], "games": r["games"],
+             "last_time": r["last_time"]} for r in rows]
+
+
 # ---------------------------------------------------------------------------
 # Informes guardados (análisis de Claude persistidos)
 # ---------------------------------------------------------------------------

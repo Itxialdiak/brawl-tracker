@@ -237,10 +237,25 @@ function renderMetaComunitario(d) {
     <div class="hub-meta-col hub-insights"><div class="hub-side-title">Tu desviación</div>${ins ? `<ul>${ins}</ul>` : `<div class="empty">Juega más partidas para compararte con la media.</div>`}</div>
   </div>`;
 }
+/* Placeholder temático cuando falta el render del mapa: algunos mapas MUY nuevos aún no tienen
+   imagen en Brawlify (su imageUrl da 404). En vez de dejar un hueco, mostramos un fondo con el
+   color del modo + 🗺️. Se autocorrige cuando Brawlify publique la imagen. */
+function mapImgFallback(img, color) {
+  if (!img || !img.parentNode) return;
+  const ph = document.createElement("div");
+  ph.className = "hub-map-noimg";
+  ph.textContent = "🗺️";
+  if (color) ph.style.background = `linear-gradient(135deg, ${color}44, ${color}18)`;
+  img.replaceWith(ph);
+}
 function hubMapCard(m, mode) {
   const badge = m.category === "trophy" ? `<span class="map-cat trophy" title="En rotación · Copas">🏆</span>`
     : m.category === "ranked" ? `<span class="map-cat ranked" title="En rotación · Competitivo">🏅</span>` : "";
-  const img = m.image ? `<img src="${m.image}" alt="" loading="lazy" onerror="this.style.display='none'">` : `<div class="hub-map-noimg">🗺️</div>`;
+  const mc = (typeof modeColor === "function" ? modeColor(mode, 0) : "");
+  const phStyle = mc ? ` style="background:linear-gradient(135deg,${mc}44,${mc}18)"` : "";
+  const img = m.image
+    ? `<img src="${m.image}" alt="" loading="lazy" onerror="mapImgFallback(this,'${mc}')">`
+    : `<div class="hub-map-noimg"${phStyle}>🗺️</div>`;
   const wr = m.your_winrate == null ? `<span class="map-wr none">—</span>` : `<span class="map-wr" style="color:${pctColor(m.your_winrate)}">${m.your_winrate}%</span>`;
   // Mejor rol comunitario EN ESTE mapa concreto.
   const tr = m.top_role;
@@ -280,7 +295,10 @@ function renderMapModal(d) {
     : `<div class="empty">Sin datos todavía.</div>`;
   const draft = (d.draft || []).map(draftRow).join("") || `<div class="empty">Juega o espera más datos de la comunidad.</div>`;
   const tips = (d.tips || []).map((t) => `<li>${esc(t)}</li>`).join("");
-  const headBg = d.image ? ` style="background-image:linear-gradient(180deg,rgba(12,12,30,.4),rgba(12,12,30,.94)),url('${d.image}')"` : "";
+  // Fondo del cabecero: SIEMPRE el color del modo + gradiente legible; la imagen del mapa se
+  // superpone si existe. Si el render de Brawlify aún no está (404), queda el fondo temático.
+  const mc = (typeof modeColor === "function" ? modeColor(d.mode, 0) : "#3a2f6a");
+  const headBg = ` style="background-color:${mc};background-image:linear-gradient(180deg,rgba(12,12,30,.42),rgba(12,12,30,.94))${d.image ? `,url('${d.image}')` : ""}"`;
   return `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button>
     <div class="mm-head"${headBg}>
       <h2>${esc(mapNameEs(d.map))}</h2>
