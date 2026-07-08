@@ -253,8 +253,9 @@ function hubMapCard(m, mode) {
     : m.category === "ranked" ? `<span class="map-cat ranked" title="En rotación · Competitivo">🏅</span>` : "";
   const mc = (typeof modeColor === "function" ? modeColor(mode, 0) : "");
   const phStyle = mc ? ` style="background:linear-gradient(135deg,${mc}44,${mc}18)"` : "";
-  const img = m.image
-    ? `<img src="${m.image}" alt="" loading="lazy" onerror="mapImgFallback(this,'${mc}')">`
+  const src = (typeof mapImageUrl === "function" ? mapImageUrl(m.id) : m.image);
+  const img = src
+    ? `<img src="${src}" alt="" loading="lazy" onerror="mapImgFallback(this,'${mc}')">`
     : `<div class="hub-map-noimg"${phStyle}>🗺️</div>`;
   const wr = m.your_winrate == null ? `<span class="map-wr none">—</span>` : `<span class="map-wr" style="color:${pctColor(m.your_winrate)}">${m.your_winrate}%</span>`;
   // Mejor rol comunitario EN ESTE mapa concreto.
@@ -295,10 +296,11 @@ function renderMapModal(d) {
     : `<div class="empty">Sin datos todavía.</div>`;
   const draft = (d.draft || []).map(draftRow).join("") || `<div class="empty">Juega o espera más datos de la comunidad.</div>`;
   const tips = (d.tips || []).map((t) => `<li>${esc(t)}</li>`).join("");
-  // Fondo del cabecero: SIEMPRE el color del modo + gradiente legible; la imagen del mapa se
-  // superpone si existe. Si el render de Brawlify aún no está (404), queda el fondo temático.
+  // Fondo del cabecero: SIEMPRE el color del modo + gradiente legible; la imagen del mapa
+  // (vía nuestro proxy /api/map-image) se superpone si existe. Si no hay render, queda temático.
   const mc = (typeof modeColor === "function" ? modeColor(d.mode, 0) : "#3a2f6a");
-  const headBg = ` style="background-color:${mc};background-image:linear-gradient(180deg,rgba(12,12,30,.42),rgba(12,12,30,.94))${d.image ? `,url('${d.image}')` : ""}"`;
+  const imgUrl = (typeof mapImageUrl === "function" ? mapImageUrl(d.map_id) : d.image) || d.image;
+  const headBg = ` style="background-color:${mc};background-image:linear-gradient(180deg,rgba(12,12,30,.42),rgba(12,12,30,.94))${imgUrl ? `,url('${imgUrl}')` : ""}"`;
   return `<button class="map-modal-close" onclick="closeMapModal()" aria-label="Cerrar">&times;</button>
     <div class="mm-head"${headBg}>
       <h2>${esc(mapNameEs(d.map))}</h2>
@@ -483,7 +485,81 @@ function modeColor(label, i) {
   const pal = ["#5b54ff", "#3fe1ff", "#c64ff0", "#36e0a0", "#f5b82a", "#ff4d73", "#ff8e3c", "#b388ff"];
   return pal[i % pal.length];
 }
-function donutChart(items, centerLabel) {
+/* --- Utilidades de color (hex <-> HSL) para separar tonos parecidos --- */
+function _hexToRgb(hex) {
+  let h = String(hex || "").replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h || "888888", 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function _rgbToHex(r, g, b) {
+  const x = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return "#" + x(r) + x(g) + x(b);
+}
+function _rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0; const l = (mx + mn) / 2;
+  if (mx !== mn) {
+    const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  return [h * 360, s, l];
+}
+function _hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360 / 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
+  let r, g, b;
+  if (s === 0) { r = g = b = l; } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const hue = (t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+    r = hue(h + 1 / 3); g = hue(h); b = hue(h - 1 / 3);
+  }
+  return _rgbToHex(r * 255, g * 255, b * 255);
+}
+/* Reparte los colores para que modos con color idéntico o muy parecido (mismo tono) se
+   distingan: agrupa por FAMILIA de tono y reparte la luminosidad (+un poco el tono) dentro de
+   cada grupo, conservando la identidad de color. Muta y devuelve `items`. */
+function distinguishColors(items) {
+  const buckets = {};
+  items.forEach((it) => {
+    const [h, s, l] = _rgbToHsl.apply(null, _hexToRgb(it.color));
+    it._hsl = [h, s, l];
+    const key = s < 0.16 ? "gray" : String(Math.round(h / 24));  // familias de tono ~24°
+    (buckets[key] = buckets[key] || []).push(it);
+  });
+  Object.keys(buckets).forEach((key) => {
+    const g = buckets[key];
+    if (g.length < 2) return;                       // color único: no se toca
+    g.sort((a, b) => a._hsl[2] - b._hsl[2]);        // por luminosidad, reparto estable
+    const n = g.length;
+    // Reparto en 3 ejes (luminosidad + saturación + tono) para separar de verdad. El tono se
+    // reparte MÁS cuanto más grande es el grupo (p. ej. 5 azules → de cian a índigo): siguen
+    // siendo "la misma familia de color" pero ya se distinguen; los oscuros salen menos vivos.
+    const hueSpan = Math.min(72, (n - 1) * 16);
+    g.forEach((it, k) => {
+      const [h, s] = it._hsl;
+      const t = k / (n - 1) - 0.5;                  // -0.5 .. 0.5
+      const baseS = key === "gray" ? s : Math.max(s, 0.55);
+      const nl = Math.max(0.32, Math.min(0.64, 0.48 + t * 0.40));  // luminosidad (evita lavados)
+      const ns = Math.max(0.45, Math.min(0.95, baseS + t * 0.18)); // saturación
+      const nh = h + t * hueSpan;                                  // tono (escala con el grupo)
+      it.color = _hslToHex(nh, ns, nl);
+    });
+  });
+  items.forEach((it) => { delete it._hsl; });
+  return items;
+}
+/* Centro de la donut = FIABILIDAD media de los datos por modo (media simple de la fiabilidad de
+   cada modo, mismo criterio que el modal de Fiabilidad). Devuelve {value,color,title} o null. */
+function modeReliabilityCenter(arr) {
+  const rs = (arr || []).filter((d) => d && d.reliability != null).map((d) => d.reliability);
+  if (!rs.length) return null;
+  const rel = Math.round(rs.reduce((a, b) => a + b, 0) / rs.length);
+  return { value: rel + "%", color: reliabilityColor(rel),
+           title: "Fiabilidad de tus datos por modo: " + rel + " %" };
+}
+function donutChart(items, centerLabel, center) {
+  distinguishColors(items);
   const total = items.reduce((s, it) => s + it.value, 0) || 1;
   const r = 56, cx = 75, cy = 75, C = 2 * Math.PI * r;
   let off = 0;
@@ -497,9 +573,16 @@ function donutChart(items, centerLabel) {
     const ic = a && a.icon ? `<img src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
     return `<div class="dleg-row"><span class="dleg-dot" style="background:${it.color}"></span>${ic}<span class="dleg-name">${esc(modeName(it.label))}</span><span class="dleg-val">${it.display}</span></div>`;
   }).join("");
-  return `<div class="donut-wrap"><svg viewBox="0 0 150 150" class="donut-svg">${arcs}
-    <text x="${cx}" y="${cy - 3}" class="donut-center-n">${items.length}</text>
-    <text x="${cx}" y="${cy + 14}" class="donut-center-l">${esc(centerLabel)}</text></svg>
+  // La donut crece con el ancho pero su tope es el ALTO de la leyenda (≈ una fila por modo):
+  // así no queda grotescamente grande. Si sobra ancho, va al hueco (justify-content en el CSS).
+  const maxSz = Math.max(150, Math.min(300, items.length * 21 + 6));
+  const cN = center ? center.value : String(items.length);
+  const cStyle = center ? ` style="fill:${center.color}"` : "";
+  const cTitle = center && center.title ? `<title>${esc(center.title)}</title>` : "";
+  const cLabel = center ? "Fiabilidad" : centerLabel;
+  return `<div class="donut-wrap"><svg viewBox="0 0 150 150" class="donut-svg" style="width:${maxSz}px">${arcs}
+    <text x="${cx}" y="${cy - 3}" class="donut-center-n"${cStyle}>${esc(cN)}${cTitle}</text>
+    <text x="${cx}" y="${cy + 14}" class="donut-center-l">${esc(cLabel)}</text></svg>
     <div class="donut-legend">${legend}</div></div>`;
 }
 function renderModeDonuts(modeData) {
@@ -511,12 +594,14 @@ function renderModeDonuts(modeData) {
     const e = `<div class="empty">Sin datos suficientes todavía.</div>`;
     playEl.innerHTML = e; wrEl.innerHTML = e; return;
   }
+  // Fiabilidad de los datos por modo (misma para ambas donuts: es la fiabilidad del reparto por modo).
+  const center = modeReliabilityCenter(data);
   const byPlay = data.slice().sort((a, b) => b.total - a.total)
     .map((d, i) => ({ label: d.label, value: d.total, display: d.total + "p", color: modeColor(d.label, i) }));
-  playEl.innerHTML = donutChart(byPlay, "modos");
+  playEl.innerHTML = donutChart(byPlay, "modos", center);
   const byWr = data.filter((d) => d.winrate != null).sort((a, b) => b.winrate - a.winrate)
     .map((d, i) => ({ label: d.label, value: Math.max(1, d.winrate), display: d.winrate + "%", color: modeColor(d.label, i) }));
-  wrEl.innerHTML = byWr.length ? donutChart(byWr, "win rate") : `<div class="empty">Sin win rate por modo todavía.</div>`;
+  wrEl.innerHTML = byWr.length ? donutChart(byWr, "win rate", center) : `<div class="empty">Sin win rate por modo todavía.</div>`;
 }
 
 /* ---------- Radares de rol (Preferencia de rol / Estilo de juego) ---------- */
@@ -546,10 +631,29 @@ function roleRadar(data, key, color, gid) {
     const c = Math.cos(ang(i));
     const anchor = Math.abs(c) < 0.34 ? "middle" : (c > 0 ? "start" : "end");
     const v = fmt(i);
-    labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-lbl">${esc(ROLE_SHORT[role] || role)}${v ? `<tspan x="${lx.toFixed(1)}" dy="11" class="radar-val">${v}</tspan>` : ""}</text>`;
+    // El VALOR de cada rol se colorea por la FIABILIDAD del dato (rojo <40 / amarillo / verde >75),
+    // igual que el punto: así se ve de un vistazo qué números son sólidos y cuáles poco fiables.
+    const d = by[role];
+    const rel = d && d.reliability != null ? d.reliability : 0;
+    const relFill = d && (d.total || 0) > 0 ? ` style="fill:${reliabilityColor(rel)}"` : "";
+    const relTip = d && (d.total || 0) > 0 ? `<title>Fiabilidad del dato de ${rel} %</title>` : "";
+    labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-lbl">${relTip}${esc(ROLE_SHORT[role] || role)}${v ? `<tspan x="${lx.toFixed(1)}" dy="11" class="radar-val"${relFill}>${v}</tspan>` : ""}</text>`;
   });
   const poly = vals.map((v, i) => pt(i, v / maxV).map((x) => x.toFixed(1)).join(",")).join(" ");
-  const dots = vals.map((v, i) => { if (v <= 0) return ""; const [x, y] = pt(i, v / maxV); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${color}"/>`; }).join("");
+  // Cada vértice se colorea por la FIABILIDAD del dato (tamaño de muestra): rojo si es poco
+  // fiable, amarillo medio, verde muy fiable. El % no se muestra; aparece al pasar el ratón.
+  const dots = vals.map((v, i) => {
+    if (v <= 0) return "";
+    const d = by[ROLE_ORDER[i]] || {};
+    const rel = d.reliability == null ? 0 : d.reliability;
+    const [x, y] = pt(i, v / maxV);
+    const tip = `Fiabilidad del dato de ${rel} %`;
+    // círculo transparente grande = zona de hover cómoda con el tooltip nativo (<title>).
+    // OJO: el color va en style="fill:…" (no en el atributo fill), porque var(--…) solo
+    // resuelve en CSS, no en un atributo de presentación SVG.
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10" fill="transparent"><title>${esc(tip)}</title></circle>`
+         + `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" style="fill:${reliabilityColor(rel)}" stroke="rgba(0,0,0,.35)" stroke-width="0.6" pointer-events="none"/>`;
+  }).join("");
   return `<svg viewBox="0 0 360 320" class="radar-svg">
     <defs><radialGradient id="${gid}" cx="50%" cy="46%" r="62%">
       <stop offset="0%" stop-color="${color}" stop-opacity="0.5"/><stop offset="100%" stop-color="${color}" stop-opacity="0.06"/>

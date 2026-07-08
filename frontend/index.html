@@ -1419,6 +1419,14 @@
     <div class="map-modal-card" id="map-modal-card"></div>
   </div>
 
+  <div class="modal-overlay" id="reliability-modal" onclick="if(event.target===this)closeReliabilityModal()">
+    <div class="modal-card modal-wide has-close">
+      <button class="modal-close" onclick="closeReliabilityModal()" title="Cerrar" aria-label="Cerrar">✕</button>
+      <h3 class="modal-title">Fiabilidad de los Datos</h3>
+      <div id="reliability-body"></div>
+    </div>
+  </div>
+
   <footer>Los datos se acumulan mientras el tracker está en marcha. La API solo guarda las 25 últimas partidas de cada jugador.</footer>
 
   <!-- Modales de Retos -->

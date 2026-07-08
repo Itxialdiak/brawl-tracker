@@ -7,8 +7,8 @@ import json
 import time
 import asyncio
 from fastapi import APIRouter, Query, Depends
-from fastapi.responses import JSONResponse
-from .. import db, brawl_api, assets, brawler_extra, auth
+from fastapi.responses import JSONResponse, FileResponse, Response
+from .. import db, brawl_api, assets, brawler_extra, auth, map_assets
 from ..api_common import _require_follow
 
 router = APIRouter()
@@ -272,10 +272,10 @@ async def api_mode_hub(player: str = Query(None), mode: str = Query(...),
                if assets.norm_mode(ev["mode"]) == assets.norm_mode(mode)}
     your_by_map = {m["label"].lower(): m for m in your_maps}
 
-    def card(name, image, active, category):
+    def card(name, map_id, image, active, category):
         ym = your_by_map.get(name.lower())
         rm = roles_by_map.get(name.lower(), [])
-        return {"name": name, "image": image, "active": active, "category": category,
+        return {"name": name, "id": map_id, "image": image, "active": active, "category": category,
                 "your_winrate": ym["winrate"] if ym else None,
                 "your_games": ym["total"] if ym else 0,
                 "top_role": rm[0] if rm else None}  # mejor rol comunitario en ESTE mapa
@@ -284,11 +284,12 @@ async def api_mode_hub(player: str = Query(None), mode: str = Query(...),
     for e in mode_maps:
         seen.add(e["name"].lower())
         c = rot_cat.get(e["name"].lower())
-        (in_rotation if c else others).append(card(e["name"], e["image"], e["active"], c))
+        (in_rotation if c else others).append(card(e["name"], e.get("id"), e["image"], e["active"], c))
     for mname, c in rot_cat.items():            # en rotación pero no en el catálogo
         if mname not in seen:
             ym = your_by_map.get(mname)
-            in_rotation.append(card(ym["label"] if ym else mname, None, True, c))
+            mid = (cat["by_name"].get(mname) or {}).get("id")
+            in_rotation.append(card(ym["label"] if ym else mname, mid, None, True, c))
 
     by_pick = comm["brawlers"][:8]
     by_wr = sorted([b for b in comm["brawlers"] if b["games"] >= 3],
@@ -341,7 +342,8 @@ async def api_map_detail(player: str = Query(None), map: str = Query(...),
     worst = sorted([e for e in your_enemies if e.get("winrate") is not None],
                    key=lambda x: x["winrate"])[:5]
     return {
-        "map": map, "mode": mode, "image": entry.get("image"), "active": entry.get("active"),
+        "map": map, "mode": mode, "map_id": entry.get("id"),
+        "image": entry.get("image"), "active": entry.get("active"),
         "your": {"winrate": your_ov.get("winrate"), "total": your_ov.get("total"),
                  "best_brawlers": your_brawlers[:6],
                  "best_allies": [a for a in your_allies if (a.get("total") or 0) >= 1][:5],
@@ -352,3 +354,18 @@ async def api_map_detail(player: str = Query(None), map: str = Query(...),
         "roles": {"community": _slim_roles(comm_roles), "your": _slim_roles(your_roles)},
         "draft": draft, "tips": _map_tips(draft, guide),
     }
+
+
+@router.get("/api/map-image/{map_id}")
+async def api_map_image(map_id: int):
+    """Imagen (layout) de un mapa servida desde NUESTRO dominio: resuelve una cadena de
+    fallback en el backend (CDN de Brawlify → espejo de GitHub), cachea el PNG en disco y lo
+    sirve. Inmune a bloqueos de terceros en el cliente (Brave) y resiliente a caídas de la CDN.
+    Si el asset no existe en ninguna fuente (mapa muy nuevo aún sin render), devuelve 404 y el
+    frontend pinta un placeholder temático. Público (sin cuenta): son recursos estáticos."""
+    path = await asyncio.to_thread(map_assets.get_local_image, map_id)
+    if path:
+        return FileResponse(path, media_type="image/png",
+                            headers={"Cache-Control": "public, max-age=86400"})
+    # Sin render en ninguna fuente: 404 corto (el navegador reintenta y el front usa placeholder).
+    return Response(status_code=404, headers={"Cache-Control": "public, max-age=3600"})

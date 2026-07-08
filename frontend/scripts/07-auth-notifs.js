@@ -791,8 +791,8 @@ function renderPlayerSummary(box, s) {
   const charts = `<div class="pub-charts">
     ${card("Preferencia de rol", rolesOk ? roleRadar(roles, "usage_pct", "#3dd9e8", "pubRadPref") : noData)}
     ${card("Estilo de juego", rolesOk ? roleRadar(roles, "winrate", "#f5b82a", "pubRadStyle") : noData)}
-    ${card("Modos más jugados", byPlay.length ? donutChart(byPlay, "modos") : noData)}
-    ${card("Mejores modos", byWr.length ? donutChart(byWr, "win rate") : noData)}
+    ${card("Modos más jugados", byPlay.length ? donutChart(byPlay, "modos", modeReliabilityCenter(byMode)) : noData)}
+    ${card("Mejores modos", byWr.length ? donutChart(byWr, "win rate", modeReliabilityCenter(byMode)) : noData)}
     ${card("Evolución de trofeos", trophyChart(r.trophy_series || []))}
     ${card("Forma reciente", winrateChart(r.winrate_evolution || []))}</div>`;
   // Top 13 Brawlers: mismo ranking (con retratos + "Ver más") que las Analíticas reales,

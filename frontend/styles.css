@@ -439,6 +439,35 @@
   .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
   .stat::after { content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--gold); }
   .stat.cyan::after { background: var(--cyan); } .stat.win::after { background: var(--win); } .stat.star::after { background: #ffd75e; } .stat.combat::after { background: var(--loss); }
+  .stat.reliab::after { background: linear-gradient(180deg, var(--win), var(--gold), var(--loss)); }
+  .stat.reliab { transition: border-color .15s, transform .15s; }
+  .stat.reliab:hover { border-color: var(--gold); transform: translateY(-2px); }
+  /* --- Modal de Fiabilidad de los Datos --- */
+  .rel-overall { display: flex; align-items: center; gap: 18px; margin: 4px 0 14px; }
+  .rel-big { font-family: var(--display); font-weight: 800; font-size: 46px; line-height: 1; }
+  .rel-big small { font-size: 22px; opacity: .7; }
+  .rel-overall-lbl { font-weight: 600; margin-bottom: 5px; }
+  .rel-legend { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .rel-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-left: 8px; }
+  .rel-explain { color: var(--text); font-size: 13.5px; line-height: 1.62; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; margin: 0 0 16px; }
+  .rel-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .rel-dim { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .rel-dim-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .rel-dim-name { font-weight: 600; }
+  .rel-dim-pct { font-family: var(--display); font-weight: 700; font-size: 20px; }
+  .rel-bar { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.06); margin: 8px 0 7px; }
+  .rel-bar span:nth-child(1) { background: var(--win); } .rel-bar span:nth-child(2) { background: var(--gold); } .rel-bar span:nth-child(3) { background: var(--loss); }
+  .rel-dim-sub { color: var(--muted); font-size: 12px; }
+  .rel-dim-sub .muted { opacity: .7; }
+  .rel-weak { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rel-weak-lbl { color: var(--muted); font-size: 11.5px; }
+  .rel-chip { font-size: 11.5px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 7px; padding: 2px 7px; background: var(--bg-elev); }
+  .rel-chip b { color: var(--muted); font-weight: 600; }
+  .rel-tips { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; }
+  .rel-tips-h { font-weight: 600; margin-bottom: 7px; }
+  .rel-tips ul { margin: 0; padding-left: 18px; }
+  .rel-tips li { font-size: 13px; line-height: 1.55; margin-bottom: 5px; color: var(--text); }
+  @media (max-width: 640px) { .rel-dims { grid-template-columns: 1fr; } .rel-big { font-size: 38px; } }
   .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
   .stat .v { font-family: var(--display); font-weight: 700; font-size: 30px; margin-top: 6px; line-height: 1; }
   .stat .v small { font-size: 16px; color: var(--muted); }
@@ -1547,16 +1576,19 @@
   .more-toggle:hover { color:var(--text); border-color:rgba(150,130,255,.45); background:rgba(150,130,255,.06); }
 
   /* ---------- Donuts de modos ---------- */
-  .donut-wrap { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
-  .donut-svg { width:150px; height:150px; flex-shrink:0; }
+  /* La gráfica circular CRECE con el ancho del recuadro hasta su tope (≈ alto de la leyenda,
+     fijado inline por nº de modos); la leyenda es FIJA a la derecha (no crece), compacta, con
+     el valor pegado al nombre. Si sobra ancho, va al HUECO entre gráfico y leyenda. */
+  .donut-wrap { display:flex; gap:22px; align-items:center; flex-wrap:wrap; justify-content:space-between; }
+  .donut-svg { flex:0 1 auto; min-width:150px; max-width:100%; height:auto; }
   .donut-center-n { fill:var(--text); font-family:var(--display); font-weight:700; font-size:30px; text-anchor:middle; }
   .donut-center-l { fill:var(--muted); font-size:11px; text-anchor:middle; text-transform:uppercase; letter-spacing:.5px; }
-  .donut-legend { flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px; }
-  .dleg-row { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .donut-legend { flex:0 0 210px; min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .dleg-row { display:flex; align-items:center; gap:7px; font-size:12.5px; }
   .dleg-dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
   .dleg-row img { width:18px; height:18px; object-fit:contain; flex-shrink:0; }
   .dleg-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .dleg-val { font-family:var(--display); font-weight:700; color:var(--muted); }
+  .dleg-val { font-family:var(--display); font-weight:700; color:var(--muted); margin-left:6px; flex-shrink:0; }
 
 
   /* ============================ Retos ============================ */

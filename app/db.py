@@ -2503,6 +2503,82 @@ def winrate_by_role(filters: dict | None = None) -> list[dict]:
     return out
 
 
+def _summarize_reliability(key: str, label: str, unit: str, rows: list) -> dict:
+    """Resume la fiabilidad de una dimensión (brawler/modo/mapa/rol) a partir de sus segmentos.
+
+    Fiabilidad de la dimensión = MEDIA SIMPLE de la fiabilidad de cada segmento (cada área cuenta
+    IGUAL). A propósito NO se pondera por nº de partidas: si se ponderara, tus segmentos con
+    muchas partidas (tus mains) dominarían la media y ocultarían que muchas áreas tienen muestra
+    pobre (p. ej. 6 modos pobres de 13 no deben quedar tapados por 3 muy jugados). Así, cuantos
+    más segmentos pobres haya, más baja la fiabilidad de la dimensión, que es lo honesto.
+
+    La fiabilidad POR SEGMENTO (`_reliability`) ya es absoluta —`decided/(decided+k)`, según el
+    nº real de partidas de ESE segmento, no su fracción sobre el total del jugador—: 5 partidas
+    son muestra pobre aunque sean casi todo tu registro; ~30-40 empiezan a ser tendencia real."""
+    segs = [r for r in rows if (r.get("total") or 0) > 0 and r.get("reliability") is not None]
+    if not segs:
+        return {"key": key, "label": label, "unit": unit, "reliability": 0, "segments": 0,
+                "green": 0, "yellow": 0, "red": 0, "weak": [], "strong": []}
+    avg = sum(r["reliability"] for r in segs) / len(segs)   # media simple (sin ponderar)
+    green = sum(1 for r in segs if r["reliability"] > 75)
+    yellow = sum(1 for r in segs if 40 <= r["reliability"] <= 75)
+    red = sum(1 for r in segs if r["reliability"] < 40)
+
+    def item(r):
+        return {"name": r["label"], "total": r["total"],
+                "reliability": r["reliability"], "winrate": r.get("winrate")}
+    weak = [item(r) for r in sorted(segs, key=lambda r: (r["reliability"], -r["total"]))[:6]]
+    strong = [item(r) for r in sorted(segs, key=lambda r: (-r["reliability"], -r["total"]))[:6]]
+    return {"key": key, "label": label, "unit": unit, "reliability": round(avg),
+            "segments": len(segs), "green": green, "yellow": yellow, "red": red,
+            "weak": weak, "strong": strong}
+
+
+def _reliability_tips(dims: list, overall: int) -> list:
+    active = [d for d in dims if d["segments"] > 0]
+    if not active:
+        return ["Aún no hay partidas registradas. Deja el tracker corriendo mientras juegas para "
+                "empezar a acumular datos."]
+    weakest = min(active, key=lambda d: d["reliability"])
+    strongest = max(active, key=lambda d: d["reliability"])
+    tips = []
+    if overall >= 75:
+        tips.append(f"Tus datos globales son sólidos ({overall}% de fiabilidad media): las "
+                    f"tendencias que ves son representativas de cómo juegas.")
+    elif overall >= 40:
+        tips.append(f"Fiabilidad media ({overall}%): las tendencias generales son orientativas, "
+                    f"pero afina antes de sacar conclusiones en las áreas con pocos datos.")
+    else:
+        tips.append(f"Fiabilidad baja ({overall}%): todavía hay pocas partidas, así que muchos "
+                    f"porcentajes pueden cambiar bastante. Juega más para consolidarlos.")
+    tips.append(f"El área con menos fiabilidad son los {weakest['label'].lower()} "
+                f"({weakest['reliability']}%): {weakest['red']} con muy pocas partidas. Sus "
+                f"estadísticas son las más sensibles a errores o sesgo por falta de evidencia.")
+    br = next((d for d in dims if d["key"] == "brawler"), None)
+    if br and br["red"]:
+        tips.append(f"Tienes {br['red']} brawler(s) con datos flojos (menos de ~7 partidas "
+                    f"decididas): juega algunas más con ellos para que su win rate sea fiable.")
+    tips.append(f"Donde más puedes confiar es en {strongest['label'].lower()} "
+                f"({strongest['reliability']}%): ahí tienes muestra de sobra.")
+    return tips[:4]
+
+
+def reliability_report(filters: dict | None = None) -> dict:
+    """Informe de FIABILIDAD de los datos del jugador (según el tamaño de muestra). Devuelve una
+    fiabilidad GLOBAL (0-100) y el desglose por dimensiones (brawlers, modos, mapas, roles) con
+    qué áreas están bien cubiertas y cuáles son pobres en datos, más consejos para mejorarla."""
+    filters = filters or {}
+    dims = [
+        _summarize_reliability("brawler", "Brawlers", "brawler", winrate_by("brawler", filters)),
+        _summarize_reliability("mode", "Modos de juego", "modo", winrate_by("mode", filters)),
+        _summarize_reliability("map", "Mapas", "mapa", winrate_by("map", filters)),
+        _summarize_reliability("role", "Roles", "rol", winrate_by_role(filters)),
+    ]
+    active = [d for d in dims if d["segments"] > 0]
+    overall = round(sum(d["reliability"] for d in active) / len(active)) if active else 0
+    return {"overall": overall, "dimensions": dims, "tips": _reliability_tips(dims, overall)}
+
+
 def role_winrates_by_map(mode: str) -> dict:
     """Para cada mapa del modo, win rate por ROL con TODAS las partidas (meta comunitario).
     Una sola consulta (agrupa por mapa+brawler) y roll-up a roles en Python (cada brawler

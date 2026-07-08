@@ -17,6 +17,8 @@ let filterSel = { brawler: [], mode: [], map: [], role: [] };  // filtros multi-
 
 function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function pctColor(w) { if (w == null) return "var(--neutral)"; if (w >= 55) return "var(--win)"; if (w < 45) return "var(--loss)"; return "var(--gold)"; }
+/* Color por FIABILIDAD del dato (tamaño de muestra, 0-100): rojo <40 %, amarillo 40-75 %, verde >75 %. */
+function reliabilityColor(r) { if (r == null) return "var(--neutral)"; if (r < 40) return "var(--loss)"; if (r <= 75) return "var(--gold)"; return "var(--win)"; }
 async function getJSON(u) { const r = await fetch(u); if (r.status === 401) { showLogin(); throw new Error("401"); } return r.json(); }
 function fmtTime(t) { const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(t || ""); return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : (t || ""); }
 function fmtClock(iso) { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
@@ -45,6 +47,11 @@ function modeAsset(mode) {
   // rotación oficial (deathmatch, airHockey, tagTeam…) con los scHash de Brawlify.
   return M[low] || M[low.replace(/[^a-z0-9]/g, "")] || null;
 }
+/* Imagen de un mapa SIEMPRE vía nuestro backend (/api/map-image/{id}): el servidor resuelve la
+   cadena de fallback (CDN → espejo GitHub), cachea el PNG y lo sirve desde nuestro dominio
+   (inmune a bloqueos de terceros en el cliente). Si no hay render, 404 → placeholder. */
+function mapImageUrl(id) { return id ? ("/api/map-image/" + id) : null; }
+function mapImageFor(name) { const a = mapAsset(name); return a && a.id ? mapImageUrl(a.id) : null; }
 function mapAsset(map) { return map ? ASSETS.maps[map.toLowerCase()] || null : null; }
 /* Nombre de mapa para MOSTRAR: en español si el idioma activo es español (y lo tenemos);
    en otros idiomas se muestra el nombre original en inglés. El id interno sigue en inglés. */
@@ -173,11 +180,67 @@ async function loadOverview() {
   const wr = o.winrate;
   let cards = `
     <div class="stat win"><div class="k">Win rate</div><div class="v" style="color:${pctColor(wr)}">${wr == null ? "—" : wr + "<small>%</small>"}</div><div class="sub">${o.wins}V · ${o.losses}D${o.undecided ? " · " + o.undecided + "E" : ""}</div></div>
-    <div class="stat"><div class="k">Partidas registradas</div><div class="v">${o.total}</div><div class="sub">acumuladas hasta ahora</div></div>
     <div class="stat star"><div class="k">Jugador estelar</div><div class="v">${o.star_rate == null ? "—" : o.star_rate + "<small>%</small>"}</div><div class="sub">${o.star_players} veces MVP (3v3)</div></div>
-    <div class="stat cyan"><div class="k">Balance de trofeos</div><div class="v" style="color:${o.trophy_delta_7d >= 0 ? "var(--win)" : "var(--loss)"}">${o.trophy_delta_7d >= 0 ? "+" : ""}${o.trophy_delta_7d}</div><div class="sub">últimos 7 días</div></div>`;
+    <div class="stat cyan"><div class="k">Balance de trofeos</div><div class="v" style="color:${o.trophy_delta_7d >= 0 ? "var(--win)" : "var(--loss)"}">${o.trophy_delta_7d >= 0 ? "+" : ""}${o.trophy_delta_7d}</div><div class="sub">últimos 7 días</div></div>
+    <div class="stat"><div class="k">Partidas registradas</div><div class="v">${o.total}</div><div class="sub">acumuladas hasta ahora</div></div>
+    <div class="stat reliab" id="stat-reliability" style="cursor:pointer" title="Fiabilidad de los datos según el tamaño de muestra. Pulsa para ver el desglose." onclick="openReliabilityModal()">
+      <div class="k">Fiabilidad de los Datos</div><div class="v" id="reliab-val">—</div><div class="sub">pulsa para el desglose ›</div></div>`;
   cards += `<div class="stat"><div class="k">Última partida</div><div class="v" style="font-size:18px">${o.last_battle ? fmtTime(o.last_battle) : "—"}</div><div class="sub">vista por el tracker</div></div>`;
   $("overview").innerHTML = cards;
+  loadReliability();   // rellena la tarjeta de fiabilidad (y cachea el desglose para el modal)
+}
+let _reliabilityReport = null;
+async function loadReliability() {
+  try {
+    const r = await getJSON("/api/reliability?" + qs());
+    _reliabilityReport = r;
+    const el = $("reliab-val");
+    if (el) { el.innerHTML = (r.overall == null ? "—" : r.overall + "<small>%</small>"); el.style.color = reliabilityColor(r.overall); }
+  } catch (e) { /* 401 ya gestionado por getJSON */ }
+}
+/* Modal de Fiabilidad de los Datos: por qué una muestra pequeña sesga, desglose por dimensión
+   (qué áreas tienen buenos datos y cuáles son pobres) y consejos para mejorarla. */
+function openReliabilityModal() {
+  const m = $("reliability-modal"), body = $("reliability-body");
+  if (!m || !body) return;
+  m.classList.add("open");
+  const r = _reliabilityReport;
+  if (!r) {   // aún no cargado: lo pedimos y re-renderizamos al llegar
+    body.innerHTML = `<div class="empty" style="padding:30px">Cargando…</div>`;
+    loadReliability().then(() => { if (_reliabilityReport) openReliabilityModal(); });
+    return;
+  }
+  const c = reliabilityColor(r.overall);
+  const dims = (r.dimensions || []).map(reliabilityDimHtml).join("");
+  const tips = (r.tips || []).map((t) => `<li>${esc(t)}</li>`).join("");
+  body.innerHTML = `
+    <div class="rel-overall">
+      <div class="rel-big" style="color:${c}">${r.overall == null ? "—" : r.overall + "<small>%</small>"}</div>
+      <div class="rel-overall-tx">
+        <div class="rel-overall-lbl">Fiabilidad global de tus datos</div>
+        <div class="rel-legend">
+          <span class="rel-dot" style="background:var(--loss)"></span>&lt;40% poco fiable
+          <span class="rel-dot" style="background:var(--gold)"></span>40–75% media
+          <span class="rel-dot" style="background:var(--win)"></span>&gt;75% fiable</div>
+      </div>
+    </div>
+    <p class="rel-explain">La fiabilidad mide <b>cuántas partidas</b> respaldan cada porcentaje. Con pocas partidas un dato puede ser <b>engañoso</b>: si ganas 2 de 3 con un brawler sale un 67%, pero con tan poca muestra el azar pesa muchísimo y ese número puede desplomarse (o dispararse) en cuanto juegues unas cuantas más. A más partidas, el porcentaje se acerca a tu <b>rendimiento real</b> y apenas se mueve. Por eso, además de este desglose, coloreamos cada dato en las gráficas: <b style="color:var(--loss)">rojo</b> = muy pocas muestras (tómalo con pinzas), <b style="color:var(--gold)">amarillo</b> = orientativo, <b style="color:var(--win)">verde</b> = tendencia sólida.</p>
+    <div class="rel-dims">${dims}</div>
+    ${tips ? `<div class="rel-tips"><div class="rel-tips-h">💡 Cómo mejorar la fiabilidad</div><ul>${tips}</ul></div>` : ""}`;
+}
+function closeReliabilityModal() { const m = $("reliability-modal"); if (m) m.classList.remove("open"); }
+function reliabilityDimHtml(d) {
+  const c = reliabilityColor(d.reliability);
+  const seg = d.segments || 1;
+  const g = 100 * d.green / seg, y = 100 * d.yellow / seg, rd = 100 * d.red / seg;
+  const weak = (d.weak || []).filter((w) => w.reliability <= 75).slice(0, 6)
+    .map((w) => `<span class="rel-chip" style="border-color:${reliabilityColor(w.reliability)}" title="Fiabilidad del dato de ${w.reliability} % · ${w.total} partidas">${esc(w.name)} <b>${w.total}p</b></span>`).join("");
+  return `<div class="rel-dim">
+    <div class="rel-dim-head"><span class="rel-dim-name">${esc(d.label)}</span>
+      <span class="rel-dim-pct" style="color:${c}">${d.reliability}%</span></div>
+    <div class="rel-bar"><span style="width:${g}%"></span><span style="width:${y}%"></span><span style="width:${rd}%"></span></div>
+    <div class="rel-dim-sub">${d.green} sólidos · ${d.yellow} orientativos · ${d.red} pobres <span class="muted">(${d.segments} en total)</span></div>
+    ${weak ? `<div class="rel-weak"><span class="rel-weak-lbl">Con menos datos:</span> ${weak}</div>` : ""}</div>`;
 }
 async function loadPanels() {
   const base = qs();
@@ -291,8 +354,10 @@ window.saveManual = saveManual;
 /* ---------- Lightbox de mapa ---------- */
 function showMap(name) {
   const m = mapAsset(name);
-  if (!m || !m.image) return;
-  $("lb-img").src = m.image; $("lb-cap").textContent = name;
+  if (!m || !m.id) return;
+  const img = $("lb-img");
+  img.onerror = () => { $("lightbox").classList.remove("show"); };  // sin render aún: no abrir roto
+  img.src = mapImageUrl(m.id); $("lb-cap").textContent = mapNameEs(name);
   $("lightbox").classList.add("show");
 }
 document.addEventListener("click", (e) => {
@@ -589,7 +654,7 @@ async function loadRotation() {
 function renderRotCard(e) {
   const wr = e.winrate;
   const cls = wr == null ? "" : (wr >= 55 ? "good" : (wr < 45 ? "bad" : ""));
-  const ma = mapAsset(e.map), mapImg = ma && ma.image ? ma.image : null;
+  const ma = mapAsset(e.map), mapImg = ma && ma.id ? mapImageUrl(ma.id) : null;
   const md = modeAsset(e.mode), modeIc = md && md.icon ? md.icon : null;
   // Base con el color del modo: si la imagen del mapa falta o da 404 (mapas muy nuevos que
   // Brawlify aún no ha renderizado), el cabecero queda temático en vez de vacío.

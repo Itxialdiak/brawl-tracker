@@ -171,7 +171,7 @@ async def get_map_catalog() -> dict:
         mode_name = gm.get("name")
         if not name or not mode_name:
             continue
-        entry = {"name": name, "image": m.get("imageUrl"),
+        entry = {"name": name, "id": m.get("id"), "image": m.get("imageUrl"),
                  "active": not m.get("disabled", False),
                  "mode": mode_name, "mode_color": gm.get("color"),
                  "last_active": m.get("lastActive") or 0}

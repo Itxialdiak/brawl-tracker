@@ -68,6 +68,16 @@ def api_roles(player: str = Query(None), mode: str = Query(None), map: str = Que
     return db.winrate_by_role(_filters(player, mode, map, brawler, None, None))
 
 
+@router.get("/api/reliability")
+def api_reliability(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
+                    brawler: str = Query(None), role: str = Query(None),
+                    user: dict = Depends(auth.require_user)):
+    """Fiabilidad de los datos (según tamaño de muestra): global + desglose por brawlers, modos,
+    mapas y roles, con qué áreas están bien cubiertas y consejos para mejorarla."""
+    _require_follow(user, player)
+    return db.reliability_report(_filters(player, mode, map, brawler, None, role))
+
+
 @router.get("/api/filters")
 def api_filters(player: str = Query(None), user: dict = Depends(auth.require_user)):
     _require_follow(user, player)

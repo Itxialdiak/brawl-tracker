@@ -94,7 +94,7 @@ function roundMapOptsHTML(rn, selModes, selMaps) {
   const sel = new Set(selMaps || []);
   const pool = roundMapPool(selModes);
   return pool.map((mp) => {
-    const img = (typeof mapAsset === "function" ? (mapAsset(mp) || {}).image : "");
+    const img = (typeof mapImageFor === "function" ? mapImageFor(mp) : ((mapAsset(mp) || {}).image));
     return `<label class="rc-ms-opt"><input type="checkbox" value="${esc(mp)}" ${sel.has(mp) ? "checked" : ""} onchange="roundMapsChanged(${rn})">${img ? `<img src="${esc(img)}" alt="" onerror="this.style.display='none'">` : ""}<span>${esc(mapNameEs(mp))}</span></label>`;
   }).join("") || `<div class="ms-empty">Elige un modo primero</div>`;
 }

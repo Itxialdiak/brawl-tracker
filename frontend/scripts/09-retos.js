@@ -408,7 +408,7 @@ async function openCreateReto() {
       const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
       RETO_OPTS = {
         mode: (f.modes || []).map((m) => ({ v: m, label: modeName(m), img: (modeAsset(m) || {}).icon })),
-        map: (f.maps || []).map((m) => ({ v: m, label: mapNameEs(m), img: (mapAsset(m) || {}).image })),
+        map: (f.maps || []).map((m) => ({ v: m, label: mapNameEs(m), img: (typeof mapImageFor === "function" ? mapImageFor(m) : (mapAsset(m) || {}).image) })),
       };
     } catch (_) { RETO_OPTS = { mode: [], map: [] }; }
   }
