@@ -196,6 +196,71 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
             "top_by_role": top_by_role, "upcoming": upcoming.list_all()}
 
 
+async def _brawler_podium_payload(tag: str) -> dict:
+    """Top 13 brawlers de un jugador (general + por rol), versión LIGERA (sin contadores, rating
+    ni loadouts): solo lo que el podio necesita. Reutilizable en el perfil PÚBLICO (sin cuenta)."""
+    from .. import skins
+    catalog = await assets.get_brawler_catalog()
+    by_id = catalog.get("by_id") or {}
+    collection = await asyncio.to_thread(db.get_collection, tag)
+    coll_by_id = {c["brawler_id"]: c for c in collection}
+    wr = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
+    wr_by_name = {(r["label"] or "").upper(): r for r in wr}
+    items = []
+    for bid, cat in by_id.items():
+        c = coll_by_id.get(bid)
+        if not c or c.get("trophies") is None:
+            continue                                   # solo brawlers de la colección
+        name = cat.get("name")
+        if brawler_extra.is_temporary(bid, name):
+            continue
+        ex = brawler_extra.get(bid)
+        w = wr_by_name.get((name or "").upper())
+        role = brawler_extra.norm_role(ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role"))
+        items.append({
+            "id": bid, "name": name, "role": role,
+            "role_secondary": brawler_extra.role_secondary(name),
+            "trophies": c["trophies"], "portrait": cat.get("portrait"),
+            "rarity": cat.get("rarity"), "rank_band": _rank_band(c["trophies"]),
+            "your_winrate": w["winrate"] if w else None,
+            "your_adj": w["adj_score"] if w else None,
+            "your_reliability": w["reliability"] if w else None,
+            "your_battles": w["total"] if w else 0,
+            "_full": ex.get("body_image") or cat.get("image_full"),
+            "_skin": (c.get("skin_id"), c.get("skin_name")),
+        })
+
+    async def podium(subset):
+        subset = sorted(subset, key=lambda x: x["trophies"], reverse=True)[:13]
+        out = []
+        for pos, it in enumerate(subset):
+            tb = {k: it[k] for k in ("id", "name", "trophies", "portrait", "rarity", "rank_band",
+                                     "your_winrate", "your_battles", "your_adj", "your_reliability")}
+            if pos < 3:                                # solo el podio necesita cuerpo entero
+                img = it["_full"]
+                sid, _sn = it["_skin"]
+                if sid:
+                    try:
+                        img = skins.get_image(sid) or img
+                    except Exception:  # noqa: BLE001
+                        pass
+                tb["image_full"] = img
+            out.append(tb)
+        return out
+
+    top_brawlers = await podium(items)
+    roles_present = sorted({r for it in items for r in (it["role"], it.get("role_secondary")) if r})
+    top_by_role = {role: await podium([it for it in items if it["role"] == role or it.get("role_secondary") == role])
+                   for role in roles_present}
+    return {"top_brawlers": top_brawlers, "top_by_role": top_by_role}
+
+
+@router.get("/api/public/players/{tag}/brawlers-top")
+async def api_public_brawlers_top(tag: str):
+    """Top 13 brawlers (podio) de un jugador, PÚBLICO (sin cuenta): para el perfil público."""
+    return await _brawler_podium_payload(db.normalize_tag(tag))
+
+
 @router.get("/api/versatile")
 async def api_versatile(player: str = Query(None), mode: str = Query(None), map: str = Query(None),
                         brawler: str = Query(None), role: str = Query(None),
@@ -256,6 +321,24 @@ async def api_recommendations(player: str = Query(None), kind: str = Query("comm
         tl = await asyncio.to_thread(tierlist.get, "community")
     collection = await asyncio.to_thread(db.get_collection, tag)
     wr_rows = await asyncio.to_thread(db.winrate_by, "brawler", {"player": tag})
+    await buffs.get_buffs()
+    changes = buffs.changes_map()
+    return recommendations.build(kind, catalog, tl, collection, wr_rows, changes)
+
+
+@router.get("/api/public/players/{tag}/recommendations")
+async def api_public_recommendations(tag: str, kind: str = Query("community")):
+    """Recomendaciones de brawlers de un jugador, PÚBLICO (sin cuenta): para la consulta de
+    invitado. Mismo cálculo que la sección Brawlers (colección + win rates × meta)."""
+    from .. import tierlist, recommendations
+    ntag = db.normalize_tag(tag)
+    catalog = await assets.get_brawler_catalog()
+    if kind == "global":
+        tl = await tierlist.global_tierlist()
+    else:
+        tl = await asyncio.to_thread(tierlist.get, "community")
+    collection = await asyncio.to_thread(db.get_collection, ntag)
+    wr_rows = await asyncio.to_thread(db.winrate_by, "brawler", {"player": ntag})
     await buffs.get_buffs()
     changes = buffs.changes_map()
     return recommendations.build(kind, catalog, tl, collection, wr_rows, changes)

@@ -8,9 +8,24 @@ import time
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
-from .. import db, brawl_api
+from .. import db, brawl_api, coach
 
 router = APIRouter()
+
+
+@router.get("/api/public/players/{tag}/sensei-desc")
+async def api_public_sensei_desc(tag: str):
+    """Descripción PÚBLICA que genera el Sensei (1 párrafo: tipo de jugador, fortalezas, estilo).
+    Si falta o está caducada (>7 días), dispara la generación en segundo plano; el front reintenta.
+    Sin cuenta: es contenido del perfil público (gancho para la herramienta de IA)."""
+    ntag = db.normalize_tag(tag)
+    cur = await asyncio.to_thread(db.get_player_sensei_desc, ntag)
+    desc, at = cur.get("desc"), cur.get("at")
+    generating = False
+    if coach.configured() and (not desc or coach.desc_is_stale(at)):
+        asyncio.create_task(coach.refresh_public_description(ntag))   # fondo; no bloquea
+        generating = not desc                                         # "generando" solo si aún no hay ninguna
+    return {"description": desc, "at": at, "generating": generating, "configured": coach.configured()}
 
 _ICON_CDN = "https://cdn.brawlify.com/profile-icons/regular/{id}.png"
 
@@ -75,6 +90,15 @@ async def api_public_player_lookup(tag: str, request: Request):
         "brawlers": await asyncio.to_thread(db.winrate_by, "brawler", f),
         "guest": True,
     }
+
+
+@router.get("/api/public/events")
+def api_public_events(types: str = Query(""), langs: str = Query("")):
+    """Tablón de eventos PÚBLICO (sin cuenta): eventos públicos y de aceptación (los privados NO
+    se anuncian a anónimos). Solo lectura: apuntarse/seguir/crear requiere cuenta."""
+    t = [x for x in types.split(",") if x] or None
+    lg = [x for x in langs.split(",") if x] or None
+    return {"events": db.list_board_events(0, t, lg, ["public", "acceptance"])}
 
 
 @router.get("/api/public/users")

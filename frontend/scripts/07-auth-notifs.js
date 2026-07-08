@@ -152,10 +152,56 @@ async function guestPlayerLookup() {
         <div class="guest-pl-tag">${esc(s.tag)}${s.club_name ? " · " + esc(s.club_name) : ""}</div></div>
     </div>`;
   const cta = `<div class="guest-pl-cta">🔒 Este es un resumen público. <button class="link-btn" onclick="showLogin()">Crea una cuenta</button> para seguir a este jugador, ver su histórico completo y consultar al Sensei.</div>`;
-  box.innerHTML = head + `<div id="guest-pl-summary" class="pub-summary-box"></div>` + cta;
+  const tg = s.tag || tag;
+  const recsBlock = `<div class="guest-recs" id="guest-pl-recs">
+      <div class="guest-recs-head"><h3 class="guest-sub" style="margin:0">Recomendaciones</h3>
+        <div id="guest-pl-recs-tabs" class="rec-tabs">
+          <button class="rec-tab active" data-grec="community" onclick="loadGuestRecs('${esc(tg)}','community')">Comunitaria</button>
+          <button class="rec-tab" data-grec="global" onclick="loadGuestRecs('${esc(tg)}','global')">Global</button></div></div>
+      <p class="guest-sub-note" style="margin:2px 0 12px">Los mejores brawlers para tu cuenta cruzando tu colección con el meta. Vista reducida (top 3 por categoría).</p>
+      <div id="guest-pl-recs-body"></div></div>`;
+  box.innerHTML = head + `<div id="guest-sensei" class="sensei-slot"></div><div id="guest-pl-summary" class="pub-summary-box"></div>` + recsBlock + cta;
   const sumBox = $("guest-pl-summary");
   if (hasData) { renderPlayerSummary(sumBox, s); }
   else { sumBox.innerHTML = `<p class="evd-muted" style="padding:14px">Aún no tenemos partidas recientes de este jugador. Ya lo estamos siguiendo: vuelve a buscarlo en un rato y verás sus estadísticas.</p>`; }
+  loadSenseiDesc(tg, $("guest-sensei"));
+  loadGuestRecs(tg, "community");
+}
+/* Recomendaciones en la consulta de invitado: versión REDUCIDA (top 3 por categoría; la de
+   "maxear" se deja completa por maquetación). Comunitaria/Global. Tarjetas no clicables. */
+let _guestRecKind = "community";
+async function loadGuestRecs(tag, kind) {
+  _guestRecKind = kind || _guestRecKind;
+  const body = $("guest-pl-recs-body");
+  if (!body) return;
+  document.querySelectorAll("#guest-pl-recs-tabs .rec-tab").forEach((b) => b.classList.toggle("active", b.dataset.grec === _guestRecKind));
+  body.innerHTML = `<div class="empty" style="padding:14px">Cargando recomendaciones…</div>`;
+  if (typeof ensureAssets === "function") { try { await ensureAssets(); } catch (_) {} }
+  let d;
+  try { d = await getJSON(`/api/public/players/${encodeURIComponent(tag)}/recommendations?kind=${_guestRecKind}`); }
+  catch (e) { body.innerHTML = `<div class="empty" style="padding:14px">No se pudieron cargar las recomendaciones.</div>`; return; }
+  const groups = d.groups || [];
+  const grid = groups.filter((g) => g.key !== "to_max").map((g) => ({ ...g, brawlers: (g.brawlers || []).slice(0, 3) }));
+  const toMaxRaw = groups.find((g) => g.key === "to_max");
+  const toMax = toMaxRaw ? { ...toMaxRaw, brawlers: (toMaxRaw.brawlers || []).slice(0, 3) } : null;   // también top 3
+  body.innerHTML = `<div class="recs-grid">${grid.map(guestRecGroup).join("")}</div>${toMax ? guestRecGroup(toMax) : ""}`;
+}
+function guestRecGroup(g) {
+  const numbered = !!g.numbered;
+  const cards = (g.brawlers || []).map((b, i) => {
+    const por = b.portrait ? `<img src="${b.portrait}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
+    const tier = b.tier ? `<span class="rec-tier tier-${b.tier}">${b.tier}</span>` : "";
+    const num = numbered ? `<span class="rec-num">${i + 1}</span>` : "";
+    return `<div class="br-rec-card no-click" title="${esc(b.name)}">
+      <div class="por">${num}${por}${tier}</div>
+      <div class="br-rec-body"><div class="nm">${esc(b.name)}</div><div class="nt">${esc(b.note || "")}</div>
+        ${b.reliability != null ? `<div class="rel-bar" title="Fiabilidad ${b.reliability}% · según partidas"><span style="width:${b.reliability}%"></span></div>` : ""}</div>
+    </div>`;
+  }).join("");
+  const body = cards || `<div class="rec-empty">Aún sin datos suficientes aquí.</div>`;
+  return `<div class="br-rec-group${numbered ? " full numbered" : ""}">
+    <div class="br-rec-gh"><h4>${esc(g.title)}</h4><p>${esc(g.subtitle)}</p></div>
+    <div class="br-rec-cards">${body}</div></div>`;
 }
 function exitGuestMode() {
   document.body.classList.remove("guest");
@@ -169,12 +215,31 @@ async function loadGuestUsers(q) {
   try { r = await getJSON("/api/public/users" + (q ? "?q=" + encodeURIComponent(q) : "")); }
   catch (e) { box.innerHTML = `<p class="evd-muted" style="padding:16px">No se pudo cargar la comunidad.</p>`; return; }
   const us = r.users || [];
+  if (typeof ensureAssets === "function") { try { await ensureAssets(); } catch (_) {} }
   box.innerHTML = us.length
-    ? us.map((u) => `<button class="guest-user" onclick="openPublicProfile(${u.id})">
-        <span class="guest-user-nm">@${esc(u.username)}</span>
-        <span class="guest-user-meta">${u.country ? esc(u.country) + " · " : ""}${u.n_players} jugador${u.n_players === 1 ? "" : "es"} · ${u.n_battles} partidas aportadas</span>
-      </button>`).join("")
+    ? us.map((u, i) => guestUserCard(u, i)).join("")
     : `<p class="evd-muted" style="padding:16px">${q ? "Sin resultados." : "Aún no hay usuarios en la comunidad."}</p>`;
+}
+/* Tarjeta-miniatura de un usuario de la comunidad: icono + resumen público de su jugador
+   principal (win rate, copas, brawler más usado). Da una muestra del contenido de la app. */
+function guestUserCard(u, i) {
+  const m = u.main;
+  const icon = m && m.icon_url
+    ? `<img class="gu-icon" src="${esc(m.icon_url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+    : `<div class="gu-icon gu-icon-ph">👤</div>`;
+  const port = m && m.top_brawler && typeof brawlerPortrait === "function" ? brawlerPortrait(m.top_brawler) : null;
+  const wr = m && m.winrate != null
+    ? `<span class="gu-stat"><b style="color:${pctColor(m.winrate)}">${m.winrate}%</b><small>WR</small></span>` : "";
+  const tro = m && m.trophies ? `<span class="gu-stat"><b>${Number(m.trophies).toLocaleString("es-ES")}</b><small>🏆</small></span>` : "";
+  const top = port ? `<span class="gu-top" title="Brawler más usado: ${esc(m.top_brawler)}"><img src="${port}" alt="" onerror="this.style.display='none'"></span>` : "";
+  const mainLine = m ? `<div class="gu-main">${esc(m.name)}${m.club_name ? ` <span class="gu-club">· ${esc(m.club_name)}</span>` : ""}</div>`
+                     : `<div class="gu-main gu-nodata">Aún sin datos de partidas</div>`;
+  return `<button class="guest-card" style="animation-delay:${Math.min(i * 40, 400)}ms" onclick="openPublicProfile(${u.id})">
+    <div class="gu-head">${icon}<div class="gu-id"><span class="gu-user">@${esc(u.username)}</span>${u.country ? `<span class="gu-country">${esc(u.country)}</span>` : ""}</div>${top}</div>
+    ${mainLine}
+    <div class="gu-stats">${wr}${tro}</div>
+    <div class="gu-contrib">${u.n_players} jugador${u.n_players === 1 ? "" : "es"} · ${u.n_battles} partidas aportadas</div>
+  </button>`;
 }
 let _guestSearchT = null;
 function guestSearch() { clearTimeout(_guestSearchT); _guestSearchT = setTimeout(() => loadGuestUsers($("guest-search").value.trim()), 300); }
@@ -701,7 +766,7 @@ async function openPublicProfile(uid) {
   _pubProfile = d;
   _pubTag = (d.players && d.players[0]) ? d.players[0].tag : null;
   renderPublicProfile();
-  if (_pubTag) loadPubSummary(_pubTag);
+  if (_pubTag) { loadPubSummary(_pubTag); loadPubTop13(_pubTag); }
 }
 function closePublicProfile() { $("pubprofile-modal").classList.remove("open"); }
 function renderPublicProfile() {
@@ -727,9 +792,91 @@ function renderPublicProfile() {
     : "";
   $("pub-body").innerHTML = `
     <div class="pub-head"><div class="pub-name">@${esc(d.username)}</div><div class="pub-acts">${acts}</div></div>
-    ${players.length ? picker + `<div id="pub-summary"></div>` : `<p class="evd-muted" style="padding:14px 2px">Este usuario no tiene jugadores registrados.</p>`}`;
+    ${players.length ? picker + `<div id="pub-sensei" class="sensei-slot"></div><div id="pub-summary"></div><div id="pub-top13" class="pub-top13"></div>` : `<p class="evd-muted" style="padding:14px 2px">Este usuario no tiene jugadores registrados.</p>`}`;
+  if (_pubTag) loadSenseiDesc(_pubTag, $("pub-sensei"));
 }
-function pubSelectPlayer(tag) { _pubTag = tag; renderPublicProfile(); loadPubSummary(tag); }
+function pubSelectPlayer(tag) { _pubTag = tag; renderPublicProfile(); loadPubSummary(tag); loadPubTop13(tag); }
+/* Descripción pública del Sensei (1 párrafo IA) — perfil público y consulta de invitado. */
+async function loadSenseiDesc(tag, el) {
+  if (!el || !tag) return;
+  let d;
+  try { d = await getJSON(`/api/public/players/${encodeURIComponent(tag)}/sensei-desc`); }
+  catch (e) { el.innerHTML = ""; return; }
+  if (!d.configured) { el.innerHTML = ""; return; }   // Sensei no configurado: no mostramos nada
+  if (d.description) {
+    el.innerHTML = `<div class="sensei-desc"><div class="sensei-desc-av">🥷</div>
+      <div class="sensei-desc-tx"><div class="sensei-desc-h">El Sensei observa a este discípulo</div>
+      <p>${esc(d.description)}</p></div></div>`;
+  } else if (d.generating) {
+    el.innerHTML = `<div class="sensei-desc generating"><div class="sensei-desc-av">🥷</div>
+      <div class="sensei-desc-tx"><p class="sd-gen">El Sensei está conociendo a este discípulo<span class="sd-dots"></span></p></div></div>`;
+    setTimeout(() => { if (el.isConnected) loadSenseiDesc(tag, el); }, 8000);
+  } else { el.innerHTML = ""; }
+}
+/* Top 13 brawlers (podio) del jugador seleccionado, en el perfil público. Reutiliza las clases
+   del podio de la sección Brawlers; los brawlers no son clicables (perfil de otro usuario). */
+let _pubTop = null, _pubTopRole = null;
+async function loadPubTop13(tag) {
+  const el = $("pub-top13");
+  if (!el) return;
+  el.innerHTML = "";
+  if (typeof ensureAssets === "function") { try { await ensureAssets(); } catch (_) {} }
+  try { _pubTop = await getJSON(`/api/public/players/${encodeURIComponent(tag)}/brawlers-top`); }
+  catch (e) { _pubTop = null; return; }
+  _pubTopRole = null;
+  renderPubTop13();
+}
+function renderPubTop13() {
+  const el = $("pub-top13");
+  if (!el || !_pubTop) return;
+  const byRole = _pubTop.top_by_role || {}, general = _pubTop.top_brawlers || [];
+  if (!general.length) { el.innerHTML = ""; return; }
+  const order = (typeof ROLE_ORDER !== "undefined" ? ROLE_ORDER : []);
+  const roles = Object.keys(byRole).sort((a, b) => { const ia = order.indexOf(a), ib = order.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
+  if (_pubTopRole && !byRole[_pubTopRole]) _pubTopRole = null;
+  const top = _pubTopRole ? (byRole[_pubTopRole] || []) : general;
+  const chips = `<div class="br-role-chips">
+    <button class="br-role-chip ${!_pubTopRole ? "active" : ""}" data-ptrole="">General</button>
+    ${roles.map((r) => `<button class="br-role-chip ${_pubTopRole === r ? "active" : ""}" data-ptrole="${esc(r)}">${esc(r)}</button>`).join("")}</div>`;
+  const podium = top.slice(0, 3).map((b, i) => ({ ...b, pos: i + 1 }));
+  const ord = [podium[1], podium[0], podium[2]].filter(Boolean);
+  const podiumHtml = ord.map((b) => {
+    const src = b.image_full || b.portrait;
+    const img = src ? `<img src="${src}" alt="" onerror="this.style.display='none'">` : "";
+    return `<div class="podium-col pos${b.pos}"><div class="podium-img">${img}</div>
+      <div class="podium-base"><span class="podium-pos">${b.pos}</span>
+        <span class="podium-name">${esc(b.name)}</span>
+        <span class="podium-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
+  }).join("");
+  const winnersMini = podium.map((b) => {
+    const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
+    const adj = b.your_adj;
+    return `<div class="winner-row"><span class="wm-pos">${b.pos}</span>${img}
+      <div class="wm-tx"><span class="wm-name">${esc(b.name)}</span>
+        <span class="wm-sub">${adj == null ? "sin partidas" : `<b style="color:${pctColor(adj)}">${adj}</b> rend · ${b.your_battles}p`}</span></div></div>`;
+  }).join("");
+  const effRows = podium.map((b) => {
+    const wr = b.your_winrate, w = wr == null ? 0 : Math.max(3, wr);
+    return `<div class="eff-row"><span class="eff-name">${esc(b.name)}</span>
+      <div class="eff-bar-wrap"><div class="eff-bar" style="width:${w}%;background:${pctColor(wr)}"></div></div>
+      <span class="eff-val" style="color:${pctColor(wr)}">${wr == null ? "—" : wr + "%"}</span></div>`;
+  }).join("");
+  const restHtml = top.slice(3, 13).map((b, i) => {
+    const img = b.portrait ? `<img src="${b.portrait}" alt="" onerror="this.style.display='none'">` : "";
+    return `<div class="top-mini"><span class="top-mini-pos">${i + 4}</span>${img}
+      <div class="top-mini-tx"><span class="top-mini-name">${esc(b.name)}</span>
+        <span class="top-mini-tro">🏆 ${(b.trophies || 0).toLocaleString("es-ES")}</span></div></div>`;
+  }).join("");
+  const rest = typeof collapsibleRest === "function" ? collapsibleRest(restHtml, top.slice(3, 13).length)
+    : `<div class="top-mini-row" style="display:flex;flex-wrap:wrap;gap:8px">${restHtml}</div>`;
+  el.innerHTML = `<div class="top10-panel"><h2><span class="dot"></span>Top 13 Brawlers${chips}</h2>
+    <div class="top13-main">
+      <div class="podium-extra extra-left"><div class="extra-title">Rendimiento</div>${winnersMini}</div>
+      <div class="podium">${podiumHtml}</div>
+      <div class="podium-extra extra-right"><div class="extra-title">Eficiencia · win rate</div>${effRows}</div>
+    </div>${rest}</div>`;
+  el.querySelectorAll(".br-role-chip").forEach((c) => c.addEventListener("click", () => { _pubTopRole = c.dataset.ptrole || null; renderPubTop13(); }));
+}
 async function pubAddFriend(uid) {
   const { ok, d } = await apiSend("/api/friends/request", "POST", { user_id: uid });
   if (!ok) { wikiToast(d.error || "No se pudo", "err"); return; }
@@ -770,9 +917,9 @@ function renderPlayerSummary(box, s) {
   const hlItem = (lab, it, kind, val) => it ? `<div class="pub-hl"><div class="lab">${esc(lab)}</div><div class="nm">${esc(hlName(it, kind))}</div><div class="val">${esc(val)}</div></div>` : "";
   const line2 = `<div class="pub-line pub-hls">
     ${hlItem("Más jugado", hl.most_played, "brawler", hl.most_played ? hl.most_played.total + "p" : "")}
-    ${hlItem("Mejor brawler", hl.best_brawler, "brawler", hl.best_brawler ? hl.best_brawler.winrate + "%" : "")}
-    ${hlItem("Mejor modo", hl.best_mode, "mode", hl.best_mode ? hl.best_mode.winrate + "%" : "")}
-    ${hlItem("Mejor mapa", hl.best_map, "map", hl.best_map ? hl.best_map.winrate + "%" : "")}</div>`;
+    ${(() => { const b = hl.best_brawler_perf || hl.best_brawler; return hlItem("Mejor brawler", b, "brawler", b && b.winrate != null ? b.winrate + "%" : ""); })()}
+    ${hlItem("Mejor modo", hl.best_mode, "mode", hl.best_mode && hl.best_mode.winrate != null ? hl.best_mode.winrate + "%" : "")}
+    ${hlItem("Mejor mapa", hl.best_map, "map", hl.best_map && hl.best_map.winrate != null ? hl.best_map.winrate + "%" : "")}</div>`;
   const subBar = (lab, v) => `<div class="pub-sub"><div class="l">${esc(lab)} <b>${Math.round(v || 0)}</b></div><div class="pub-subbar"><span style="width:${Math.max(0, Math.min(100, v || 0))}%"></span></div></div>`;
   const line3 = rt.overall != null ? `<div class="pub-line pub-rating">
     <div class="pub-score"><span class="num">${Math.round(rt.overall)}</span><span class="max">/100</span><span class="tier">${esc(rt.tier || "")}</span></div>

@@ -243,6 +243,8 @@ def init_db():
     _ensure_column(cur, "players", "club_name", "TEXT")
     _ensure_column(cur, "players", "club_tag", "TEXT")    # tag del club (para páginas de club y descubrimiento)
     _ensure_column(cur, "players", "last_error", "TEXT")  # último fallo de sondeo (404 / tag inexistente)
+    _ensure_column(cur, "players", "sensei_desc", "TEXT")     # descripción pública que genera el Sensei (IA)
+    _ensure_column(cur, "players", "sensei_desc_at", "TEXT")  # cuándo se generó (para renovar cada semana)
     _ensure_column(cur, "users", "country", "TEXT")   # país declarado (priorización social; NO afecta a rankings)
     _ensure_column(cur, "users", "ranking_order", "TEXT")
     _ensure_column(cur, "users", "is_admin", "INTEGER DEFAULT 0")
@@ -412,6 +414,37 @@ def active_player_tags() -> list[str]:
     los que un admin haya añadido al trackeo sin seguidores (huérfanos)."""
     conn = get_conn()
     rows = conn.execute("SELECT tag FROM players WHERE active=1").fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+# --- Descripción pública del Sensei (IA) por jugador ---------------------------------------
+def get_player_sensei_desc(tag: str) -> dict:
+    """{desc, at} de la descripción pública del Sensei de un jugador (o {None, None})."""
+    conn = get_conn()
+    row = conn.execute("SELECT sensei_desc, sensei_desc_at FROM players WHERE tag=?",
+                       (normalize_tag(tag),)).fetchone()
+    conn.close()
+    return {"desc": row["sensei_desc"] if row else None,
+            "at": row["sensei_desc_at"] if row else None}
+
+
+def set_player_sensei_desc(tag: str, desc: str) -> None:
+    conn = get_conn()
+    conn.execute("UPDATE players SET sensei_desc=?, sensei_desc_at=? WHERE tag=?",
+                 (desc, datetime.now(timezone.utc).isoformat(), normalize_tag(tag)))
+    conn.commit(); conn.close()
+
+
+def public_player_tags() -> list[str]:
+    """Jugadores VISIBLES en perfiles públicos (seguidos por algún usuario no oculto) — el
+    conjunto a renovar semanalmente. Prioriza los que son 'principal' de alguien."""
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT DISTINCT p.tag FROM players p
+           JOIN user_players up ON up.player_tag = p.tag
+           JOIN users u ON u.id = up.user_id AND COALESCE(u.hidden,0)=0
+           ORDER BY (SELECT 1 FROM users um WHERE um.main_player_tag=p.tag LIMIT 1) DESC""").fetchall()
     conn.close()
     return [r[0] for r in rows]
 
@@ -646,6 +679,9 @@ def _pair(a: int, b: int) -> tuple:
     return (a, b) if a < b else (b, a)
 
 
+_ICON_CDN = "https://cdn.brawlify.com/profile-icons/regular/{id}.png"
+
+
 def _pub_user(row) -> dict:
     return {"id": row["id"], "username": row["username"], "country": row["country"]}
 
@@ -743,14 +779,71 @@ def public_users(limit: int = 60, q: str = None) -> list[dict]:
     else:
         rows = conn.execute("SELECT id, username, country FROM users "
                             "WHERE COALESCE(hidden,0)=0").fetchall()
-    conn.close()
     out = []
     for r in rows:
         n_players, n_battles = contrib.get(r["id"], (0, 0))
         out.append({"id": r["id"], "username": r["username"], "country": r["country"],
                     "n_players": n_players, "n_battles": n_battles})
     out.sort(key=lambda x: (x["n_battles"], x["n_players"]), reverse=True)
-    return out[:limit]
+    out = out[:limit]
+    _enrich_public_mains(conn, out)   # miniatura del jugador principal (para las tarjetas)
+    conn.close()
+    return out
+
+
+def _enrich_public_mains(conn, users: list) -> None:
+    """Añade a cada usuario un `main` compacto (su jugador PRINCIPAL, o el de más partidas si no
+    hay principal): nombre, icono, win rate, partidas, copas y su brawler más jugado. Para las
+    miniaturas de la comunidad en la landing. Consultas en bloque (sin N+1)."""
+    if not users:
+        return
+    tag_of = {}
+    for u in users:
+        row = conn.execute("SELECT main_player_tag FROM users WHERE id=?", (u["id"],)).fetchone()
+        t = (row["main_player_tag"] if row else None) or None
+        if not t:
+            row = conn.execute(
+                "SELECT up.player_tag FROM user_players up LEFT JOIN battles b ON b.player_tag=up.player_tag "
+                "WHERE up.user_id=? GROUP BY up.player_tag ORDER BY COUNT(b.id) DESC LIMIT 1",
+                (u["id"],)).fetchone()
+            t = row["player_tag"] if row else None
+        tag_of[u["id"]] = t
+    tags = sorted({t for t in tag_of.values() if t})
+    if not tags:
+        for u in users:
+            u["main"] = None
+        return
+    ph = ",".join("?" * len(tags))
+    pinfo = {r["tag"]: r for r in conn.execute(
+        f"SELECT tag, name, icon_id, club_name FROM players WHERE tag IN ({ph})", tags)}
+    wr = {r["player_tag"]: r for r in conn.execute(
+        f"SELECT player_tag, SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END) w, "
+        f"SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END) l, COUNT(*) t "
+        f"FROM battles WHERE player_tag IN ({ph}) GROUP BY player_tag", tags)}
+    tro = {r["player_tag"]: r["s"] for r in conn.execute(
+        f"SELECT player_tag, COALESCE(SUM(trophies),0) s FROM brawler_collection "
+        f"WHERE player_tag IN ({ph}) GROUP BY player_tag", tags)}
+    topb = {}
+    for r in conn.execute(
+            f"SELECT player_tag, my_brawler, COUNT(*) c FROM battles "
+            f"WHERE player_tag IN ({ph}) AND my_brawler IS NOT NULL GROUP BY player_tag, my_brawler", tags):
+        cur = topb.get(r["player_tag"])
+        if not cur or r["c"] > cur[1]:
+            topb[r["player_tag"]] = (r["my_brawler"], r["c"])
+    for u in users:
+        t = tag_of.get(u["id"])
+        p = pinfo.get(t) if t else None
+        if not p:
+            u["main"] = None
+            continue
+        b = wr.get(t)
+        u["main"] = {
+            "tag": t, "name": p["name"], "icon_id": p["icon_id"], "club_name": p["club_name"],
+            "icon_url": (_ICON_CDN.format(id=p["icon_id"]) if p["icon_id"] else None),
+            "winrate": _winrate(b["w"], b["l"]) if b else None,
+            "battles": (b["t"] if b else 0) or 0, "trophies": tro.get(t, 0),
+            "top_brawler": topb.get(t, (None,))[0],
+        }
 
 
 def user_contribution(uid: int) -> tuple:
@@ -2986,12 +3079,17 @@ def report_analytics(filters: dict | None = None) -> dict:
     most_played = max(by_brawler, key=lambda r: r["total"]) if by_brawler else None
     highlights = {
         "most_played": most_played,
+        # "Mejor/Peor win rate" (Analíticas): win rate PURO a propósito (así se llaman las tarjetas).
         "best_brawler": _pick(by_brawler, "winrate", True),
         "worst_brawler": _pick(by_brawler, "winrate", False),
-        "best_mode": _pick(by_mode, "winrate", True, min_total=2),
-        "worst_mode": _pick(by_mode, "winrate", False, min_total=2),
-        "best_map": _pick(by_map, "winrate", True),
-        "worst_map": _pick(by_map, "winrate", False),
+        # "Mejor brawler" por RENDIMIENTO ajustado (perfil público): no lo gana un 100% de 2 partidas.
+        "best_brawler_perf": _pick(by_brawler, "adj_score", True),
+        # Mejor/Peor modo y mapa por win rate ENCOGIDO (shrinkage): pondera el tamaño de muestra, así
+        # un Duelos amistoso al 100% con 1-2 partidas no supera a un modo muy jugado con WR realista.
+        "best_mode": _pick(by_mode, "shrunk_score", True, min_total=2),
+        "worst_mode": _pick(by_mode, "shrunk_score", False, min_total=2),
+        "best_map": _pick(by_map, "shrunk_score", True),
+        "worst_map": _pick(by_map, "shrunk_score", False),
         "hardest_vs": _pick(vs, "winrate", False),
         "easiest_vs": _pick(vs, "winrate", True),
         "best_ally": _pick(allies, "winrate", True, min_total=2),

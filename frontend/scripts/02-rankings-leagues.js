@@ -493,7 +493,7 @@ async function confirmImport() {
 
 /* ---------- Secciones de nivel superior ---------- */
 // Secciones que un INVITADO (sin cuenta) puede ver.
-const GUEST_SECTIONS = ["community", "tierlists", "guide", "actualizaciones"];
+const GUEST_SECTIONS = ["community", "tierlists", "guide", "actualizaciones", "leagues"];
 function showSection(name) {
   // Guardia de permisos (defensa en profundidad): nadie sin rol admin ve el panel de
   // administración aunque llegue aquí. Los datos ya están protegidos en el servidor (403).

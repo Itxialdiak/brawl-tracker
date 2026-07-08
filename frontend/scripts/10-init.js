@@ -21,4 +21,6 @@ window.addEventListener("load", scrollToTop);
   scrollToTop();
 })();
 
-setInterval(() => loadStatus().catch(() => {}), 30000);
+// Solo con sesión: /api/status requiere cuenta y, en modo invitado, un 401 dispararía el portal
+// de login (getJSON hace showLogin en 401). La página pública debe quedarse fija y explorable.
+setInterval(() => { if (currentUser) loadStatus().catch(() => {}); }, 30000);

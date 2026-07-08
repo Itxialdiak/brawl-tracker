@@ -21,7 +21,7 @@ import base64
 import uuid
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI, Query, Body, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
@@ -181,6 +181,38 @@ async def _wiki_updater():
         await asyncio.sleep(WIKI_UPDATE_INTERVAL)
 
 
+def _seconds_until(weekday: int, hour: int) -> float:
+    """Segundos hasta el próximo <weekday> (0=lunes … 6=domingo) a las <hour>:00 UTC."""
+    now = datetime.now(timezone.utc)
+    target = (now + timedelta(days=(weekday - now.weekday()) % 7)).replace(
+        hour=hour, minute=0, second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=7)
+    return (target - now).total_seconds()
+
+
+async def _sensei_desc_weekly():
+    """Descripción PÚBLICA del Sensei por jugador: al arrancar genera las que FALTEN (nuevos,
+    huérfanos, recién añadidos) y luego RENUEVA todas las de perfiles públicos cada lunes a las
+    08:00 UTC. Necesita ANTHROPIC_API_KEY; si no, no hace nada."""
+    if not coach.configured():
+        return
+    await asyncio.sleep(25)                       # deja respirar al arranque
+    try:
+        m = await coach.regenerate_all_descriptions(only_missing=True)
+        if m:
+            print(f"[sensei-desc] generadas al arranque (nuevas): {m}")
+    except Exception as e:  # noqa: BLE001
+        print(f"[sensei-desc] error inicial: {e}")
+    while True:
+        await asyncio.sleep(_seconds_until(0, 8))  # lunes 08:00 UTC
+        try:
+            n = await coach.regenerate_all_descriptions()
+            print(f"[sensei-desc] renovación semanal: {n} descripciones")
+        except Exception as e:  # noqa: BLE001
+            print(f"[sensei-desc] error semanal: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
@@ -240,12 +272,14 @@ async def lifespan(app: FastAPI):
     notifier = asyncio.create_task(_event_notifier())  # avisos de cercanía/inicio (Fase 6)
     wiki_task = asyncio.create_task(_wiki_updater())   # refresco diario de datos de brawlers
     detector = asyncio.create_task(_event_result_poller())  # auto-detección horaria de resultados en eventos activos
+    sensei_desc = asyncio.create_task(_sensei_desc_weekly())  # descripción pública del Sensei (lunes 08:00 UTC)
     yield
     if task:
         task.cancel()
     notifier.cancel()
     wiki_task.cancel()
     detector.cancel()
+    sensei_desc.cancel()
 
 
 app = FastAPI(title="Brawl Stars Tracker", lifespan=lifespan)

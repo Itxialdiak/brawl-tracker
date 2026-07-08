@@ -11,6 +11,8 @@ El modelo se puede cambiar con ANTHROPIC_MODEL (por defecto claude-sonnet-4-6).
 from __future__ import annotations
 
 import os
+import asyncio
+from datetime import datetime, timezone
 from . import db, retos
 
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -429,3 +431,115 @@ async def generate_event_summary(ctx: str) -> str:
     except Exception:  # noqa: BLE001
         pass
     return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+
+
+# --- Descripción PÚBLICA del Sensei (1 párrafo, muestra de la IA en el perfil público) --------
+_desc_generating: set = set()
+DESC_STALE_SECONDS = 7 * 24 * 3600     # se renueva semanalmente
+
+
+def _desc_context(tag: str) -> str:
+    """Contexto compacto (síncrono) del jugador para el prompt de la descripción pública."""
+    f = {"player": tag}
+    ov = db.overview(f)
+    total = ov.get("total") or 0
+    L = [f"Partidas registradas: {total}.",
+         f"Win rate global: {ov.get('winrate')}%. Jugador estelar (MVP): {ov.get('star_rate')}%."]
+    if ov.get("trophy_delta") is not None:
+        L.append(f"Balance de trofeos reciente: {ov['trophy_delta']:+d}.")
+    try:
+        hl = db.report_analytics(f).get("highlights", {})
+        if hl.get("best_brawler_perf"):
+            L.append(f"Mejor brawler por rendimiento: {hl['best_brawler_perf']['label']}.")
+        if hl.get("best_mode"):
+            L.append(f"Mejor modo: {hl['best_mode']['label']}.")
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        roles = [r for r in db.winrate_by_role(f) if r.get("total")]
+        roles.sort(key=lambda r: r["total"], reverse=True)
+        if roles:
+            L.append("Roles que más usa: " + ", ".join(
+                f"{r['label']} ({r.get('usage_pct')}% de uso)" for r in roles[:3]) + ".")
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        rt = db.account_rating(tag)
+        if rt and rt.get("overall") is not None:
+            L.append(f"Rating de cuenta BrawlSensei: {round(rt['overall'])}/100 ({rt.get('tier', '')}).")
+    except Exception:  # noqa: BLE001
+        pass
+    return "\n".join(L)
+
+
+async def generate_public_description(tag: str) -> str:
+    """El Sensei describe en UN párrafo (PÚBLICO) qué tipo de jugador es, sus FORTALEZAS y su
+    estilo. NUNCA menciona debilidades (eso es para el entrenamiento privado). Con muy pocas
+    partidas adopta un tono humilde de 'aún conozco poco a este discípulo'."""
+    if not API_KEY:
+        raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env.")
+    from anthropic import AsyncAnthropic
+    ctx = await asyncio.to_thread(_desc_context, tag)
+    system = (
+        "Eres el Sensei, un maestro sabio y cercano de Brawl Stars que observa a sus discípulos. "
+        "Escribe en castellano UN SOLO PÁRRAFO BREVE (3-5 frases, máximo ~80 palabras) para el PERFIL "
+        "PÚBLICO del jugador: qué TIPO de jugador es, sus FORTALEZAS y su ESTILO de juego. "
+        "PROHIBIDO mencionar debilidades, errores o cosas a mejorar (eso es privado, solo para el "
+        "entrenamiento). Tono de maestro (puedes referirte a 'este discípulo'), cálido y con un punto de "
+        "misticismo, sin exagerar ni inventar. Sin markdown, sin títulos ni listas: solo el párrafo. Usa "
+        "SOLO los datos del contexto. Si hay MUY POCAS partidas (menos de ~10), reconoce con humildad que "
+        "aún conoces poco a este discípulo (p. ej. 'Aún conozco poco a este discípulo, pero por lo que "
+        "atisbo...') y describe únicamente lo poco que se intuye."
+    )
+    client = AsyncAnthropic(api_key=API_KEY)
+    msg = await client.messages.create(model=MODEL, max_tokens=240, system=system,
+                                       messages=[{"role": "user", "content": ctx}])
+    try:
+        db.log_ai_usage("public_desc", msg.usage.input_tokens, msg.usage.output_tokens)
+    except Exception:  # noqa: BLE001
+        pass
+    return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+
+
+async def refresh_public_description(tag: str):
+    """Genera la descripción y la guarda. Guard en memoria para no generarla dos veces a la vez.
+    Devuelve el texto o None."""
+    tag = db.normalize_tag(tag)
+    if not API_KEY or tag in _desc_generating:
+        return None
+    _desc_generating.add(tag)
+    try:
+        text = await generate_public_description(tag)
+        if text:
+            await asyncio.to_thread(db.set_player_sensei_desc, tag, text)
+        return text
+    except Exception as e:  # noqa: BLE001
+        print(f"[sensei-desc] no se pudo generar para {tag}: {e}")
+        return None
+    finally:
+        _desc_generating.discard(tag)
+
+
+def desc_is_stale(at_iso: str | None) -> bool:
+    if not at_iso:
+        return True
+    try:
+        return (datetime.now(timezone.utc) - datetime.fromisoformat(at_iso)).total_seconds() > DESC_STALE_SECONDS
+    except Exception:  # noqa: BLE001
+        return True
+
+
+async def regenerate_all_descriptions(only_missing: bool = False) -> int:
+    """Regenera la descripción pública de TODOS los jugadores visibles (perfiles públicos). Con
+    `only_missing`, solo los que aún no tengan (para el arranque). Secuencial, tolerante a fallos."""
+    if not API_KEY:
+        return 0
+    tags = await asyncio.to_thread(db.public_player_tags)
+    n = 0
+    for tag in tags:
+        if only_missing and (await asyncio.to_thread(db.get_player_sensei_desc, tag)).get("desc"):
+            continue
+        if await refresh_public_description(tag):
+            n += 1
+        await asyncio.sleep(1.0)      # no saturar la API
+    return n

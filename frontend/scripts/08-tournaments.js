@@ -278,12 +278,39 @@ function openEvModal(id) { $(id).classList.add("open"); }
 function closeEvModal(id) { $(id).classList.remove("open"); }
 
 function loadLeagues() {
+  // Invitado: solo el TABLÓN público (ver qué eventos hay), sin "Mis eventos" ni crear/apuntarse.
+  if (document.body.classList.contains("guest")) { eventView = "modal"; showEventPageView(false); loadGuestBoard(); return; }
   if (!evLeaguesInit) { initLeaguesUI(); evLeaguesInit = true; }
   // Si no hay una página de detalle abierta, mostrar siempre el listado (evita quedarse
   // en una ficha vacía al volver a la sección).
   const page = $("event-page");
   if (eventView !== "page" || !page || !page.innerHTML.trim()) { eventView = "modal"; showEventPageView(false); }
   loadMyEvents(); loadBoard();
+}
+/* Tablón de eventos para INVITADOS: solo lectura, desde el endpoint público. */
+async function loadGuestBoard() {
+  const grid = $("board-events-grid"), empty = $("board-events-empty");
+  if (!grid) return;
+  const board = grid.closest(".lg-board");
+  if (board && !board.querySelector(".guest-board-note")) {
+    const note = document.createElement("p");
+    note.className = "guest-board-note hint";
+    note.innerHTML = `👀 Ves los eventos de la comunidad como invitado. <button class="link-btn" onclick="showLogin()">Crea una cuenta</button> para apuntarte, seguir eventos o crear el tuyo.`;
+    const title = board.querySelector(".section-title");
+    if (title) title.after(note); else board.prepend(note);
+  }
+  grid.innerHTML = `<div class="lg-empty">Cargando eventos…</div>`;
+  if (empty) empty.style.display = "none";
+  let d;
+  try { d = await getJSON("/api/public/events"); }
+  catch (e) { grid.innerHTML = `<div class="lg-empty">No se pudieron cargar los eventos.</div>`; return; }
+  const list = d.events || [];
+  if (!list.length) { grid.innerHTML = ""; if (empty) { empty.textContent = "Todavía no hay eventos públicos. ¡Vuelve pronto!"; empty.style.display = "block"; } return; }
+  grid.innerHTML = list.map((e) => eventCardHTML(e, false)).join("");
+}
+function guestEventPrompt() {
+  if (typeof wikiToast === "function") wikiToast("Inicia sesión para ver el evento y apuntarte.", "err");
+  showLogin();
 }
 function initLeaguesUI() {
   const opts = EV_LANGS.map((l) => `<option value="${l.c}">${esc(l.n)}</option>`).join("");
@@ -403,7 +430,9 @@ function eventCardHTML(e, showRelation) {
     relHTML = `<span class="ec-relation ${e.relation}">${relationLabel(e.relation)}</span>`;
     if (e.relation === "owner" && e.pending) relHTML += `<span class="ec-pending-dot">${e.pending}</span>`;
   }
-  return `<div class="event-card" onclick="openEvent(${e.id})">
+  // Invitado: la tarjeta no abre la ficha (requiere cuenta); invita a iniciar sesión.
+  const onClick = document.body.classList.contains("guest") ? "guestEventPrompt()" : `openEvent(${e.id})`;
+  return `<div class="event-card" onclick="${onClick}">
     <div class="ec-poster" ${poster}>
       <span class="ec-kindtag">${EV_KIND_LABEL[e.kind] || ""}</span>
       <span class="ec-vistag ${e.visibility}">${EV_VIS_LABEL[e.visibility] || ""}</span>

@@ -311,7 +311,7 @@
 
   <!-- Ventana de perfil público (solo lectura) de un usuario/jugador -->
   <div id="pubprofile-modal" class="modal-overlay" onclick="if(event.target===this)closePublicProfile()">
-    <div class="modal-card has-close modal-wide pub-card">
+    <div class="modal-card has-close modal-xwide pub-card">
       <button class="modal-close" onclick="closePublicProfile()" title="Cerrar" aria-label="Cerrar">✕</button>
       <div id="pub-body"></div>
     </div>
@@ -533,7 +533,7 @@
       <button class="snav snav-community" data-section="community" onclick="showSection('community')">Comunidad</button>
       <button class="snav active" data-section="brawlytics" onclick="showSection('brawlytics')">Brawl Sensei</button>
       <button class="snav snav-public" data-section="tierlists" onclick="showSection('tierlists')">Tier Lists</button>
-      <button class="snav" data-section="leagues" onclick="showSection('leagues')">Eventos</button>
+      <button class="snav snav-public" data-section="leagues" onclick="showSection('leagues')">Eventos</button>
       <button class="snav snav-public" data-section="guide" onclick="showSection('guide')">Guía de Estrategia</button>
       <button class="snav snav-public" data-section="actualizaciones" onclick="showSection('actualizaciones')">Actualizaciones</button>
       <button class="snav" data-section="servers" onclick="showSection('servers')">Estado servidores</button>
@@ -1475,7 +1475,7 @@
   </div>
 
   <div class="modal-overlay" id="reto-completed-modal" onclick="if(event.target===this)closeEvModal('reto-completed-modal')">
-    <div class="modal-card has-close">
+    <div class="modal-card has-close modal-xwide">
       <button class="modal-close" onclick="closeEvModal('reto-completed-modal')" title="Cerrar" aria-label="Cerrar">✕</button>
       <h3 class="modal-title" id="reto-completed-title">Retos cumplidos</h3>
       <div id="reto-completed-body"></div>
