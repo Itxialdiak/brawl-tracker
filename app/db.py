@@ -57,6 +57,8 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS opponents (battle_id TEXT, brawler TEXT, trophies INTEGER);
         CREATE TABLE IF NOT EXISTS allies    (battle_id TEXT, brawler TEXT, trophies INTEGER);
+        -- Brawlers que un admin marca DISPONIBLES a mano (override si la app no lo detecta solo).
+        CREATE TABLE IF NOT EXISTS brawler_available_override (brawler_id INTEGER PRIMARY KEY, at TEXT);
         CREATE TABLE IF NOT EXISTS server_incidents (
             id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, started_at TEXT, ended_at TEXT
         );
@@ -433,6 +435,33 @@ def set_player_sensei_desc(tag: str, desc: str) -> None:
     conn = get_conn()
     conn.execute("UPDATE players SET sensei_desc=?, sensei_desc_at=? WHERE tag=?",
                  (desc, datetime.now(timezone.utc).isoformat(), normalize_tag(tag)))
+    conn.commit(); conn.close()
+
+
+def owned_brawler_ids() -> set:
+    """IDs de brawlers que POSEE algún jugador trackeado (aparecen en alguna colección) → prueba
+    de que ese brawler ya está lanzado y disponible en el juego."""
+    conn = get_conn()
+    rows = conn.execute("SELECT DISTINCT brawler_id FROM brawler_collection").fetchall()
+    conn.close()
+    return {r[0] for r in rows if r[0] is not None}
+
+
+def brawler_available_overrides() -> set:
+    """IDs de brawlers marcados DISPONIBLES a mano por un admin."""
+    conn = get_conn()
+    rows = conn.execute("SELECT brawler_id FROM brawler_available_override").fetchall()
+    conn.close()
+    return {r[0] for r in rows}
+
+
+def set_brawler_available(bid: int, available: bool = True) -> None:
+    conn = get_conn()
+    if available:
+        conn.execute("INSERT OR IGNORE INTO brawler_available_override (brawler_id, at) VALUES (?,?)",
+                     (int(bid), datetime.now(timezone.utc).isoformat()))
+    else:
+        conn.execute("DELETE FROM brawler_available_override WHERE brawler_id=?", (int(bid),))
     conn.commit(); conn.close()
 
 

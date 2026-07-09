@@ -65,6 +65,22 @@ def _extract_list(data):
     return data if isinstance(data, list) else []
 
 
+def _upcoming_image_overrides() -> dict:
+    """{NOMBRE_MAYÚS: (retrato, cuerpo_entero)} de los brawlers del dataset curado de 'próximos'.
+    Se usan como imagen del brawler MIENTRAS Brawlify aún no ha renderizado la oficial de uno
+    recién salido (p. ej. Nori/Wendy dan 404 en Brawlify). Se aplican en el retrato/miniatura de
+    TODAS partes (ASSETS.brawlers) y en la ficha. Al publicarse la oficial, se quita del JSON."""
+    try:
+        from . import upcoming
+        out = {}
+        for e in upcoming.list_all():
+            if e.get("image"):
+                out[str(e["name"]).upper()] = (e["image"], e.get("image_full") or e["image"])
+        return out
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 async def _fetch(client: httpx.AsyncClient, path: str):
     r = await client.get(f"{BASE}/{path}", headers=HEADERS, timeout=20)
     r.raise_for_status()
@@ -77,6 +93,9 @@ def _build(brawlers, gamemodes, maps) -> dict:
         name, url = b.get("name"), b.get("imageUrl")
         if name and url:
             bmap[name.upper()] = url
+    # Overlay: retrato curado para brawlers recién salidos cuya imagen de Brawlify aún da 404.
+    for name_u, (img, _full) in _upcoming_image_overrides().items():
+        bmap[name_u] = img
 
     mmap = {}
     for g in gamemodes:
@@ -229,6 +248,12 @@ async def get_brawler_catalog() -> dict:
             "image_full": b.get("imageUrl2"), "portrait": b.get("imageUrl"),
             "star_powers": sps, "gadgets": gds,
         }
+    # Overlay: retrato + cuerpo entero curados para brawlers recién salidos (Brawlify aún da 404).
+    ov = _upcoming_image_overrides()
+    for b in by_id.values():
+        o = ov.get((b.get("name") or "").upper())
+        if o:
+            b["portrait"], b["image_full"] = o[0], o[1]
     data = {"by_id": by_id,
             "totals": {"brawlers": len(by_id), "star_powers": total_sp, "gadgets": total_gd}}
     _catalog_cache["data"] = data

@@ -69,6 +69,13 @@ async def get_player(tag: str) -> dict:
     return await _get(f"/players/{_tag_path(tag)}")
 
 
+async def get_brawlers() -> list[dict]:
+    """Lista OFICIAL de brawlers DISPONIBLES (lanzados) de Supercell. Es autoritativa para saber
+    qué brawlers YA existen en el juego: los anunciados/no lanzados no aparecen aquí."""
+    data = await _get("/brawlers")
+    return data.get("items", []) if isinstance(data, dict) else (data or [])
+
+
 async def get_events_rotation() -> list[dict]:
     """Eventos en rotación ahora mismo: cada uno con su modo y mapa."""
     data = await _get("/events/rotation")

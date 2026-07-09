@@ -292,8 +292,23 @@ function showUpcomingDetail(i) {
         <div class="br-taglines"><span class="br-tagline prestige">🔮 ${esc(u.release || "Próximamente")}</span></div>
         <p class="br-d-desc">${esc(u.description || "Información por confirmar.")}</p>
         ${u.source ? `<a class="src-link" href="${esc(u.source)}" target="_blank" rel="noopener">Fuente oficial ↗</a>` : ""}
+        ${(typeof currentUser !== "undefined" && currentUser && currentUser.is_admin) ? `
+          <div class="up-admin">
+            <button class="btn mini-btn" onclick="markBrawlerAvailable(${i})">✔ Marcar como disponible</button>
+            <p class="hint" style="margin:7px 0 0;max-width:520px">La app lo detecta sola en cuanto algún jugador trackeado lo consigue. Usa esto solo si ya salió y no se ha detectado: pasará a la lista común y contará para colección y analíticas.</p>
+          </div>` : ""}
       </div>
     </div>${ab}`;
+}
+async function markBrawlerAvailable(i) {
+  const u = ((brawlersData && brawlersData.upcoming) || [])[i];
+  if (!u) return;
+  if (!confirm(`¿Marcar a ${u.name} como disponible? Pasará a la lista de brawlers y contará para la colección y las analíticas.`)) return;
+  const { ok, d } = await apiSend("/api/admin/brawler-available", "POST", { name: u.name });
+  if (!ok) { wikiToast(d.error || d.detail || "No se pudo marcar como disponible.", "err"); return; }
+  wikiToast(`${esc(u.name)} marcado como disponible.`, "ok");
+  showBrawlersGridView();
+  await loadBrawlers();   // recarga la rejilla (ya sin él en «Próximos»)
 }
 async function loadRecommendations(kind) {
   recsKind = kind || recsKind;

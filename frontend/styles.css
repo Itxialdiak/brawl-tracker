@@ -885,6 +885,7 @@
   body.guest #section-leagues .board-filters { display: none !important; }
   body.guest #section-leagues .lg-board { margin-top: 4px; }
   .guest-board-note { margin: 2px 0 14px; }
+  .up-admin { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
   /* La landing/consulta de invitado aprovecha el ancho (antes 740px, muy apretada). El contenido
      rico (comunidad, resumen, recomendaciones) llena el espacio; el texto del hero sigue legible
      con su propio ancho centrado. */

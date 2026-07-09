@@ -3,12 +3,62 @@
 Extraído de main.py; se incluye con app.include_router()."""
 import asyncio
 import re
-from fastapi import APIRouter, Query, Depends
+import time
+from fastapi import APIRouter, Query, Body, Depends
 from fastapi.responses import JSONResponse
-from .. import db, assets, brawler_extra, auth, buffs, changes
+from .. import db, assets, brawler_extra, auth, buffs, changes, upcoming
 from ..api_common import _require_follow, _get_player_cached
 
 router = APIRouter()
+
+_avail_cache = {"ids": None, "at": 0.0}
+
+
+async def available_brawler_ids() -> set:
+    """IDs de brawlers YA DISPONIBLES (lanzados y conseguibles en el juego). OJO: ni el catálogo
+    de BrawlAPI ni la lista OFICIAL de Supercell sirven para esto — ambos añaden los brawlers
+    ANUNCIADOS antes de su lanzamiento (p. ej. Wendy ya aparece en la API oficial aunque sale el
+    mes que viene). El único signo fiable de "ya se puede conseguir" es que algún jugador trackeado
+    lo POSEA (está en alguna colección) — más el override manual del admin. Cacheado 10 min."""
+    now = time.time()
+    if _avail_cache["ids"] is not None and now - _avail_cache["at"] < 600:
+        return _avail_cache["ids"]
+    ids = set()
+    try:
+        ids |= await asyncio.to_thread(db.owned_brawler_ids)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        ids |= await asyncio.to_thread(db.brawler_available_overrides)
+    except Exception:  # noqa: BLE001
+        pass
+    _avail_cache["ids"] = ids
+    _avail_cache["at"] = now
+    return ids
+
+
+def _invalidate_available_cache() -> None:
+    _avail_cache["ids"] = None
+
+
+@router.post("/api/admin/brawler-available")
+async def api_mark_brawler_available(payload: dict = Body(...), user: dict = Depends(auth.require_admin)):
+    """ADMIN: marca un brawler como DISPONIBLE (lo saca de 'Próximos' y lo mete en la lista común
+    con los demás, para que cuente en colección/analíticas), por si la app no lo detectó sola.
+    Acepta {id} o {name}. Primero conviene dejar que la detección automática lo intente."""
+    p = payload or {}
+    bid = p.get("id")
+    if bid is None and p.get("name"):
+        cat = await assets.get_brawler_catalog()
+        nm = str(p["name"]).upper()
+        bid = next((k for k, v in (cat.get("by_id") or {}).items()
+                    if (v.get("name") or "").upper() == nm), None)
+    if bid is None:
+        return JSONResponse({"error": "Ese brawler aún no está en el catálogo (ni en BrawlAPI)."},
+                            status_code=404)
+    await asyncio.to_thread(db.set_brawler_available, int(bid), True)
+    _invalidate_available_cache()
+    return {"ok": True, "id": int(bid)}
 
 
 # --------------------------- Brawlers (apartado tipo Brawlify) ---------------------------
@@ -92,11 +142,23 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     await buffs.get_buffs()                                     # calienta la caché (no bloquea)
     bchanges = buffs.changes_map()                              # cambios vigentes por brawler
 
+    # Disponibilidad: BrawlAPI ya lista brawlers ANUNCIADOS (Nori, Wendy) antes de salir. Los que
+    # están en el dataset de "próximos" y aún NO se han lanzado (no disponibles) se EXCLUYEN de la
+    # rejilla/colección/meta; en cuanto se detectan disponibles, entran como uno normal.
+    avail = await available_brawler_ids()
+    upcoming_all = upcoming.list_all()
+    up_names = {str(e["name"]).upper() for e in upcoming_all}
+
     items = []
     temporary = []
+    n_unreleased = 0
     for bid, cat in by_id.items():
         c = coll_by_id.get(bid)
         name = cat.get("name")
+        if (name or "").upper() in up_names and bid not in avail:
+            n_unreleased += 1
+            continue                                           # próximo aún NO lanzado: fuera de la lista
+
         w = wr_by_name.get((name or "").upper())
         owned_sp = set(c["star_power_ids"]) if c else set()
         owned_gd = set(c["gadget_ids"]) if c else set()
@@ -179,7 +241,8 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
     counts = await asyncio.to_thread(db.collection_counts, tag)
     n_temp = len(temporary)                        # los temporales no cuentan en la colección
     owned_temp = sum(1 for t in temporary if t["owned"])
-    total_brawlers = max(0, (totals.get("brawlers") or len(by_id)) - n_temp)
+    # El total de la colección excluye temporales Y próximos no lanzados (no se pueden conseguir).
+    total_brawlers = max(0, (totals.get("brawlers") or len(by_id)) - n_temp - n_unreleased)
     rating = await asyncio.to_thread(
         db.account_rating, tag,
         {**totals, "brawlers": total_brawlers, "hypercharges": brawler_extra.hypercharge_total()})
@@ -190,10 +253,13 @@ async def api_brawlers(player: str = Query(None), user: dict = Depends(auth.requ
         "hypercharges": {"owned": counts["hypercharges_owned"],
                          "total": max(0, total_brawlers - len(_NO_HYPERCHARGE))},
     }
-    from .. import upcoming
+    # "Próximos": solo los que aún NO están disponibles; los ya lanzados salen de aquí (pasan a la lista).
+    name_to_id = {(c.get("name") or "").upper(): bid for bid, c in by_id.items()}
+    upcoming_shown = [e for e in upcoming_all
+                      if name_to_id.get(str(e["name"]).upper()) not in avail]
     return {"counters": counters, "rating": rating, "account": account,
             "brawlers": items, "temporary": temporary, "top_brawlers": top_brawlers,
-            "top_by_role": top_by_role, "upcoming": upcoming.list_all()}
+            "top_by_role": top_by_role, "upcoming": upcoming_shown}
 
 
 async def _brawler_podium_payload(tag: str) -> dict:
