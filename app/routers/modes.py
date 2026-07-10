@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse, FileResponse, Response
 from .. import db, brawl_api, assets, brawler_extra, auth, map_assets
 from ..api_common import _require_follow
+from ..integrations import brawlify_live
 
 router = APIRouter()
 
@@ -62,8 +63,20 @@ async def _ranked_pool() -> dict:
     corr = _ranked_corrections()
     auto = await asyncio.to_thread(db.competitive_pool, corr["window_days"])
     pool: dict = {}
-    for r in auto:  # base automática
+    for r in auto:  # base automática (agregación de partidas Ranked)
         pool.setdefault(_mnorm(r["mode"]), {})[_mnorm(r["map"])] = {"map": r["map"], "mode": r["mode"]}
+    # Fuente PRIMARIA best-effort: rotación REAL de Brawlify LIVE (si está activada y responde).
+    # Aditiva y auto-degradante: si da 403/vacío, no cambia nada y manda la heurística de arriba.
+    # Se activa con BRAWLIFY_LIVE_ROTATION=1 tras verificar el egress (endpoint admin de diagnóstico).
+    if os.environ.get("BRAWLIFY_LIVE_ROTATION") == "1":
+        try:
+            for r in await asyncio.to_thread(brawlify_live.ranked_pool):
+                mode = r.get("mode") or ""
+                if r.get("map"):
+                    pool.setdefault(_mnorm(mode), {}).setdefault(
+                        _mnorm(r["map"]), {"map": r["map"], "mode": mode})
+        except Exception:  # noqa: BLE001
+            pass
     for mode_norm, maps in corr["include"].items():  # correcciones: añadir
         for map_norm, map_en in maps.items():
             pool.setdefault(mode_norm, {}).setdefault(map_norm, {"map": map_en, "mode": mode_norm})
@@ -239,6 +252,25 @@ async def api_rotation(player: str = Query(None), user: dict = Depends(auth.requ
         return JSONResponse({"error": f"No se pudo leer la rotación: {e}"}, status_code=502)
     analysis = await asyncio.to_thread(db.rotation_analysis, tag, events)
     return {"events": analysis}
+
+
+@router.get("/api/admin/integrations/brawlify")
+async def api_admin_brawlify_probe(user: dict = Depends(auth.require_admin)):
+    """Diagnóstico (admin): ¿responde Brawlify LIVE desde ESTE servidor? Hace un GET real a
+    `/v1/events` y reporta el egress, si la rotación en vivo está activada, y una muestra del pool
+    competitivo que se obtendría. Así se verifica sin tener que hacer curl a mano en el VPS."""
+    probe = await asyncio.to_thread(brawlify_live.probe)
+    pool = await asyncio.to_thread(brawlify_live.ranked_pool, True) if probe.get("ok") else []
+    return {
+        "source": "https://api.brawlify.com/v1/events",
+        "egress": probe,
+        "enabled": os.environ.get("BRAWLIFY_LIVE_ROTATION") == "1",
+        "ranked_pool_sample": pool[:12],
+        "hint": ("Egress OK. Para enganchar la rotación real pon BRAWLIFY_LIVE_ROTATION=1 en el .env "
+                 "y reinicia." if probe.get("ok") else
+                 "Sin egress a api.brawlify.com (403/timeout desde el servidor). Deja la rotación con la "
+                 "heurística de partidas + la API oficial; no actives el flag."),
+    }
 
 
 @router.get("/api/mode-hub")

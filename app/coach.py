@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from . import db, retos
 
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -545,56 +545,77 @@ async def regenerate_all_descriptions(only_missing: bool = False) -> int:
     return n
 
 
-# --- Reflexiones del Sensei para "Mejores Modos" de un brawler (JSON) -------------------------
-def _extract_json(text: str):
-    """Primer objeto JSON de un texto (tolera fences ```json). None si no parsea."""
-    import json
-    import re
-    t = (text or "").strip()
-    if t.startswith("```"):
-        t = re.sub(r"^```[a-zA-Z]*\n?", "", t)
-        t = re.sub(r"\n?```$", "", t).strip()
-    try:
-        return json.loads(t)
-    except Exception:  # noqa: BLE001
-        m = re.search(r"\{.*\}", t, re.S)
-        if m:
-            try:
-                return json.loads(m.group(0))
-            except Exception:  # noqa: BLE001
-                pass
-    return None
+# --- Reflexiones del Sensei para "Mejores Modos" de un brawler --------------------------------
+# Cada reflexión es una PETICIÓN IA INDEPENDIENTE: el estilo GLOBAL del brawler, el encaje de cada
+# mejor modo (global), cómo se desenvuelve el discípulo (jugador), y cada modo inesperado (jugador).
+# Se renuevan semanalmente (lunes 03:00 UTC) — ver stale_since_weekly.
+_SENSEI_ROLE = (
+    "Eres el Sensei, un maestro cercano de Brawl Stars. Escribes en castellano, con tono sabio y directo. "
+    "Responde SOLO con el texto pedido: sin markdown, sin comillas envolventes, sin encabezados ni viñetas, "
+    "y sin inventar datos que no estén en el contexto."
+)
 
 
-async def generate_brawler_insight(ctx: str, n_best: int, n_unexpected: int):
-    """El Sensei reflexiona sobre un brawler y el rendimiento del discípulo. Devuelve un dict
-    {style, best:[...], unexpected:[...], final} (o None). `best`/`unexpected` alineadas por ORDEN
-    con los modos dados. `style` SÍ menciona debilidades (es para el discípulo)."""
+async def _sensei_say(system: str, ctx: str, usage_tag: str, max_tokens: int = 320) -> str:
+    """Una petición de texto al Sensei. Devuelve el párrafo (str). Lanza si no hay API key."""
     if not API_KEY:
         raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env.")
     from anthropic import AsyncAnthropic
-    system = (
-        "Eres el Sensei, un maestro cercano de Brawl Stars que analiza a un discípulo. Te doy un brawler "
-        "(rol, descripción, súper) y su rendimiento por modo (de la COMUNIDAD y del discípulo, con "
-        "fiabilidad). Responde SOLO con un objeto JSON válido (sin markdown ni texto fuera del JSON), en "
-        "castellano, con estas claves:\n"
-        '- "style": 1 párrafo (2-4 frases) sobre el ESTILO de juego del brawler, sus FORTALEZAS y también '
-        "sus DEBILIDADES (aquí SÍ puedes mencionarlas: es para el discípulo).\n"
-        f'- "best": lista de EXACTAMENTE {n_best} frases (1-2 frases), en el MISMO ORDEN que los "mejores '
-        'modos" del contexto, explicando por qué el estilo del brawler ENCAJA en ese modo.\n'
-        f'- "unexpected": lista de EXACTAMENTE {n_unexpected} frases, en el orden de los "modos inesperados", '
-        "explicando por qué al discípulo le funciona ahí pese a no ser un modo natural del brawler (quizá "
-        "ciertos mapas, o habilidad/suerte con muestra corta). Si no hay inesperados: [].\n"
-        '- "final": 1 párrafo (2-3 frases) sobre cómo se DESENVUELVE el discípulo en estos modos según sus datos.\n'
-        "Tono de maestro, natural, sin markdown, sin inventar datos que no estén en el contexto. Si la muestra "
-        "del discípulo es pequeña, recononócelo con humildad."
-    )
     client = AsyncAnthropic(api_key=API_KEY)
-    msg = await client.messages.create(model=MODEL, max_tokens=900, system=system,
+    msg = await client.messages.create(model=MODEL, max_tokens=max_tokens, system=system,
                                        messages=[{"role": "user", "content": ctx}])
     try:
-        db.log_ai_usage("brawler_insight", msg.usage.input_tokens, msg.usage.output_tokens)
+        db.log_ai_usage(usage_tag, msg.usage.input_tokens, msg.usage.output_tokens)
     except Exception:  # noqa: BLE001
         pass
-    text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
-    return _extract_json(text)
+    return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+
+
+async def generate_brawler_style(ctx: str) -> str:
+    """GLOBAL (por brawler, igual para todos los jugadores): estilo de juego, FORTALEZAS y DEBILIDADES."""
+    system = (_SENSEI_ROLE + " Escribe UN párrafo (2-4 frases) sobre el ESTILO de juego de este brawler, sus "
+              "FORTALEZAS y también sus DEBILIDADES. Es una ficha general del personaje: no menciones a ningún "
+              "jugador concreto ni modos concretos.")
+    return await _sensei_say(system, ctx, "brawler_style")
+
+
+async def generate_mode_fit(ctx: str, mode_es: str) -> str:
+    """GLOBAL (por brawler+modo): por qué el ESTILO del brawler encaja en ESE modo."""
+    system = (_SENSEI_ROLE + f" En 1-2 frases, explica por qué el ESTILO de este brawler ENCAJA (o no del todo) "
+              f"en el modo «{mode_es}». Habla solo de ese modo y del personaje, sin mencionar a ningún jugador.")
+    return await _sensei_say(system, ctx, "brawler_mode_fit")
+
+
+async def generate_player_final(ctx: str) -> str:
+    """JUGADOR: reflexión final de cómo se DESENVUELVE el discípulo en sus mejores modos con el brawler."""
+    system = (_SENSEI_ROLE + " Dirígete al discípulo en segunda persona. En UN párrafo (2-3 frases), reflexiona "
+              "sobre cómo se DESENVUELVE con este brawler en estos modos según sus datos y su fiabilidad. Si la "
+              "muestra es pequeña, reconócelo con humildad.")
+    return await _sensei_say(system, ctx, "brawler_final")
+
+
+async def generate_unexpected_fit(ctx: str, mode_es: str) -> str:
+    """JUGADOR (por modo inesperado): por qué le funciona pese a no ser un modo natural del brawler."""
+    system = (_SENSEI_ROLE + f" Dirígete al discípulo en segunda persona. En 1-2 frases, explica por qué le "
+              f"funciona este brawler en «{mode_es}» pese a no ser un modo natural para él: analiza si ciertos "
+              "MAPAS lo explican, o si es habilidad o una muestra corta con suerte. Sé honesto con la incertidumbre.")
+    return await _sensei_say(system, ctx, "brawler_unexpected")
+
+
+def stale_since_weekly(at_iso: str | None, weekday: int = 0, hour: int = 3) -> bool:
+    """True si `at_iso` es anterior al último <weekday> (0=lunes) a las <hour>:00 UTC (o no existe).
+    Da el efecto de 'queda fijo hasta el próximo lunes 03:00 UTC'."""
+    if not at_iso:
+        return True
+    now = datetime.now(timezone.utc)
+    boundary = (now - timedelta(days=(now.weekday() - weekday) % 7)).replace(
+        hour=hour, minute=0, second=0, microsecond=0)
+    if boundary > now:
+        boundary -= timedelta(days=7)
+    try:
+        at = datetime.fromisoformat(at_iso)
+    except Exception:  # noqa: BLE001
+        return True
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=timezone.utc)
+    return at < boundary

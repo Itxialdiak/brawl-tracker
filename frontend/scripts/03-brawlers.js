@@ -696,10 +696,11 @@ function modeBoxesHtml(byMode) {
     const a = typeof modeAsset === "function" ? modeAsset(m.mode) : null;
     const ic = a && a.icon ? `<img src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
     const g = m.games != null ? m.games : (m.battles || 0);
+    const rel = m.reliability != null ? `<div class="bmb-rel">${relChip(m.reliability)}</div>` : "";
     return `<div class="br-mode-box">
       <div class="bmb-top">${ic}<span class="bmb-name">${esc(modeName(m.mode))}</span></div>
       <div class="bmb-pct" style="color:${pctColor(m.winrate)}">${m.winrate == null ? "—" : m.winrate + "%"}</div>
-      <div class="bmb-meta">${g} ${g === 1 ? "partida" : "partidas"}</div></div>`;
+      <div class="bmb-meta">${g} ${g === 1 ? "partida" : "partidas"}</div>${rel}</div>`;
   }).join("");
 }
 /* ---------- "Mejores Modos / Mejores Mapas" (datos comunitarios + tu rendimiento + reflexión IA) ---------- */
@@ -715,7 +716,8 @@ async function loadBrawlerScene(id, name) {
   el.innerHTML = renderBrawlerScene(s, name, null, false);
   loadBrawlerInsight(id, name);
 }
-// Reflexiones del Sensei (IA): generación perezosa; si aún se está creando, reintenta.
+// Reflexiones del Sensei (IA): generación perezosa e INCREMENTAL. Cada reflexión (estilo, encaje de
+// cada modo, final, inesperados) es una petición IA aparte; mientras se completan, reintenta.
 async function loadBrawlerInsight(id, name) {
   let d;
   try { d = await getJSON(`/api/brawler/${id}/insight?player=` + encodeURIComponent(currentPlayer || "")); }
@@ -724,49 +726,50 @@ async function loadBrawlerInsight(id, name) {
   if (!d || !d.configured) return;               // sin IA configurada: nos quedamos con los datos
   const el = $("br-scene");
   if (!el) return;
-  if (d.insight) {
-    _brScene.insight = d.insight;
-    el.innerHTML = renderBrawlerScene(_brScene.data, name, d.insight, false);
-  } else if (d.generating) {
-    el.innerHTML = renderBrawlerScene(_brScene.data, name, null, true);
-    setTimeout(() => { if (_brScene && _brScene.id === id) loadBrawlerInsight(id, name); }, 9000);
-  }
+  _brScene.insight = d;
+  el.innerHTML = renderBrawlerScene(_brScene.data, name, d, d.generating);
+  if (d.generating) setTimeout(() => { if (_brScene && _brScene.id === id) loadBrawlerInsight(id, name); }, 9000);
 }
-function relColorBar(rel) {
-  const c = typeof reliabilityColor === "function" ? reliabilityColor(rel) : "var(--muted)";
-  return `<span class="scn-rel" title="Fiabilidad del dato: ${rel == null ? 0 : rel}%"><span class="scn-rel-bar"><span style="width:${rel == null ? 0 : rel}%;background:${c}"></span></span></span>`;
+// Fiabilidad del dato, MUY visible: punto de color + porcentaje (rojo <40 · amarillo 40-75 · verde >75).
+function relChip(rel) {
+  const r = rel == null ? 0 : rel;
+  const c = typeof reliabilityColor === "function" ? reliabilityColor(r) : "var(--muted)";
+  return `<span class="scn-rel" title="Fiabilidad del dato: ${r}%"><span class="scn-rel-dot" style="background:${c}"></span>Fiab. ${r}%</span>`;
 }
 function scnModeRow(m, kind, reflection) {
   const a = typeof modeAsset === "function" ? modeAsset(m.mode) : null;
   const ic = a && a.icon ? `<img class="scn-mode-ic" src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
   const cw = m.community.winrate, yw = m.your.winrate;
-  const yours = m.your.games
-    ? `<div class="scn-you">Tú: <b style="color:${pctColor(yw)}">${yw}%</b> <small>· ${m.your.games}p</small> ${relColorBar(m.your.reliability)}</div>`
-    : `<div class="scn-you muted">Aún no lo juegas aquí</div>`;
   const refl = reflection ? `<div class="scn-reflect">${esc(reflection)}</div>` : "";
+  const yours = m.your.games
+    ? `<div class="scn-you">Tú <b style="color:${pctColor(yw)}">${yw == null ? "—" : yw + "%"}</b> <small>${m.your.games}p</small> ${relChip(m.your.reliability)}</div>`
+    : `<div class="scn-you muted">Aún no lo juegas aquí</div>`;
   return `<div class="scn-mode ${kind || ""}">
     <div class="scn-mode-head">${ic}<span class="scn-mode-name">${esc(modeName(m.mode))}</span></div>
-    <div class="scn-comm">Comunidad: <b style="color:${pctColor(cw)}">${cw == null ? "—" : cw + "%"}</b> <small>· ${m.community.games}p</small> ${relColorBar(m.community.reliability)}</div>
-    ${yours}${refl}
+    ${refl}
+    <div class="scn-stats">
+      <div class="scn-comm">Comunidad <b style="color:${pctColor(cw)}">${cw == null ? "—" : cw + "%"}</b> <small>${m.community.games}p</small> ${relChip(m.community.reliability)}</div>
+      ${yours}
+    </div>
   </div>`;
 }
 function renderBrawlerScene(s, name, insight, generating) {
   const best = s.best_modes || [], unexp = s.unexpected_modes || [], maps = s.maps || [], byMode = s.your_by_mode || [];
   if (!best.length && !maps.length && !byMode.length) return "";
   insight = insight || {};
-  const bestRefl = insight.best || [], unexpRefl = insight.unexpected || [];
+  const modeWhy = insight.modes || {}, unexpWhy = insight.unexpected || {};
   let styleHtml = "";
   if (insight.style) styleHtml = `<div class="scn-style">🥷 ${esc(insight.style)}</div>`;
   else if (generating) styleHtml = `<div class="scn-style generating">🥷 El Sensei está reflexionando sobre ${esc(name)}…</div>`;
   const bestHtml = best.length
     ? `<h4 class="scn-sub">Mejores modos para ${esc(name)}</h4>
-       <p class="scn-note">Los modos donde este brawler mejor rinde según la comunidad, con tu propio rendimiento (y su fiabilidad).</p>
-       <div class="scn-mode-grid">${best.map((m, i) => scnModeRow(m, null, bestRefl[i])).join("")}</div>` : "";
+       <p class="scn-note">Los modos donde este brawler mejor rinde según la comunidad, por qué encaja su estilo, y tu propio rendimiento con su fiabilidad.</p>
+       <div class="scn-mode-grid">${best.map((m) => scnModeRow(m, null, modeWhy[m.mode])).join("")}</div>` : "";
   const finalHtml = insight.final ? `<div class="scn-final">🥷 ${esc(insight.final)}</div>` : "";
   const unexpHtml = unexp.length
     ? `<h4 class="scn-sub">Sorpresas — te funciona donde no debería</h4>
-       <p class="scn-note">Modos donde la comunidad rinde flojo con este brawler, pero <b>tú sacas buen resultado</b>: quizá ciertos mapas o tu estilo lo permiten.</p>
-       <div class="scn-mode-grid">${unexp.map((m, i) => scnModeRow(m, "surprise", unexpRefl[i])).join("")}</div>` : "";
+       <p class="scn-note">Modos donde la comunidad rinde flojo con este brawler, pero <b>tú sacas buen resultado</b>: el Sensei analiza si ciertos mapas, tu habilidad o la suerte lo explican.</p>
+       <div class="scn-mode-grid">${unexp.map((m) => scnModeRow(m, "surprise", unexpWhy[m.mode])).join("")}</div>` : "";
   const boxesHtml = byMode.length
     ? `<h4 class="scn-sub">Tu rendimiento por modo</h4><div class="br-mode-boxes">${modeBoxesHtml(byMode)}</div>` : "";
   const mapsHtml = maps.length ? renderBrawlerMaps(maps) : "";

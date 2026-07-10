@@ -2986,6 +2986,23 @@ def brawler_scene(brawler_name: str, player_tag: str | None = None) -> dict:
             "maps": maps, "your_by_mode": your_by_mode}
 
 
+def brawler_mode_maps(brawler_name: str, player_tag: str, mode: str, top: int = 4) -> list[dict]:
+    """Mapas del JUGADOR con ese brawler en un modo concreto, con su win rate — para que la IA
+    analice si ciertos mapas explican un buen rendimiento 'inesperado'."""
+    name = (brawler_name or "").upper()
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT map, SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END), SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END), "
+        "COUNT(*) FROM battles WHERE player_tag=? AND UPPER(my_brawler)=? AND mode=? "
+        "AND map IS NOT NULL AND map<>'unknown' GROUP BY map",
+        (normalize_tag(player_tag or ""), name, mode)).fetchall()
+    conn.close()
+    out = [{"map": r[0], "winrate": _winrate(r[1] or 0, r[2] or 0), "games": r[3] or 0}
+           for r in rows if r[0]]
+    out.sort(key=lambda x: (x["games"], x["winrate"] or 0), reverse=True)
+    return out[:top]
+
+
 def all_equipped_skins() -> list:
     """(skin_id, brawler_name, skin_name) distintos equipados por cualquier jugador
     seguido. Para precachear las imágenes a cuerpo entero de todas las skins en uso."""

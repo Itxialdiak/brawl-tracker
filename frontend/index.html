@@ -1354,6 +1354,7 @@
       <button class="atab" data-atab="roles" data-perm="assign_roles" onclick="showAdminTab('roles')">Roles</button>
       <button class="atab" data-atab="players" data-perm="manage_content" onclick="showAdminTab('players')">Jugadores</button>
       <button class="atab" data-atab="metrics" data-perm="view_page_metrics" onclick="showAdminTab('metrics')">Métricas</button>
+      <button class="atab" data-atab="integrations" data-perm="manage_users" onclick="showAdminTab('integrations')">Integraciones</button>
       <button class="atab" data-atab="history" data-perm="review_changes" onclick="showAdminTab('history')">Historial</button>
       <button class="atab" data-atab="i18n" data-perm="translate" onclick="showAdminTab('i18n')">Traducciones</button>
     </div>
@@ -1392,6 +1393,15 @@
     <div class="admin-panel" id="admin-metrics">
       <div class="admin-panel-head"><h3>Métricas</h3></div>
       <div id="metrics-body"><div class="wk-loading">Cargando…</div></div>
+    </div>
+
+    <div class="admin-panel" id="admin-integrations">
+      <div class="admin-panel-head">
+        <h3>Integraciones externas</h3>
+        <button class="btn" onclick="loadAdminIntegrations()">↻ Re-verificar</button>
+      </div>
+      <p class="admin-hint">Estado de las fuentes de datos de terceros. La <b>rotación competitiva</b> puede usar la rotación en vivo de Brawlify si el servidor tiene salida a <code>api.brawlify.com</code>. Si el egress va, activa el flag <code>BRAWLIFY_LIVE_ROTATION=1</code> en el <code>.env</code> y reinicia.</p>
+      <div id="integrations-body"><div class="wk-loading">Cargando…</div></div>
     </div>
 
     <div class="admin-panel" id="admin-history">

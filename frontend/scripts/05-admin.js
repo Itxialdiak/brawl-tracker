@@ -43,6 +43,7 @@ function showAdminTab(name) {
   if (name === "roles") loadAdminRoles();
   if (name === "players") loadAdminPlayers();
   if (name === "metrics") loadAdminMetrics();
+  if (name === "integrations") loadAdminIntegrations();
   if (name === "history") loadAdminHistory();
   if (name === "i18n") initI18nEditor();
 }
@@ -467,6 +468,33 @@ async function loadAdminMetrics() {
     wrap.innerHTML = `<h4 class="metrics-sub">Métricas de la aplicación</h4>
       <div class="metrics-grid">${general}</div>${consumo}`;
   } catch (e) { if (String(e.message) !== "401") wrap.innerHTML = '<div class="admin-empty">No se pudo cargar.</div>'; }
+}
+
+/* ---------- Integraciones externas (admin) ---------- */
+async function loadAdminIntegrations() {
+  const wrap = $("integrations-body");
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="wk-loading">Comprobando egress desde el servidor…</div>';
+  try {
+    const d = await getJSON("/api/admin/integrations/brawlify");
+    const e = d.egress || {};
+    const ok = !!e.ok;
+    const statusTxt = e.status != null ? ("HTTP " + e.status) : (e.error || "sin respuesta");
+    const dot = `<span class="intg-dot" style="background:${ok ? "var(--win)" : "var(--loss)"}"></span>`;
+    const flag = d.enabled ? '<span class="intg-flag on">activada</span>' : '<span class="intg-flag off">desactivada</span>';
+    const sample = (d.ranked_pool_sample || []).map((r) =>
+      `<li>${esc(r.mode || "—")} · <b>${esc(r.map || "—")}</b></li>`).join("");
+    wrap.innerHTML = `<div class="intg-card">
+      <div class="intg-head">${dot}<b>Brawlify LIVE</b> <span class="pl-tag">${esc(d.source || "")}</span></div>
+      <div class="intg-row">Egress desde el servidor: <b style="color:${ok ? "var(--win)" : "var(--loss)"}">${ok ? "OK" : "bloqueado"}</b> <span class="pl-tag">${esc(statusTxt)}</span></div>
+      <div class="intg-row">Rotación en vivo (flag <code>BRAWLIFY_LIVE_ROTATION</code>): ${flag}</div>
+      ${sample ? `<div class="intg-row">Muestra del pool competitivo que se obtendría:<ul class="intg-list">${sample}</ul></div>` : ""}
+      <div class="intg-hint">${esc(d.hint || "")}</div>
+    </div>`;
+  } catch (err) {
+    if (String(err.message) === "401") { wrap.innerHTML = '<div class="admin-empty">Necesitas permisos de administrador.</div>'; return; }
+    wrap.innerHTML = '<div class="admin-empty">No se pudo comprobar la integración.</div>';
+  }
 }
 
 /* ---------- Historial ---------- */
