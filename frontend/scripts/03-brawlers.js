@@ -277,6 +277,7 @@ function showUpcomingDetail(i) {
   const u = ((brawlersData && brawlersData.upcoming) || [])[i];
   if (!u) return;
   $("brawlers-grid-view").style.display = "none"; $("brawler-detail-view").style.display = "";
+  const acts = $("br-detail-actions"); if (acts) acts.innerHTML = "";   // los próximos no tienen histórico/ranking
   window.scrollTo({ top: 0, behavior: "smooth" });
   const heroImg = u.image_full || u.image;
   const img = heroImg ? `<img src="${esc(heroImg)}" alt="" onerror="this.src='${esc(u.image || "")}'">` : `<div class="empty" style="font-size:64px;margin:0">🔮</div>`;
@@ -658,14 +659,6 @@ function renderBrawlerDetail(d) {
       `</div></div>`;
   }
 
-  let modeHtml = "";
-  if (d.your && d.your.by_mode && d.your.by_mode.length) {
-    modeHtml = `<div class="br-section"><h3>Tu rendimiento por modo</h3><div class="rows">` +
-      d.your.by_mode.map((m) => `<div class="row"><div class="name">${esc(modeName(m.mode))}</div>
-        <div class="pct" style="color:${pctColor(m.winrate)}">${m.winrate == null ? "—" : m.winrate + "%"}</div>
-        <div class="meta" style="grid-column:1/-1">${m.battles} partidas</div></div>`).join("") +
-      `</div></div>`;
-  }
 
   const chg = d.change;
   const chgHtml = chg ? `<div class="br-change ${chg.kind}"><span class="chg-flag ${chg.kind}">${chgIcon(chg.kind)}</span> <b>${chgLabel(chg.kind)}</b>${chg.note ? " · " + esc(chg.note) : ""}${chg.date ? ` <small>(${esc(chg.date)})</small>` : ""}</div>` : "";
@@ -683,13 +676,120 @@ function renderBrawlerDetail(d) {
     ${chgHtml}
     ${attackHtml}${passiveHtml}${superHtml}
     ${statsHtml}
-    <div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>
-    <div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>
-    ${hcHtml}${buildsHtml}${modeHtml}
-    <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="ghost" onclick="openBrawlerHistory(${d.id}, '${esc(d.name).replace(/'/g, "\\'")}')">📜 Histórico de cambios</button>
-      <button class="ghost" onclick="goBrawlerRanking('${esc(d.name).replace(/'/g, "\\'")}')">Ver ranking de ${esc(d.name)} ↗</button>
+    ${buildsHtml
+      ? `<div class="br-2col"><div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>${buildsHtml}</div>`
+      : `<div class="br-section"><h3>★ Star Powers</h3><div class="ability-grid">${sps}</div></div>`}
+    ${hcHtml
+      ? `<div class="br-2col"><div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>${hcHtml}</div>`
+      : `<div class="br-section"><h3>◆ Gadgets</h3><div class="ability-grid">${gds}</div></div>`}
+    <div id="br-scene" class="br-scene"></div>`;
+  // Botones de acción ARRIBA, junto a «Volver a los brawlers».
+  const acts = $("br-detail-actions");
+  if (acts) acts.innerHTML = `
+    <button class="ghost" onclick="openBrawlerHistory(${d.id}, '${esc(d.name).replace(/'/g, "\\'")}')">📜 Histórico de cambios</button>
+    <button class="ghost" onclick="goBrawlerRanking('${esc(d.name).replace(/'/g, "\\'")}')">Ver ranking de ${esc(d.name)} ↗</button>`;
+  loadBrawlerScene(d.id, d.name);
+}
+/* Cajas "Tu rendimiento por modo": una al lado de otra, con el icono del modo. */
+function modeBoxesHtml(byMode) {
+  return (byMode || []).map((m) => {
+    const a = typeof modeAsset === "function" ? modeAsset(m.mode) : null;
+    const ic = a && a.icon ? `<img src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
+    const g = m.games != null ? m.games : (m.battles || 0);
+    return `<div class="br-mode-box">
+      <div class="bmb-top">${ic}<span class="bmb-name">${esc(modeName(m.mode))}</span></div>
+      <div class="bmb-pct" style="color:${pctColor(m.winrate)}">${m.winrate == null ? "—" : m.winrate + "%"}</div>
+      <div class="bmb-meta">${g} ${g === 1 ? "partida" : "partidas"}</div></div>`;
+  }).join("");
+}
+/* ---------- "Mejores Modos / Mejores Mapas" (datos comunitarios + tu rendimiento + reflexión IA) ---------- */
+let _brScene = null;
+async function loadBrawlerScene(id, name) {
+  const el = $("br-scene");
+  if (!el) return;
+  el.innerHTML = `<div class="br-section"><div class="empty" style="padding:18px">Cargando modos y mapas…</div></div>`;
+  let s;
+  try { s = await getJSON(`/api/brawler/${id}/scene?player=` + encodeURIComponent(currentPlayer || "")); }
+  catch (e) { el.innerHTML = ""; return; }
+  _brScene = { id: id, name: name, data: s, insight: null };
+  el.innerHTML = renderBrawlerScene(s, name, null, false);
+  loadBrawlerInsight(id, name);
+}
+// Reflexiones del Sensei (IA): generación perezosa; si aún se está creando, reintenta.
+async function loadBrawlerInsight(id, name) {
+  let d;
+  try { d = await getJSON(`/api/brawler/${id}/insight?player=` + encodeURIComponent(currentPlayer || "")); }
+  catch (e) { return; }
+  if (!_brScene || _brScene.id !== id) return;   // el usuario ya cambió de brawler
+  if (!d || !d.configured) return;               // sin IA configurada: nos quedamos con los datos
+  const el = $("br-scene");
+  if (!el) return;
+  if (d.insight) {
+    _brScene.insight = d.insight;
+    el.innerHTML = renderBrawlerScene(_brScene.data, name, d.insight, false);
+  } else if (d.generating) {
+    el.innerHTML = renderBrawlerScene(_brScene.data, name, null, true);
+    setTimeout(() => { if (_brScene && _brScene.id === id) loadBrawlerInsight(id, name); }, 9000);
+  }
+}
+function relColorBar(rel) {
+  const c = typeof reliabilityColor === "function" ? reliabilityColor(rel) : "var(--muted)";
+  return `<span class="scn-rel" title="Fiabilidad del dato: ${rel == null ? 0 : rel}%"><span class="scn-rel-bar"><span style="width:${rel == null ? 0 : rel}%;background:${c}"></span></span></span>`;
+}
+function scnModeRow(m, kind, reflection) {
+  const a = typeof modeAsset === "function" ? modeAsset(m.mode) : null;
+  const ic = a && a.icon ? `<img class="scn-mode-ic" src="${a.icon}" alt="" onerror="this.style.display='none'">` : "";
+  const cw = m.community.winrate, yw = m.your.winrate;
+  const yours = m.your.games
+    ? `<div class="scn-you">Tú: <b style="color:${pctColor(yw)}">${yw}%</b> <small>· ${m.your.games}p</small> ${relColorBar(m.your.reliability)}</div>`
+    : `<div class="scn-you muted">Aún no lo juegas aquí</div>`;
+  const refl = reflection ? `<div class="scn-reflect">${esc(reflection)}</div>` : "";
+  return `<div class="scn-mode ${kind || ""}">
+    <div class="scn-mode-head">${ic}<span class="scn-mode-name">${esc(modeName(m.mode))}</span></div>
+    <div class="scn-comm">Comunidad: <b style="color:${pctColor(cw)}">${cw == null ? "—" : cw + "%"}</b> <small>· ${m.community.games}p</small> ${relColorBar(m.community.reliability)}</div>
+    ${yours}${refl}
+  </div>`;
+}
+function renderBrawlerScene(s, name, insight, generating) {
+  const best = s.best_modes || [], unexp = s.unexpected_modes || [], maps = s.maps || [], byMode = s.your_by_mode || [];
+  if (!best.length && !maps.length && !byMode.length) return "";
+  insight = insight || {};
+  const bestRefl = insight.best || [], unexpRefl = insight.unexpected || [];
+  let styleHtml = "";
+  if (insight.style) styleHtml = `<div class="scn-style">🥷 ${esc(insight.style)}</div>`;
+  else if (generating) styleHtml = `<div class="scn-style generating">🥷 El Sensei está reflexionando sobre ${esc(name)}…</div>`;
+  const bestHtml = best.length
+    ? `<h4 class="scn-sub">Mejores modos para ${esc(name)}</h4>
+       <p class="scn-note">Los modos donde este brawler mejor rinde según la comunidad, con tu propio rendimiento (y su fiabilidad).</p>
+       <div class="scn-mode-grid">${best.map((m, i) => scnModeRow(m, null, bestRefl[i])).join("")}</div>` : "";
+  const finalHtml = insight.final ? `<div class="scn-final">🥷 ${esc(insight.final)}</div>` : "";
+  const unexpHtml = unexp.length
+    ? `<h4 class="scn-sub">Sorpresas — te funciona donde no debería</h4>
+       <p class="scn-note">Modos donde la comunidad rinde flojo con este brawler, pero <b>tú sacas buen resultado</b>: quizá ciertos mapas o tu estilo lo permiten.</p>
+       <div class="scn-mode-grid">${unexp.map((m, i) => scnModeRow(m, "surprise", unexpRefl[i])).join("")}</div>` : "";
+  const boxesHtml = byMode.length
+    ? `<h4 class="scn-sub">Tu rendimiento por modo</h4><div class="br-mode-boxes">${modeBoxesHtml(byMode)}</div>` : "";
+  const mapsHtml = maps.length ? renderBrawlerMaps(maps) : "";
+  return `<div class="br-section br-scene-sec"><h3>🧭 Mejores modos y mapas</h3>
+    ${styleHtml}${bestHtml}${finalHtml}${unexpHtml}${boxesHtml}${mapsHtml}</div>`;
+}
+function renderBrawlerMaps(maps) {
+  const row = (mp) => {
+    const icons = (mp.modes || []).map((mo) => {
+      const a = typeof modeAsset === "function" ? modeAsset(mo) : null;
+      return a && a.icon ? `<img src="${a.icon}" alt="" title="${esc(modeName(mo))}" onerror="this.style.display='none'">` : "";
+    }).join("");
+    const cw = mp.community.winrate, yw = mp.your.winrate;
+    const you = mp.your.games ? `<span class="scn-map-you" style="color:${pctColor(yw)}">${yw}%</span>` : "";
+    return `<div class="scn-map">
+      <button class="scn-map-name" onclick="showMap('${esc(mp.map).replace(/'/g, "\\'")}')" title="Ver el mapa">${esc(mapNameEs(mp.map))}</button>
+      <span class="scn-map-r"><b style="color:${pctColor(cw)}">${cw == null ? "—" : cw + "%"}</b>${you}<span class="scn-map-icons">${icons}</span></span>
     </div>`;
+  };
+  const col1 = maps.slice(0, 10).map(row).join("");
+  const col2 = maps.slice(10, 20).map(row).join("");
+  return `<h4 class="scn-sub">Mejores mapas para este brawler <small>(comunidad · tu win rate)</small></h4>
+    <div class="scn-maps"><div class="scn-map-col">${col1}</div><div class="scn-map-col">${col2}</div></div>`;
 }
 
 /* ---------- Modal: histórico COMPLETO de cambios de un brawler (wiki) ---------- */

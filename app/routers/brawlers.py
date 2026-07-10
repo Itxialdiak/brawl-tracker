@@ -2,11 +2,12 @@
 
 Extraído de main.py; se incluye con app.include_router()."""
 import asyncio
+import json
 import re
 import time
 from fastapi import APIRouter, Query, Body, Depends
 from fastapi.responses import JSONResponse
-from .. import db, assets, brawler_extra, auth, buffs, changes, upcoming
+from .. import db, assets, brawler_extra, auth, buffs, changes, upcoming, coach
 from ..api_common import _require_follow, _get_player_cached
 
 router = APIRouter()
@@ -444,6 +445,100 @@ async def api_account_rating(player: str = Query(None), user: dict = Depends(aut
     rating = await asyncio.to_thread(db.account_rating, tag,
                                      {**(catalog.get("totals") or {}), "hypercharges": brawler_extra.hypercharge_total()})
     return {"rating": rating}
+
+
+@router.get("/api/brawler/{brawler_id}/scene")
+async def api_brawler_scene(brawler_id: int, player: str = Query(None),
+                            user: dict = Depends(auth.require_user)):
+    """'Mejores Modos/Mapas' de un brawler: su rendimiento comunitario por modo/mapa + el tuyo con
+    ese brawler (con fiabilidad), mejores modos, modos inesperados y top-20 mapas. Sin IA (datos)."""
+    tag = _require_follow(user, player)
+    catalog = await assets.get_brawler_catalog()
+    name = ((catalog.get("by_id") or {}).get(brawler_id) or {}).get("name")
+    if not name:
+        return JSONResponse({"error": "Brawler no encontrado."}, status_code=404)
+    return await asyncio.to_thread(db.brawler_scene, name, tag)
+
+
+# --- Reflexiones del Sensei (IA) para la sección "Mejores Modos" -----------------------------
+_MODE_ES = {
+    "gemGrab": "Atrapagemas", "brawlBall": "Balón Brawl", "bounty": "Caza Estelar", "heist": "Atraco",
+    "hotZone": "Zona Restringida", "knockout": "Noqueo", "duels": "Duelos", "wipeout": "Aniquilación",
+    "brawlHockey": "Brawl Hockey", "brawlArena": "Arena Brawl", "basketBrawl": "Basket Brawl",
+    "volleyBrawl": "Vóley Brawl", "payload": "Escolta", "siege": "Asedio", "bossFight": "Jefe Final",
+    "soloShowdown": "Supervivencia (solo)", "duoShowdown": "Supervivencia (dúo)",
+    "trioShowdown": "Supervivencia (trío)", "showdown": "Supervivencia",
+}
+_insight_generating: set = set()
+
+
+def _mode_es(code: str) -> str:
+    return _MODE_ES.get(code, code or "—")
+
+
+async def _refresh_brawler_insight(brawler_id: int, tag: str, scope: str = "community"):
+    """Genera (y cachea) las reflexiones IA de un brawler+jugador: construye el contexto a partir
+    del catálogo/dataset del brawler + su 'scene' (datos por modo) y llama a coach."""
+    key = (brawler_id, tag, scope)
+    if not coach.configured() or key in _insight_generating:
+        return
+    _insight_generating.add(key)
+    try:
+        catalog = await assets.get_brawler_catalog()
+        cat = (catalog.get("by_id") or {}).get(brawler_id) or {}
+        name = cat.get("name") or "este brawler"
+        ex = brawler_extra.get(brawler_id) or {}
+        scene = await asyncio.to_thread(db.brawler_scene, name, tag)
+        best, unexp = scene.get("best_modes") or [], scene.get("unexpected_modes") or []
+
+        role = brawler_extra.norm_role(ex.get("role") or brawler_extra.role_primary_fallback(name) or cat.get("role"))
+        lines = [f"Brawler: {name}. Rol: {role or '—'}. Rareza: {(cat.get('rarity') or {}).get('name') or '—'}."]
+        desc = ex.get("description_es") or cat.get("description")
+        if desc:
+            lines.append(f"Descripción: {desc}")
+        sup = ex.get("super") or {}
+        if sup.get("description"):
+            lines.append(f"Súper ({sup.get('name', '')}): {sup['description']}")
+
+        def mode_line(m, i):
+            c, y = m.get("community") or {}, m.get("your") or {}
+            yt = (f"; el discípulo {y.get('winrate')}% en {y.get('games')} partidas (fiab {y.get('reliability')}%)"
+                  if y.get("games") else "; el discípulo apenas lo juega con él")
+            return f"{i + 1}. {_mode_es(m.get('mode'))}: comunidad {c.get('winrate')}% (fiab {c.get('reliability')}%){yt}"
+
+        if best:
+            lines.append("Mejores modos del brawler (por datos de la comunidad):")
+            lines += [mode_line(m, i) for i, m in enumerate(best)]
+        if unexp:
+            lines.append("Modos inesperados (la comunidad rinde flojo pero el discípulo va fuerte):")
+            lines += [mode_line(m, i) for i, m in enumerate(unexp)]
+        ctx = "\n".join(lines)
+
+        data = await coach.generate_brawler_insight(ctx, len(best), len(unexp))
+        if data:
+            await asyncio.to_thread(db.set_brawler_insight, brawler_id, tag, scope,
+                                    json.dumps(data, ensure_ascii=False))
+    except Exception as e:  # noqa: BLE001
+        print(f"[brawler-insight] {brawler_id}/{tag}: {e}")
+    finally:
+        _insight_generating.discard(key)
+
+
+@router.get("/api/brawler/{brawler_id}/insight")
+async def api_brawler_insight(brawler_id: int, player: str = Query(None),
+                              user: dict = Depends(auth.require_user)):
+    """Reflexiones del Sensei (IA) para 'Mejores Modos': estilo/fortalezas/debilidades del brawler,
+    por qué encaja en cada mejor modo, por qué le funcionan los inesperados y cómo se desenvuelve el
+    discípulo. Generación perezosa + caché (7 días), como la descripción pública del Sensei."""
+    tag = _require_follow(user, player)
+    cur = await asyncio.to_thread(db.get_brawler_insight, brawler_id, tag, "community")
+    data, at = cur.get("data"), cur.get("at")
+    generating = False
+    if coach.configured() and (not data or coach.desc_is_stale(at)):
+        asyncio.create_task(_refresh_brawler_insight(brawler_id, tag))
+        generating = not data
+    return {"insight": json.loads(data) if data else None, "at": at,
+            "generating": generating, "configured": coach.configured()}
 
 
 @router.get("/api/brawler/{brawler_id}")

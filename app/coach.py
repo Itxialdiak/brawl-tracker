@@ -543,3 +543,58 @@ async def regenerate_all_descriptions(only_missing: bool = False) -> int:
             n += 1
         await asyncio.sleep(1.0)      # no saturar la API
     return n
+
+
+# --- Reflexiones del Sensei para "Mejores Modos" de un brawler (JSON) -------------------------
+def _extract_json(text: str):
+    """Primer objeto JSON de un texto (tolera fences ```json). None si no parsea."""
+    import json
+    import re
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```[a-zA-Z]*\n?", "", t)
+        t = re.sub(r"\n?```$", "", t).strip()
+    try:
+        return json.loads(t)
+    except Exception:  # noqa: BLE001
+        m = re.search(r"\{.*\}", t, re.S)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:  # noqa: BLE001
+                pass
+    return None
+
+
+async def generate_brawler_insight(ctx: str, n_best: int, n_unexpected: int):
+    """El Sensei reflexiona sobre un brawler y el rendimiento del discípulo. Devuelve un dict
+    {style, best:[...], unexpected:[...], final} (o None). `best`/`unexpected` alineadas por ORDEN
+    con los modos dados. `style` SÍ menciona debilidades (es para el discípulo)."""
+    if not API_KEY:
+        raise RuntimeError("Falta ANTHROPIC_API_KEY en el .env.")
+    from anthropic import AsyncAnthropic
+    system = (
+        "Eres el Sensei, un maestro cercano de Brawl Stars que analiza a un discípulo. Te doy un brawler "
+        "(rol, descripción, súper) y su rendimiento por modo (de la COMUNIDAD y del discípulo, con "
+        "fiabilidad). Responde SOLO con un objeto JSON válido (sin markdown ni texto fuera del JSON), en "
+        "castellano, con estas claves:\n"
+        '- "style": 1 párrafo (2-4 frases) sobre el ESTILO de juego del brawler, sus FORTALEZAS y también '
+        "sus DEBILIDADES (aquí SÍ puedes mencionarlas: es para el discípulo).\n"
+        f'- "best": lista de EXACTAMENTE {n_best} frases (1-2 frases), en el MISMO ORDEN que los "mejores '
+        'modos" del contexto, explicando por qué el estilo del brawler ENCAJA en ese modo.\n'
+        f'- "unexpected": lista de EXACTAMENTE {n_unexpected} frases, en el orden de los "modos inesperados", '
+        "explicando por qué al discípulo le funciona ahí pese a no ser un modo natural del brawler (quizá "
+        "ciertos mapas, o habilidad/suerte con muestra corta). Si no hay inesperados: [].\n"
+        '- "final": 1 párrafo (2-3 frases) sobre cómo se DESENVUELVE el discípulo en estos modos según sus datos.\n'
+        "Tono de maestro, natural, sin markdown, sin inventar datos que no estén en el contexto. Si la muestra "
+        "del discípulo es pequeña, recononócelo con humildad."
+    )
+    client = AsyncAnthropic(api_key=API_KEY)
+    msg = await client.messages.create(model=MODEL, max_tokens=900, system=system,
+                                       messages=[{"role": "user", "content": ctx}])
+    try:
+        db.log_ai_usage("brawler_insight", msg.usage.input_tokens, msg.usage.output_tokens)
+    except Exception:  # noqa: BLE001
+        pass
+    text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
+    return _extract_json(text)

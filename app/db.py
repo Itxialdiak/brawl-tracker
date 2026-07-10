@@ -59,6 +59,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS allies    (battle_id TEXT, brawler TEXT, trophies INTEGER);
         -- Brawlers que un admin marca DISPONIBLES a mano (override si la app no lo detecta solo).
         CREATE TABLE IF NOT EXISTS brawler_available_override (brawler_id INTEGER PRIMARY KEY, at TEXT);
+        -- Reflexiones del Sensei (IA) por brawler+jugador para la sección "Mejores Modos" (caché).
+        CREATE TABLE IF NOT EXISTS brawler_insight (
+            brawler_id INTEGER, player_tag TEXT, scope TEXT, data TEXT, at TEXT,
+            PRIMARY KEY (brawler_id, player_tag, scope)
+        );
         CREATE TABLE IF NOT EXISTS server_incidents (
             id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, started_at TEXT, ended_at TEXT
         );
@@ -462,6 +467,24 @@ def set_brawler_available(bid: int, available: bool = True) -> None:
                      (int(bid), datetime.now(timezone.utc).isoformat()))
     else:
         conn.execute("DELETE FROM brawler_available_override WHERE brawler_id=?", (int(bid),))
+    conn.commit(); conn.close()
+
+
+def get_brawler_insight(brawler_id: int, player_tag: str, scope: str = "community") -> dict:
+    """{data, at} de las reflexiones IA cacheadas de un brawler+jugador (o {None, None})."""
+    conn = get_conn()
+    row = conn.execute("SELECT data, at FROM brawler_insight WHERE brawler_id=? AND player_tag=? AND scope=?",
+                       (int(brawler_id), normalize_tag(player_tag), scope)).fetchone()
+    conn.close()
+    return {"data": row["data"] if row else None, "at": row["at"] if row else None}
+
+
+def set_brawler_insight(brawler_id: int, player_tag: str, scope: str, data: str) -> None:
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO brawler_insight (brawler_id,player_tag,scope,data,at) VALUES (?,?,?,?,?) "
+        "ON CONFLICT(brawler_id,player_tag,scope) DO UPDATE SET data=excluded.data, at=excluded.at",
+        (int(brawler_id), normalize_tag(player_tag), scope, data, datetime.now(timezone.utc).isoformat()))
     conn.commit(); conn.close()
 
 
@@ -2884,6 +2907,83 @@ def community_meta(mode: str | None = None, map_: str | None = None) -> dict:
                  "winrate": _winrate(r["wins"], r["losses"]),
                  "wins": r["wins"], "losses": r["losses"]} for r in rows]
     return {"total": total, "winrate": _winrate(tw, tl), "brawlers": brawlers}
+
+
+def brawler_scene(brawler_name: str, player_tag: str | None = None) -> dict:
+    """Para un brawler: su rendimiento por MODO y por MAPA en la COMUNIDAD (todas las partidas de
+    todos con ese brawler) + el rendimiento del JUGADOR con ese brawler en cada modo/mapa, con
+    win rate encogido (shrinkage) y fiabilidad. Base de datos de 'Mejores Modos/Mapas' de la ficha."""
+    name = (brawler_name or "").upper()
+    conn = get_conn()
+
+    def agg(sql, params):
+        return {r[0]: {"wins": r[1] or 0, "losses": r[2] or 0, "games": r[3] or 0,
+                       "modes": (r[4] if len(r.keys()) > 4 else None)}
+                for r in conn.execute(sql, params).fetchall() if r[0]}
+
+    comm_mode = agg("SELECT mode, SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END), "
+                    "SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END), COUNT(*) FROM battles "
+                    "WHERE UPPER(my_brawler)=? AND mode IS NOT NULL AND mode<>'unknown' GROUP BY mode", (name,))
+    your_mode = agg("SELECT mode, SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END), "
+                    "SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END), COUNT(*) FROM battles "
+                    "WHERE player_tag=? AND UPPER(my_brawler)=? AND mode IS NOT NULL AND mode<>'unknown' "
+                    "GROUP BY mode", (normalize_tag(player_tag or ""), name)) if player_tag else {}
+    # Mapas: agregamos por (mapa) y recogemos el conjunto de modos en los que aparece.
+    comm_map, map_modes = {}, {}
+    for r in conn.execute(
+            "SELECT map, mode, SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END), COUNT(*) FROM battles "
+            "WHERE UPPER(my_brawler)=? AND map IS NOT NULL AND map<>'unknown' GROUP BY map, mode", (name,)):
+        mp = r[0]
+        d = comm_map.setdefault(mp, {"wins": 0, "losses": 0, "games": 0})
+        d["wins"] += r[2] or 0; d["losses"] += r[3] or 0; d["games"] += r[4] or 0
+        if r[1] and r[1] != "unknown":
+            map_modes.setdefault(mp, set()).add(r[1])
+    your_map = {}
+    if player_tag:
+        for r in conn.execute(
+                "SELECT map, SUM(CASE WHEN is_win=1 THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN is_win=0 THEN 1 ELSE 0 END), COUNT(*) FROM battles "
+                "WHERE player_tag=? AND UPPER(my_brawler)=? AND map IS NOT NULL AND map<>'unknown' GROUP BY map",
+                (normalize_tag(player_tag), name)):
+            your_map[r[0]] = {"wins": r[1] or 0, "losses": r[2] or 0, "games": r[3] or 0}
+    conn.close()
+
+    def stat(d):
+        if not d:
+            return {"winrate": None, "shrunk": None, "reliability": 0, "games": 0}
+        return {"winrate": _winrate(d["wins"], d["losses"]),
+                "shrunk": _shrunk_winrate(d["wins"], d["losses"]),
+                "reliability": _reliability(d["wins"], d["losses"]), "games": d["games"]}
+
+    modes = []
+    for m, cd in comm_mode.items():
+        cs, ys = stat(cd), stat(your_mode.get(m))
+        modes.append({"mode": m, "community": cs, "your": ys})
+    # Mejores modos del brawler (comunidad): por win rate encogido (mín. muestra), top 3.
+    best_modes = sorted([x for x in modes if x["community"]["shrunk"] is not None and x["community"]["games"] >= 8],
+                        key=lambda x: x["community"]["shrunk"], reverse=True)[:3]
+    # Inesperados: el brawler rinde flojo en la comunidad en ese modo (<48 encogido) pero TÚ rindes
+    # bien (>=58 encogido) con muestra decente (fiab>=40). Top 3 por diferencia a tu favor.
+    unexpected = [x for x in modes if x["community"]["shrunk"] is not None and x["community"]["shrunk"] < 48
+                  and x["your"]["shrunk"] is not None and x["your"]["shrunk"] >= 58 and x["your"]["reliability"] >= 40]
+    unexpected.sort(key=lambda x: (x["your"]["shrunk"] - x["community"]["shrunk"]), reverse=True)
+    unexpected = unexpected[:3]
+
+    maps = []
+    for mp, cd in comm_map.items():
+        cs, ys = stat(cd), stat(your_map.get(mp))
+        maps.append({"map": mp, "modes": sorted(map_modes.get(mp, [])),
+                     "community": cs, "your": ys})
+    # Top 20 mapas: prioriza rendimiento comunitario (encogido) y, a igualdad, tu rendimiento.
+    maps = [x for x in maps if x["community"]["shrunk"] is not None and x["community"]["games"] >= 5]
+    maps.sort(key=lambda x: (x["community"]["shrunk"], x["your"]["shrunk"] or 0), reverse=True)
+    maps = maps[:20]
+
+    your_by_mode = sorted([{"mode": m, **stat(d)} for m, d in your_mode.items()],
+                          key=lambda x: -x["games"]) if your_mode else []
+    return {"best_modes": best_modes, "unexpected_modes": unexpected,
+            "maps": maps, "your_by_mode": your_by_mode}
 
 
 def all_equipped_skins() -> list:
