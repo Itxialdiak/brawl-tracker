@@ -19,7 +19,18 @@ function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => 
 function pctColor(w) { if (w == null) return "var(--neutral)"; if (w >= 55) return "var(--win)"; if (w < 45) return "var(--loss)"; return "var(--gold)"; }
 /* Color por FIABILIDAD del dato (tamaño de muestra, 0-100): rojo <40 %, amarillo 40-75 %, verde >75 %. */
 function reliabilityColor(r) { if (r == null) return "var(--neutral)"; if (r < 40) return "var(--loss)"; if (r <= 75) return "var(--gold)"; return "var(--win)"; }
-async function getJSON(u) { const r = await fetch(u); if (r.status === 401) { showLogin(); throw new Error("401"); } return r.json(); }
+// GET JSON con TIMEOUT (AbortController): sin él, si el servidor no responde, el fetch se cuelga
+// para siempre y el usuario ve un spinner eterno. 25s por defecto; corta y lanza para que el
+// llamante muestre error (y pueda reintentar) en vez de quedarse colgado.
+async function getJSON(u, timeoutMs) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs || 25000);
+  let r;
+  try { r = await fetch(u, { signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+  if (r.status === 401) { showLogin(); throw new Error("401"); }
+  return r.json();
+}
 function fmtTime(t) { const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(t || ""); return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : (t || ""); }
 function fmtClock(iso) { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
 
@@ -372,8 +383,21 @@ $("map-modal").addEventListener("click", (e) => { if (e.target.id === "map-modal
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("lightbox").classList.remove("show"); closeMapModal(); } });
 
 /* ---------- Filtros / jugadores ---------- */
+// Fetcher COMPARTIDO de /api/filters (lo pedían por separado loadFilters, el quiz del Sensei y
+// Retos). Cachea por jugador y deduplica llamadas concurrentes; loadFilters lo refresca (force).
+let _filtersData = null, _filtersPlayer = null, _filtersInflight = null;
+function getFilters(force) {
+  const p = currentPlayer || "";
+  if (!force && _filtersData && _filtersPlayer === p) return Promise.resolve(_filtersData);
+  if (_filtersInflight && _filtersPlayer === p && !force) return _filtersInflight;
+  _filtersPlayer = p;
+  _filtersInflight = getJSON("/api/filters?player=" + encodeURIComponent(p)).then(
+    (f) => { _filtersData = f; _filtersInflight = null; return f; },
+    (e) => { _filtersInflight = null; throw e; });
+  return _filtersInflight;
+}
 async function loadFilters() {
-  const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
+  const f = await getFilters(true);   // refresca la caché compartida
   filterSel.brawler = filterSel.brawler.filter((v) => (f.brawlers || []).includes(v));
   filterSel.mode = filterSel.mode.filter((v) => (f.modes || []).includes(v));
   filterSel.map = filterSel.map.filter((v) => (f.maps || []).includes(v));
@@ -599,9 +623,15 @@ async function refreshAll() {
   await loadPlayers();
   if (currentPlayer) {
     await loadFilters(); applyScope(); await loadStats();
-    if (activeTab === "report") { await loadReport(); loadRotation(); }
+    // Re-dispara la carga de la pestaña ACTIVA ahora que `currentPlayer` ya está listo. Arregla la
+    // carrera de arranque: si pulsas una pestaña (Brawlers/Consejos/Retos) ANTES de que el jugador
+    // esté fijado, su loader salía en vacío y nunca se reintentaba (spinner eterno).
+    if (activeTab === "report") { await loadReport(true); loadRotation(); }
     if (activeTab === "rankings") loadRankings();
     if (activeTab === "history") await loadHistory(true);
+    if (activeTab === "brawlers") loadBrawlers();
+    if (activeTab === "coach") { showCoachListView(); loadSenseiQuiz(); }
+    if (activeTab === "retos") loadRetos();
     loadReports();
   }
 }
@@ -636,9 +666,11 @@ function modeName(key) {
 async function loadRotation() {
   const block = $("rotation-block"), grid = $("rotation-grid");
   if (!currentPlayer) { block.style.display = "none"; return; }
+  const who = currentPlayer;
   let data;
-  try { data = await getJSON("/api/rotation?player=" + encodeURIComponent(currentPlayer)); }
+  try { data = await getJSON("/api/rotation?player=" + encodeURIComponent(who)); }
   catch (e) { block.style.display = "none"; return; }
+  if (who !== currentPlayer) return;   // el jugador cambió durante el fetch: no pintes datos viejos
   const events = (data && data.events) || [];
   if (!events.length) { block.style.display = "none"; return; }
   const trophy = events.filter((e) => e.category !== "ranked");

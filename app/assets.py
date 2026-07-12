@@ -13,6 +13,7 @@ simplemente muestra los nombres sin imagen.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import json
@@ -207,6 +208,8 @@ async def get_map_catalog() -> dict:
 # --- Catálogo completo de brawlers (contenido para el apartado Brawlers) -------
 
 _catalog_cache = {"data": None, "at": 0.0}
+_catalog_lock = asyncio.Lock()   # evita que varios requests fríos descarguen el catálogo a la vez
+_catalog_bg = {"running": False}  # evita refrescos de fondo solapados
 _EMPTY_CATALOG = {"by_id": {}, "totals": {"brawlers": 0, "star_powers": 0, "gadgets": 0}}
 
 
@@ -216,14 +219,8 @@ def _ability(x: dict) -> dict:
             "icon": x.get("imageUrl"), "description": x.get("description")}
 
 
-async def get_brawler_catalog() -> dict:
-    """Catálogo de brawlers de Brawlify indexado por id: descripción, rol, rareza,
-    imagen a cuerpo entero (imageUrl2), retrato, y star powers/gadgets con sus
-    iconos. Incluye `totals` (denominadores para los contadores y el rating).
-    Cacheado como get_assets; ante fallo devuelve lo último o vacío."""
-    now = time.time()
-    if _catalog_cache["data"] is not None and (now - _catalog_cache["at"]) < CACHE_TTL:
-        return _catalog_cache["data"]
+async def _refresh_catalog() -> dict:
+    """Descarga + parsea el catálogo y actualiza la caché. Ante fallo devuelve lo último o vacío."""
     try:
         async with httpx.AsyncClient() as client:
             brawlers = await _fetch(client, "brawlers")
@@ -257,5 +254,45 @@ async def get_brawler_catalog() -> dict:
     data = {"by_id": by_id,
             "totals": {"brawlers": len(by_id), "star_powers": total_sp, "gadgets": total_gd}}
     _catalog_cache["data"] = data
-    _catalog_cache["at"] = now
+    _catalog_cache["at"] = time.time()
     return data
+
+
+async def _refresh_catalog_bg():
+    """Refresco en segundo plano (no bloquea al usuario). Idempotente si ya hay uno en marcha."""
+    if _catalog_bg["running"]:
+        return
+    _catalog_bg["running"] = True
+    try:
+        await _refresh_catalog()
+    finally:
+        _catalog_bg["running"] = False
+
+
+async def preload_catalog():
+    """Precalienta el catálogo al ARRANCAR el servidor para que el primer request no descargue en
+    frío. Se llama desde el startup de main.py; tolerante a fallos."""
+    try:
+        await _refresh_catalog()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def get_brawler_catalog() -> dict:
+    """Catálogo de brawlers de Brawlify indexado por id (descripción, rol, rareza, imágenes, star
+    powers/gadgets) + `totals`. Estrategia stale-while-revalidate:
+    - caché fresca → se devuelve al instante;
+    - caché caducada pero existente → se devuelve LO VIEJO ya y se refresca en segundo plano
+      (el usuario nunca espera a la red);
+    - sin caché (arranque en frío) → se descarga una vez, con lock para no duplicar descargas."""
+    now = time.time()
+    data = _catalog_cache["data"]
+    if data is not None and (now - _catalog_cache["at"]) < CACHE_TTL:
+        return data
+    if data is not None:
+        asyncio.create_task(_refresh_catalog_bg())   # stale-while-revalidate
+        return data
+    async with _catalog_lock:                         # frío: descarga única y protegida
+        if _catalog_cache["data"] is not None:        # otro request ya lo cargó mientras esperábamos
+            return _catalog_cache["data"]
+        return await _refresh_catalog()

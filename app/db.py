@@ -19,6 +19,8 @@ import sqlite3
 import hashlib
 import json
 import secrets
+import threading
+import time
 from datetime import datetime, timezone, timedelta
 
 from . import brawler_extra  # índice de roles (para filtrar/agregar por rol)
@@ -29,9 +31,47 @@ GROUP_COLUMNS = {"brawler": "my_brawler", "mode": "mode", "map": "map"}
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    # timeout amplio + busy_timeout: bajo concurrencia (poller escribiendo mientras se leen
+    # estadísticas) evita el error "database is locked" en vez de fallar al instante.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    # PRAGMAs de rendimiento. WAL permite leer mientras se escribe (clave con el poller de fondo);
+    # el resto reduce fsync y da más caché en RAM. Son baratos de fijar por conexión.
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA cache_size=-16000")   # ~16 MB de caché de páginas
+        conn.execute("PRAGMA busy_timeout=5000")
+    except Exception:  # noqa: BLE001
+        pass
     return conn
+
+
+# --- Memoización en memoria con TTL para agregaciones COMUNITARIAS costosas -------------------
+# Estas funciones agrupan partidas/colecciones de TODA la comunidad y se pedían en CADA request.
+# La comunidad cambia despacio, así que un caché de pocos minutos elimina el recálculo repetido sin
+# que el dato se note desfasado. Thread-safe (los handlers sync corren en el threadpool de FastAPI).
+_agg_cache: dict = {}
+_agg_lock = threading.Lock()
+
+
+def _agg_get(key):
+    with _agg_lock:
+        hit = _agg_cache.get(key)
+    return hit[1] if hit and hit[0] > time.time() else None
+
+
+def _agg_put(key, value, ttl):
+    with _agg_lock:
+        _agg_cache[key] = (time.time() + ttl, value)
+    return value
+
+
+def invalidate_community_cache():
+    """Vacía el caché de agregaciones comunitarias (útil tras un ingest grande o cambios de BD)."""
+    with _agg_lock:
+        _agg_cache.clear()
 
 
 def _ensure_column(cur, table, col, decl):
@@ -232,6 +272,18 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_battles_brawler ON battles(my_brawler);
         CREATE INDEX IF NOT EXISTS idx_battles_mode    ON battles(mode);
         CREATE INDEX IF NOT EXISTS idx_battles_map     ON battles(map);
+        -- brawler_scene filtra por UPPER(my_brawler): sin índice de EXPRESIÓN hacía full scan de
+        -- toda la tabla battles (cientos de miles de filas). Estos lo convierten en búsqueda indexada.
+        CREATE INDEX IF NOT EXISTS idx_battles_brup_mode ON battles(UPPER(my_brawler), mode);
+        CREATE INDEX IF NOT EXISTS idx_battles_brup_map  ON battles(UPPER(my_brawler), map);
+        CREATE INDEX IF NOT EXISTS idx_battles_player_brawler ON battles(player_tag, my_brawler);
+        -- rotation_analysis filtra por player_tag + LOWER(map)/LOWER(mode) (índice de expresión).
+        CREATE INDEX IF NOT EXISTS idx_battles_pl_lmap_lmode ON battles(player_tag, LOWER(map), LOWER(mode));
+        -- competitive_pool: LOWER(battle_type) + ventana temporal battle_time.
+        CREATE INDEX IF NOT EXISTS idx_battles_lbtype_time ON battles(LOWER(battle_type), battle_time);
+        -- winrate_by hace LEFT JOIN a una subconsulta AVG(trophies) de opponents por batalla:
+        -- este índice de cobertura evita releer la tabla opponents para cada AVG.
+        CREATE INDEX IF NOT EXISTS idx_opponents_battle_trophies ON opponents(battle_id, trophies);
         CREATE INDEX IF NOT EXISTS idx_opponents_brawler ON opponents(brawler);
         CREATE INDEX IF NOT EXISTS idx_opponents_battle  ON opponents(battle_id);
         CREATE INDEX IF NOT EXISTS idx_allies_battle     ON allies(battle_id);
@@ -2062,6 +2114,10 @@ def community_ranking(limit: int = 200) -> list[dict]:
     """Ranking COMUNITARIO por trofeos totales (suma de la colección). Los principales llenan
     la lista; los huecos se rellenan con los mejores secundarios. NUNCA huérfanos. El orden
     final es por trofeos (cada uno en su sitio, no en bloques)."""
+    ck = ("community_ranking", limit)
+    cached = _agg_get(ck)
+    if cached is not None:
+        return cached
     conn = get_conn()
     rows = conn.execute(
         """SELECT p.tag, p.name, p.icon_id, p.club_name,
@@ -2071,12 +2127,16 @@ def community_ranking(limit: int = 200) -> list[dict]:
            WHERE EXISTS(SELECT 1 FROM user_players up JOIN users u ON u.id=up.user_id
                         WHERE up.player_tag=p.tag AND COALESCE(u.hidden,0)=0)""").fetchall()
     conn.close()
-    return _community_out(_rank_community([dict(r) for r in rows], limit))
+    return _agg_put(ck, _community_out(_rank_community([dict(r) for r in rows], limit)), 300)
 
 
 def community_brawler_ranking(brawler_id: int, limit: int = 200) -> list[dict]:
     """Ranking COMUNITARIO de un brawler concreto por sus trofeos EN ESE brawler. Misma regla:
     principales llenan la lista, huecos con los mejores secundarios, y orden final por trofeos."""
+    ck = ("community_brawler_ranking", brawler_id, limit)
+    cached = _agg_get(ck)
+    if cached is not None:
+        return cached
     conn = get_conn()
     rows = conn.execute(
         """SELECT p.tag, p.name, p.icon_id, p.club_name, bc.trophies AS trophies,
@@ -2087,12 +2147,16 @@ def community_brawler_ranking(brawler_id: int, limit: int = 200) -> list[dict]:
                         WHERE up.player_tag=p.tag AND COALESCE(u.hidden,0)=0)""",
         (brawler_id,)).fetchall()
     conn.close()
-    return _community_out(_rank_community([dict(r) for r in rows], limit))
+    return _agg_put(ck, _community_out(_rank_community([dict(r) for r in rows], limit)), 300)
 
 
 def community_clubs_ranking(limit: int = 200) -> list[dict]:
     """Ranking COMUNITARIO de clubs: agrupa por club a los jugadores de la comunidad (no
     huérfanos) y los ordena por trofeos totales de sus miembros de la plataforma."""
+    ck = ("community_clubs_ranking", limit)
+    cached = _agg_get(ck)
+    if cached is not None:
+        return cached
     conn = get_conn()
     rows = conn.execute(
         """SELECT club_name AS name, MAX(club_tag) AS tag, COUNT(*) AS members, SUM(trophies) AS trophies FROM (
@@ -2104,8 +2168,9 @@ def community_clubs_ranking(limit: int = 200) -> list[dict]:
                AND p.club_name IS NOT NULL AND p.club_name<>''
            ) WHERE trophies > 0
            GROUP BY name ORDER BY trophies DESC LIMIT ?""", (limit,)).fetchall()
-    return [{"rank": i + 1, "name": r["name"], "tag": r["tag"], "members": r["members"],
-             "trophies": r["trophies"]} for i, r in enumerate(rows)]
+    conn.close()
+    return _agg_put(ck, [{"rank": i + 1, "name": r["name"], "tag": r["tag"], "members": r["members"],
+                          "trophies": r["trophies"]} for i, r in enumerate(rows)], 300)
 
 
 # --- Páginas de club (descripción editable por miembros) + descubrimiento ---------------
@@ -2882,6 +2947,10 @@ def community_meta(mode: str | None = None, map_: str | None = None) -> dict:
     las partidas de TODOS los jugadores seguidos —un tier list propio, no el de
     otras webs—, opcionalmente filtrado por modo/mapa. Devuelve el agregado del
     modo (total + win rate medio) y la lista por brawler con pick rate."""
+    ck = ("community_meta", mode, map_)
+    cached = _agg_get(ck)
+    if cached is not None:
+        return cached
     where = ["my_brawler IS NOT NULL"]
     params: list = []
     if mode:
@@ -2906,7 +2975,7 @@ def community_meta(mode: str | None = None, map_: str | None = None) -> dict:
                  "pick_rate": round(100 * r["games"] / total, 1) if total else 0.0,
                  "winrate": _winrate(r["wins"], r["losses"]),
                  "wins": r["wins"], "losses": r["losses"]} for r in rows]
-    return {"total": total, "winrate": _winrate(tw, tl), "brawlers": brawlers}
+    return _agg_put(ck, {"total": total, "winrate": _winrate(tw, tl), "brawlers": brawlers}, 600)
 
 
 def brawler_scene(brawler_name: str, player_tag: str | None = None) -> dict:
@@ -3336,6 +3405,10 @@ def competitive_pool(window_days: int = 30, min_seen: int = 1) -> list[dict]:
     pool de la temporada vigente y purgar el de la anterior. Cuantos más jugadores de Ranked
     sigas, antes converge; con pocos, sube la ventana. `min_seen` filtra ruido (mapas vistos
     una sola vez si se quisiera). Devuelve [{mode, map, games, last_time}]."""
+    ck = ("competitive_pool", window_days, min_seen)
+    cached = _agg_get(ck)
+    if cached is not None:
+        return cached
     cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).strftime("%Y%m%dT%H%M%S.000Z")
     conn = get_conn()
     rows = conn.execute(
@@ -3350,8 +3423,8 @@ def competitive_pool(window_days: int = 30, min_seen: int = 1) -> list[dict]:
            ORDER BY mode ASC, games DESC, map ASC""",
         (cutoff, min_seen)).fetchall()
     conn.close()
-    return [{"mode": r["mode"], "map": r["map"], "games": r["games"],
-             "last_time": r["last_time"]} for r in rows]
+    return _agg_put(ck, [{"mode": r["mode"], "map": r["map"], "games": r["games"],
+                          "last_time": r["last_time"]} for r in rows], 600)
 
 
 # ---------------------------------------------------------------------------

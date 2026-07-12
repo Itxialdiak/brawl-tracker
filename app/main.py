@@ -269,6 +269,15 @@ async def lifespan(app: FastAPI):
         print(f"Poller activo cada {POLL_INTERVAL}s. Jugadores: {db.active_player_tags() or 'ninguno (añádelos en la web)'}")
     else:
         print("⚠️  Falta BRAWL_API_TOKEN en .env; el poller está parado.")
+    # Headroom del threadpool: FastAPI corre los handlers `def` (síncronos, con queries SQLite) en
+    # este pool; por defecto son 40 hilos. Subirlo evita que muchas peticiones simultáneas se encolen.
+    try:
+        import anyio
+        _limiter = anyio.to_thread.current_default_thread_limiter()
+        _limiter.total_tokens = max(_limiter.total_tokens, 64)
+    except Exception:  # noqa: BLE001
+        pass
+    asyncio.create_task(assets.preload_catalog())      # precalienta el catálogo (1ª carga de Brawlers sin descarga en frío)
     notifier = asyncio.create_task(_event_notifier())  # avisos de cercanía/inicio (Fase 6)
     wiki_task = asyncio.create_task(_wiki_updater())   # refresco diario de datos de brawlers
     detector = asyncio.create_task(_event_result_poller())  # auto-detección horaria de resultados en eventos activos

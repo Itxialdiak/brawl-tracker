@@ -12,17 +12,33 @@ function chgIcon(k) { return k === "buff" ? "▲" : k === "nerf" ? "▼" : "↻"
 function chgLabel(k) { return k === "buff" ? "Buff reciente" : k === "nerf" ? "Nerf reciente" : "Rework reciente"; }
 function ratingColor(v) { if (v >= 65) return "var(--win)"; if (v >= 45) return "var(--gold)"; if (v >= 25) return "var(--cyan)"; return "var(--muted)"; }
 
+let brawlersLoading = false;
+function renderBrawlersAll() {
+  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13();
+  renderBrRoles(); renderBrGrid(); renderBrTemporary(); renderBrUpcoming();
+  loadRecommendations(recsKind);
+}
 async function loadBrawlers() {
-  if (!currentPlayer) return;
-  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); renderBrUpcoming(); loadRecommendations(recsKind); return; }
+  if (brawlersData && brawlersPlayer === currentPlayer) { renderBrawlersAll(); return; }
+  // Aún no hay jugador (arranque): muestra spinner y NO salgas en vacío — refreshAll() nos
+  // re-llamará en cuanto currentPlayer esté fijado, evitando el spinner eterno.
   showBrawlersGridView();
+  if (!currentPlayer) {
+    $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
+    return;
+  }
+  if (brawlersLoading) return;          // ya hay una carga en curso: no dupliques
+  brawlersLoading = true;
   $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Cargando colección…</div>`;
   $("br-counters").innerHTML = "";
   try {
     brawlersData = await getJSON("/api/brawlers?player=" + encodeURIComponent(currentPlayer));
     brawlersPlayer = currentPlayer;
-  } catch (e) { $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección.</div>`; return; }
-  renderBrCounters(); renderBrAccount(); renderBrDistrib(); renderTop13(); renderBrRoles(); renderBrGrid(); renderBrTemporary(); renderBrUpcoming(); loadRecommendations(recsKind);
+  } catch (e) {
+    $("br-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">No se pudo cargar la colección. <button class="ghost" onclick="loadBrawlers()">Reintentar</button></div>`;
+    return;
+  } finally { brawlersLoading = false; }
+  renderBrawlersAll();
 }
 
 function renderBrCounters() {
@@ -547,7 +563,11 @@ function renderBrawlerCard(b) {
   </div>`;
 }
 
-function showBrawlersGridView() { $("brawlers-grid-view").style.display = ""; $("brawler-detail-view").style.display = "none"; }
+function showBrawlersGridView() {
+  if (typeof _clearInsightTimer === "function") _clearInsightTimer();  // corta reintentos de IA al salir del detalle
+  _brScene = null;
+  $("brawlers-grid-view").style.display = ""; $("brawler-detail-view").style.display = "none";
+}
 
 async function showBrawlerDetail(id) {
   if (!_navPop) history.pushState({ nav: "brawler", section: "brawlytics", brawler: id }, "", "#brawler-" + id);
@@ -704,8 +724,10 @@ function modeBoxesHtml(byMode) {
   }).join("");
 }
 /* ---------- "Mejores Modos / Mejores Mapas" (datos comunitarios + tu rendimiento + reflexión IA) ---------- */
-let _brScene = null;
+let _brScene = null, _insightTimer = null;
+function _clearInsightTimer() { if (_insightTimer) { clearTimeout(_insightTimer); _insightTimer = null; } }
 async function loadBrawlerScene(id, name) {
+  _clearInsightTimer();          // cancela reintentos del brawler anterior (evita timeouts huérfanos)
   const el = $("br-scene");
   if (!el) return;
   el.innerHTML = `<div class="br-section"><div class="empty" style="padding:18px">Cargando modos y mapas…</div></div>`;
@@ -717,7 +739,8 @@ async function loadBrawlerScene(id, name) {
   loadBrawlerInsight(id, name);
 }
 // Reflexiones del Sensei (IA): generación perezosa e INCREMENTAL. Cada reflexión (estilo, encaje de
-// cada modo, final, inesperados) es una petición IA aparte; mientras se completan, reintenta.
+// cada modo, final, inesperados) es una petición IA aparte; mientras se completan, reintenta UNA vez
+// (timer único, cancelable) para no acumular setTimeouts huérfanos al cambiar de brawler/pestaña.
 async function loadBrawlerInsight(id, name) {
   let d;
   try { d = await getJSON(`/api/brawler/${id}/insight?player=` + encodeURIComponent(currentPlayer || "")); }
@@ -728,7 +751,8 @@ async function loadBrawlerInsight(id, name) {
   if (!el) return;
   _brScene.insight = d;
   el.innerHTML = renderBrawlerScene(_brScene.data, name, d, d.generating);
-  if (d.generating) setTimeout(() => { if (_brScene && _brScene.id === id) loadBrawlerInsight(id, name); }, 9000);
+  _clearInsightTimer();
+  if (d.generating) _insightTimer = setTimeout(() => { if (_brScene && _brScene.id === id) loadBrawlerInsight(id, name); }, 9000);
 }
 // Fiabilidad del dato, MUY visible: punto de color + porcentaje (rojo <40 · amarillo 40-75 · verde >75).
 function relChip(rel) {

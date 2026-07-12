@@ -57,13 +57,26 @@ $("coach-back").addEventListener("click", () => backToReportList());
 /* ---------- Informe (cálculos derivados) ---------- */
 function fmtDateTime(iso) { try { return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return iso; } }
 
-async function loadReport() {  // pestaña "Modos de Juego": podio versátil + Hub + heatmap
+let _reportKey = null, _reportLoading = false;
+async function loadReport(force) {  // pestaña "Modos de Juego": podio versátil + Hub + heatmap
   if (!currentPlayer) return;
-  const a = await getJSON("/api/report?" + qs());
-  $("heatmap").innerHTML = heatmap(a.crosstab);
-  renderHubButtons(a.by_mode || []);
-  try { renderVersatileTop13((await getJSON("/api/versatile?" + qs())).versatile || []); }
-  catch (e) { /* 401 gestionado por getJSON */ }
+  const query = qs(), key = currentPlayer + "|" + query;
+  if (!force && key === _reportKey) return;   // nada ha cambiado: no refetch al volver a la pestaña
+  if (_reportLoading) return;                  // ya hay una carga en curso: no dupliques
+  _reportLoading = true;
+  try {
+    // Las dos peticiones son independientes → en PARALELO (antes iban en serie).
+    const [a, v] = await Promise.all([
+      getJSON("/api/report?" + query),
+      getJSON("/api/versatile?" + query).catch(() => null),
+    ]);
+    if (currentPlayer + "|" + qs() !== key) return;   // el jugador/filtro cambió durante el fetch
+    $("heatmap").innerHTML = heatmap(a.crosstab);
+    renderHubButtons(a.by_mode || []);
+    if (v) renderVersatileTop13(v.versatile || []);
+    _reportKey = key;
+  } catch (e) { /* 401 gestionado por getJSON */ }
+  finally { _reportLoading = false; }
 }
 
 /* Top 13 brawlers más versátiles (mismo podio que Brawlers, ordenado por win rate
@@ -744,7 +757,7 @@ let senseiSel = { brawler: [], mode: [], map: [], role: [] };
 async function loadSenseiQuiz() {
   if (!currentPlayer) return;
   let f;
-  try { f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer)); } catch (e) { return; }
+  try { f = await getFilters(); } catch (e) { return; }   // caché compartida (evita refetch de /api/filters)
   const av = { brawler: f.brawlers || [], mode: f.modes || [], map: f.maps || [], role: f.roles || [] };
   ["brawler", "mode", "map", "role"].forEach((k) => {
     senseiSel[k] = (senseiSel[k] || []).filter((v) => av[k].includes(v));

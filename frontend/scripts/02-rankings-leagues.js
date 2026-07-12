@@ -141,7 +141,7 @@ function prettyRole(r) { return ({ president: "Presidente", vicePresident: "Vice
 function rankRow(item, isMe, kind) {
   const rank = item.rank != null ? item.rank : "";
   const iconId = item.icon_id != null ? item.icon_id : (item.icon && item.icon.id);
-  const icon = (kind !== "clubs" && iconId) ? `<img class="rk-icon" src="https://cdn.brawlify.com/profile-icons/regular/${iconId}.png" onerror="this.style.visibility='hidden'">` : "";
+  const icon = (kind !== "clubs" && iconId) ? `<img class="rk-icon" src="https://cdn.brawlify.com/profile-icons/regular/${iconId}.png" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
   const clubName = item.club && (typeof item.club === "string" ? item.club : item.club.name);
   const club = clubName ? `<span class="rk-club">${esc(clubName)}</span>` : "";
   const role = item.role ? `<span class="rk-club">${esc(prettyRole(item.role))}</span>` : "";

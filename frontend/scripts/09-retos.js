@@ -406,7 +406,7 @@ async function openCreateReto() {
   }
   if (!RETO_OPTS) {   // modos/mapas con valores que casan con las partidas
     try {
-      const f = await getJSON("/api/filters?player=" + encodeURIComponent(currentPlayer || ""));
+      const f = await getFilters();   // caché compartida de /api/filters
       RETO_OPTS = {
         mode: (f.modes || []).map((m) => ({ v: m, label: modeName(m), img: (modeAsset(m) || {}).icon })),
         map: (f.maps || []).map((m) => ({ v: m, label: mapNameEs(m), img: (typeof mapImageFor === "function" ? mapImageFor(m) : (mapAsset(m) || {}).image) })),
